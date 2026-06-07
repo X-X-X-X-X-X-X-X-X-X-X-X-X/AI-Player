@@ -40,6 +40,8 @@ object PlaybackManager {
     private var progressJob: Job? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
+    val databaseUpdateEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     private var originalQueue: List<Song> = emptyList()
 
     fun initialize(context: Context) {
@@ -240,9 +242,6 @@ object PlaybackManager {
         stop(isSwitching = true)
         _currentSong.value = song
         _playbackProgress.value = startPositionMs
-        if (_playMode.value == PlayMode.Shuffle) {
-            reorderQueue(song)
-        }
         saveState()
 
         try {
@@ -355,7 +354,42 @@ object PlaybackManager {
     fun seekTo(positionMs: Long) {
         mediaPlayer?.seekTo(positionMs.toInt())
         _playbackProgress.value = positionMs
+        triggerServiceUpdate()
         saveState()
+    }
+
+    fun toggleFavoriteCurrent(context: Context) {
+        val song = _currentSong.value ?: return
+        val targetFav = !song.isFavorite
+        
+        // 乐观更新内存中的状态，并立即触发通知栏重绘，实现 0 延迟响应
+        updateCurrentSongFavorite(targetFav)
+        updateSongInQueue(song.id, targetFav)
+        triggerServiceUpdate()
+        
+        coroutineScope.launch(Dispatchers.IO) {
+            val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
+            dbHelper.setFavorite(song.id, targetFav)
+            launch(Dispatchers.Main) {
+                databaseUpdateEvent.tryEmit(Unit)
+            }
+        }
+    }
+
+    fun blacklistCurrent(context: Context) {
+        val song = _currentSong.value ?: return
+        
+        // 乐观更新：立刻将其从当前队列移除，并切换到下一首，达到即时切歌效果
+        removeFromQueue(song.id)
+        playNext(context)
+        
+        coroutineScope.launch(Dispatchers.IO) {
+            val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
+            dbHelper.setBlacklisted(song.id, true)
+            launch(Dispatchers.Main) {
+                databaseUpdateEvent.tryEmit(Unit)
+            }
+        }
     }
 
     private fun startProgressTracker() {

@@ -233,7 +233,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     val blacklistSongsCount = MutableStateFlow(0)
 
     private val _isSongsLoaded = MutableStateFlow(false)
-    val isSongsLoaded: StateFlow<Boolean> = _isSongsLoaded
+    val isSongsLoaded: StateFlow<Boolean> = combine(_isSongsLoaded, songs, _allSongs) { loaded, songsList, allSongsList ->
+        loaded && (songsList.isNotEmpty() || allSongsList.isEmpty())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _isPlaylistsLoaded = MutableStateFlow(false)
     val isPlaylistsLoaded: StateFlow<Boolean> = _isPlaylistsLoaded
@@ -242,6 +244,12 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     val currentPlaylistSongs: StateFlow<List<Song>> = _currentPlaylistSongs
     init {
         PlaybackManager.initialize(application)
+        viewModelScope.launch {
+            PlaybackManager.databaseUpdateEvent.collect {
+                loadSongs()
+                loadPlaylists()
+            }
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val demoSongs = listOf(
                 Song(999991, "Acoustic Breeze", "Bensound", "Bensound Free Music", "https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3", 156000, 3120000, 1, dateAdded = 1000L),

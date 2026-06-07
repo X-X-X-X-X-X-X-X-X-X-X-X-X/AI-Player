@@ -116,6 +116,7 @@ import androidx.compose.animation.scaleIn
 import cn.xuexc.ai_player.data.loadCover
 import cn.xuexc.ai_player.data.loadCoverById
 import cn.xuexc.ai_player.data.getCachedCover
+import cn.xuexc.ai_player.data.getCachedCoverById
 import androidx.compose.animation.scaleOut
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SkipNext
@@ -348,6 +349,7 @@ fun SongCover(
 
     LaunchedEffect(song.id) {
         if (bitmap == null) {
+            kotlinx.coroutines.delay(100)
             withContext(Dispatchers.IO) {
                 bitmap = song.loadCover(context, 150)
             }
@@ -402,12 +404,15 @@ fun PlaylistCover(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var bitmap by remember(firstSongId) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var bitmap by remember(firstSongId) { mutableStateOf(firstSongId?.let { getCachedCoverById(it) }) }
 
     LaunchedEffect(firstSongId) {
         if (firstSongId != null) {
-            withContext(Dispatchers.IO) {
-                bitmap = loadCoverById(context, firstSongId, 150)
+            if (bitmap == null) {
+                kotlinx.coroutines.delay(100)
+                withContext(Dispatchers.IO) {
+                    bitmap = loadCoverById(context, firstSongId, 150)
+                }
             }
         } else {
             bitmap = null
@@ -4425,16 +4430,12 @@ fun FullPlayerScreen(
 ) {
     val context = LocalContext.current
     var bgBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover()) }
-    
-    val currentSongId = song.id
-    var prevSongId by remember { mutableStateOf(currentSongId) }
-    if (prevSongId != currentSongId) {
-        prevSongId = currentSongId
-        val cached = song.getCachedCover()
-        if (cached != null) {
-            bgBitmap = cached
-        }
-    }
+    var isCoverLoaded by remember { mutableStateOf(false) }
+    var rotationAngle by remember { mutableStateOf(0f) }
+    // 封面透明度 Animatable：控制唱片中心封面与背景模糊图的淡出/淡入效果
+    val coverAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
+    // 标记是否是首次加载，避免进入播放界面时触发淡出动画
+    var isFirstLoad by remember { mutableStateOf(true) }
 
     var showPlaybackQueueDialog by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
@@ -4442,11 +4443,41 @@ fun FullPlayerScreen(
     val playbackQueue by viewModel.playbackQueue.collectAsState()
 
     LaunchedEffect(song.id) {
-        withContext(Dispatchers.IO) {
-            val loaded = song.loadCover(context, 400)
-            withContext(Dispatchers.Main) {
-                bgBitmap = loaded
+        if (isFirstLoad) {
+            // 首次加载：直接加载封面，不做淡出动画
+            isFirstLoad = false
+            isCoverLoaded = false
+            rotationAngle = 0f
+            withContext(Dispatchers.IO) {
+                val loaded = song.loadCover(context, 400)
+                withContext(Dispatchers.Main) {
+                    bgBitmap = loaded
+                    withFrameMillis {}
+                    withFrameMillis {}
+                    isCoverLoaded = true
+                }
             }
+        } else {
+            // 切歌：先淡出当前封面（旋转继续）-> 停转重置 -> 加载新封面 -> 淡入
+            // 1. 直接开始淡出（200ms），旋转随封面一起淡出，不提前停顿
+            coverAlpha.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(200)
+            )
+            // 2. 淡出完成后停止旋转并重置角度
+            isCoverLoaded = false
+            rotationAngle = 0f
+            // 3. 加载下一首封面
+            val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
+            bgBitmap = loaded
+            withFrameMillis {}
+            withFrameMillis {}
+            isCoverLoaded = true
+            // 4. 淡入新封面（300ms）
+            coverAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(300)
+            )
         }
     }
 
@@ -4478,14 +4509,14 @@ fun FullPlayerScreen(
             .background(appColors.mainBackground)
             .then(dragModifier)
     ) {
-        // 1. Ambient blur cover image
+        // 1. Ambient blur cover image（同步跟随封面淡出/淡入）
         if (bgBitmap != null) {
             Image(
                 bitmap = bgBitmap!!.asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(0.25f)
+                    .graphicsLayer { alpha = 0.25f * coverAlpha.value }
                     .blur(50.dp),
                 contentScale = ContentScale.Crop
             )
@@ -4638,9 +4669,9 @@ fun FullPlayerScreen(
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                var rotationAngle by remember { mutableStateOf(0f) }
-                LaunchedEffect(isPlaying) {
-                    if (isPlaying) {
+                val shouldRotate = isPlaying && isCoverLoaded
+                LaunchedEffect(shouldRotate) {
+                    if (shouldRotate) {
                         val startFrameTime = android.os.SystemClock.uptimeMillis()
                         val startAngle = rotationAngle
                         while (true) {
@@ -4692,13 +4723,14 @@ fun FullPlayerScreen(
                         }
                     }
 
-                    // Center album cover image
+                    // Center album cover image（应用 coverAlpha 淡出/淡入效果）
                     Box(
                         modifier = Modifier
                             .size(200.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF1C1C1E))
                             .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+                            .graphicsLayer { alpha = coverAlpha.value }
                     ) {
                         if (bgBitmap != null) {
                             Image(
@@ -5069,7 +5101,7 @@ fun FullPlayerScreen(
         val qItemHighlightBg = if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000)
         val queueListState = rememberLazyListState()
         
-        LaunchedEffect(song.id, playbackQueue) {
+        LaunchedEffect(Unit) {
             val currentIndex = playbackQueue.indexOfFirst { it.id == song.id }
             if (currentIndex != -1) {
                 queueListState.scrollToItem(currentIndex)
