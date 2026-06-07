@@ -433,9 +433,28 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun loadPlaylistsInternal() = withContext(Dispatchers.IO) {
         val list = dbHelper.getPlaylists()
-        _playlists.value = list
-        favoriteSongsCount.value = dbHelper.getFavoriteSongsCount()
-        blacklistSongsCount.value = dbHelper.getBlacklistedSongs().size
+        val blocked = _blockedFolders.value
+        val standardBlocked = blocked.map { try { java.io.File(it).absolutePath } catch (e: Exception) { it } }
+
+        // Filter favorite songs count
+        val favoriteSongs = dbHelper.getFavoriteSongs()
+        favoriteSongsCount.value = favoriteSongs.count { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+
+        // Filter blacklist songs count
+        val blacklistSongs = dbHelper.getBlacklistedSongs()
+        blacklistSongsCount.value = blacklistSongs.count { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+
+        // Filter custom playlists counts
+        val updatedPlaylists = list.map { playlist ->
+            val songsInPlaylist = dbHelper.getSongsInPlaylist(playlist.id)
+            val filteredSongs = songsInPlaylist.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            playlist.copy(
+                songCount = filteredSongs.size,
+                firstSongId = filteredSongs.firstOrNull()?.id
+            )
+        }
+
+        _playlists.value = updatedPlaylists
         _isPlaylistsLoaded.value = true
     }
 

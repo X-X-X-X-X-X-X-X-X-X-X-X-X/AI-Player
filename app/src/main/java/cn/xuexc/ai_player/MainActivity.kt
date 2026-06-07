@@ -4140,7 +4140,7 @@ fun SongItemCard(
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(160.dp)
+                                .width(180.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(appColors.surfaceColor)
                                 .border(0.5.dp, if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
