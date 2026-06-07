@@ -2,6 +2,7 @@ package cn.xuexc.ai_player.ui
 
 import android.app.Application
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cn.xuexc.ai_player.data.MusicDatabaseHelper
@@ -356,6 +357,11 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             favoriteSongsCount.value = if (targetFav) favoriteSongsCount.value + 1 else maxOf(0, favoriteSongsCount.value - 1)
+            
+            withContext(Dispatchers.Main) {
+                val msg = if (targetFav) "已添加到喜欢" else "已取消喜欢"
+                Toast.makeText(getApplication(), msg, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -363,12 +369,18 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             dbHelper.setBlacklisted(song.id, true)
             withContext(Dispatchers.Main) {
+                val isCurrentPlaying = currentSong.value?.id == song.id
                 val nextSong = PlaybackManager.removeFromQueue(song.id)
-                if (currentSong.value?.id == song.id && nextSong != null) {
+                if (isCurrentPlaying && nextSong != null) {
                     PlaybackManager.playSong(context, nextSong, forceRestart = true)
                 }
                 loadSongs()
                 loadPlaylists()
+                if (isCurrentPlaying) {
+                    Toast.makeText(context, "已移入遗忘的沙漏，自动切歌", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "已移入遗忘的沙漏", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

@@ -386,6 +386,8 @@ object PlaybackManager {
             dbHelper.setFavorite(song.id, targetFav)
             launch(Dispatchers.Main) {
                 databaseUpdateEvent.tryEmit(Unit)
+                val msg = if (targetFav) "已添加到喜欢" else "已取消喜欢"
+                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }

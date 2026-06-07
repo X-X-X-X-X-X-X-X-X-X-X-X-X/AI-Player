@@ -4777,7 +4777,6 @@ fun FullPlayerScreen(
                 IconButton(
                     onClick = {
                         viewModel.addToBlacklist(context, song)
-                        Toast.makeText(context, "已移入遗忘的沙漏，自动切歌", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier
                         .size(40.dp)
