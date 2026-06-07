@@ -2434,13 +2434,11 @@ fun MainScreen(viewModel: SongViewModel) {
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
             ) {
                 currentSong?.let { song ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(68.dp)
                             .clickable { showFullPlayer = true },
                         shape = RoundedCornerShape(0.dp),
                         colors = CardDefaults.cardColors(
@@ -2448,97 +2446,104 @@ fun MainScreen(viewModel: SongViewModel) {
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            // Top subtle divider line
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(1.dp)
-                                    .background(if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000))
-                                    .align(Alignment.TopCenter)
-                            )
-
-                            // Top progress line (docked on top of the divider)
-                            val progress = if (song.duration > 0) {
-                                playbackProgress.toFloat() / song.duration.toFloat()
-                            } else {
-                                0f
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(progress.coerceIn(0f, 1f))
-                                    .height(2.5.dp)
-                                    .background(currentAccent.mainColor)
-                                    .align(Alignment.TopStart)
-                            )
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .height(68.dp)
                             ) {
-                                // Small Cover Art
-                                SongCover(
-                                    song = song,
-                                    isCurrent = false,
-                                    isPlaying = false,
-                                    modifier = Modifier.size(40.dp)
+                                // Top subtle divider line
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000))
+                                        .align(Alignment.TopCenter)
                                 )
 
-                                Spacer(modifier = Modifier.width(12.dp))
+                                // Top progress line (docked on top of the divider)
+                                val progress = if (song.duration > 0) {
+                                    playbackProgress.toFloat() / song.duration.toFloat()
+                                } else {
+                                    0f
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                                        .height(2.5.dp)
+                                        .background(currentAccent.mainColor)
+                                        .align(Alignment.TopStart)
+                                )
 
-                                // Meta details
-                                Column(modifier = Modifier.weight(1.0f)) {
-                                    Text(
-                                        text = song.title,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = appColors.textColorPrimary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Small Cover Art
+                                    SongCover(
+                                        song = song,
+                                        isCurrent = false,
+                                        isPlaying = false,
+                                        modifier = Modifier.size(40.dp)
                                     )
-                                    val quality = song.getQualityType()
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        if (quality != QualityType.SQ) {
-                                            QualityBadge(quality = quality, isDarkMode = isDarkMode)
-                                        }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    // Meta details
+                                    Column(modifier = Modifier.weight(1.0f)) {
                                         Text(
-                                            text = song.artist,
-                                            fontSize = 11.sp,
-                                            color = appColors.textColorSecondary,
+                                            text = song.title,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = appColors.textColorPrimary,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
+                                        val quality = song.getQualityType()
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            if (quality != QualityType.SQ) {
+                                                QualityBadge(quality = quality, isDarkMode = isDarkMode)
+                                            }
+                                            Text(
+                                                text = song.artist,
+                                                fontSize = 11.sp,
+                                                color = appColors.textColorSecondary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    // Play / Pause Button
+                                    IconButton(
+                                        onClick = {
+                                            if (isPlaying) {
+                                                viewModel.pauseSong()
+                                            } else {
+                                                viewModel.resumeSong()
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(20.dp))
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            contentDescription = "Play/Pause",
+                                            tint = currentAccent.mainColor,
+                                            modifier = Modifier.size(24.dp)
+                                        )
                                     }
                                 }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                // Play / Pause Button
-                                IconButton(
-                                    onClick = {
-                                        if (isPlaying) {
-                                            viewModel.pauseSong()
-                                        } else {
-                                            viewModel.resumeSong()
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(20.dp))
-                                ) {
-                                    Icon(
-                                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                        contentDescription = "Play/Pause",
-                                        tint = currentAccent.mainColor,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
                             }
+                            Spacer(modifier = Modifier.navigationBarsPadding())
                         }
                     }
                 }
