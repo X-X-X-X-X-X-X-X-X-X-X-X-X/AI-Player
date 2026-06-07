@@ -1150,26 +1150,26 @@ fun MainScreen(viewModel: SongViewModel) {
                     activePlaylistId != null -> {
                         val index = playlistSongs.indexOfFirst { it.id == curSong.id }
                         if (index != -1) {
-                            playlistSongsListState.animateScrollToItem(index)
+                            playlistSongsListState.scrollToItem(index)
                         }
                     }
                     activeArtistName != null -> {
                         val artistSongs = songs.filter { it.artist == activeArtistName }
                         val index = artistSongs.indexOfFirst { it.id == curSong.id }
                         if (index != -1) {
-                            artistSongsDetailListState.animateScrollToItem(index)
+                            artistSongsDetailListState.scrollToItem(index)
                         }
                     }
                     currentScreen == Screen.Library -> {
                         if (isTitleSort) {
                             val index = songsDisplayList.indexOfFirst { it is SongItemWithLetter && it.song.id == curSong.id }
                             if (index != -1) {
-                                songListState.animateScrollToItem(index)
+                                songListState.scrollToItem(index)
                             }
                         } else {
                             val index = songs.indexOfFirst { it.id == curSong.id }
                             if (index != -1) {
-                                songListState.animateScrollToItem(index)
+                                songListState.scrollToItem(index)
                             }
                         }
                     }
@@ -2680,7 +2680,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                 indication = androidx.compose.material3.ripple(color = Color.White),
                                 onClick = {
                                     coroutineScope.launch {
-                                        activeListState?.animateScrollToItem(0)
+                                        activeListState?.scrollToItem(0)
                                     }
                                 }
                             ),
