@@ -9,7 +9,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
     companion object {
         private const val DATABASE_NAME = "music_player.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 4
 
         const val TABLE_SONGS = "songs"
         const val COLUMN_ID = "id"
@@ -23,6 +23,8 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         const val COLUMN_IS_FAVORITE = "is_favorite"
         const val COLUMN_IS_BLACKLISTED = "is_blacklisted"
         const val COLUMN_DATE_ADDED = "date_added"
+        const val COLUMN_FAVORITED_AT = "favorited_at"
+        const val COLUMN_BLACKLISTED_AT = "blacklisted_at"
 
         // Playlists table
         const val TABLE_PLAYLISTS = "playlists"
@@ -33,6 +35,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         const val TABLE_PLAYLIST_SONGS = "playlist_songs"
         const val COLUMN_PS_PLAYLIST_ID = "playlist_id"
         const val COLUMN_PS_SONG_ID = "song_id"
+        const val COLUMN_PS_ADDED_AT = "added_at"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -48,7 +51,9 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                 $COLUMN_ALBUM_ID INTEGER,
                 $COLUMN_IS_FAVORITE INTEGER DEFAULT 0,
                 $COLUMN_IS_BLACKLISTED INTEGER DEFAULT 0,
-                $COLUMN_DATE_ADDED INTEGER DEFAULT 0
+                $COLUMN_DATE_ADDED INTEGER DEFAULT 0,
+                $COLUMN_FAVORITED_AT INTEGER DEFAULT 0,
+                $COLUMN_BLACKLISTED_AT INTEGER DEFAULT 0
             )
         """.trimIndent()
         db.execSQL(createSongsTable)
@@ -65,6 +70,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
             CREATE TABLE $TABLE_PLAYLIST_SONGS (
                 $COLUMN_PS_PLAYLIST_ID INTEGER,
                 $COLUMN_PS_SONG_ID INTEGER,
+                $COLUMN_PS_ADDED_AT INTEGER DEFAULT 0,
                 PRIMARY KEY ($COLUMN_PS_PLAYLIST_ID, $COLUMN_PS_SONG_ID),
                 FOREIGN KEY ($COLUMN_PS_PLAYLIST_ID) REFERENCES $TABLE_PLAYLISTS ($COLUMN_PLAYLIST_ID) ON DELETE CASCADE,
                 FOREIGN KEY ($COLUMN_PS_SONG_ID) REFERENCES $TABLE_SONGS ($COLUMN_ID) ON DELETE CASCADE
@@ -87,6 +93,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                 CREATE TABLE $TABLE_PLAYLIST_SONGS (
                     $COLUMN_PS_PLAYLIST_ID INTEGER,
                     $COLUMN_PS_SONG_ID INTEGER,
+                    $COLUMN_PS_ADDED_AT INTEGER DEFAULT 0,
                     PRIMARY KEY ($COLUMN_PS_PLAYLIST_ID, $COLUMN_PS_SONG_ID),
                     FOREIGN KEY ($COLUMN_PS_PLAYLIST_ID) REFERENCES $TABLE_PLAYLISTS ($COLUMN_PLAYLIST_ID) ON DELETE CASCADE,
                     FOREIGN KEY ($COLUMN_PS_SONG_ID) REFERENCES $TABLE_SONGS ($COLUMN_ID) ON DELETE CASCADE
@@ -96,6 +103,11 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         }
         if (oldVersion < 3) {
             db.execSQL("ALTER TABLE $TABLE_SONGS ADD COLUMN $COLUMN_DATE_ADDED INTEGER DEFAULT 0")
+        }
+        if (oldVersion < 4) {
+            db.execSQL("ALTER TABLE $TABLE_SONGS ADD COLUMN $COLUMN_FAVORITED_AT INTEGER DEFAULT 0")
+            db.execSQL("ALTER TABLE $TABLE_SONGS ADD COLUMN $COLUMN_BLACKLISTED_AT INTEGER DEFAULT 0")
+            db.execSQL("ALTER TABLE $TABLE_PLAYLIST_SONGS ADD COLUMN $COLUMN_PS_ADDED_AT INTEGER DEFAULT 0")
         }
     }
 
@@ -206,7 +218,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
             null,
             null,
             null,
-            "$COLUMN_TITLE ASC"
+            "$COLUMN_FAVORITED_AT DESC, $COLUMN_ID DESC"
         )
 
         cursor.use {
@@ -267,7 +279,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
             null,
             null,
             null,
-            "$COLUMN_TITLE ASC"
+            "$COLUMN_BLACKLISTED_AT DESC, $COLUMN_ID DESC"
         )
 
         cursor.use {
@@ -308,6 +320,9 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         val db = writableDatabase
         val cv = ContentValues().apply {
             put(COLUMN_IS_FAVORITE, if (isFavorite) 1 else 0)
+            if (isFavorite) {
+                put(COLUMN_FAVORITED_AT, System.currentTimeMillis() / 1000)
+            }
         }
         db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(songId.toString()))
     }
@@ -316,6 +331,9 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         val db = writableDatabase
         val cv = ContentValues().apply {
             put(COLUMN_IS_BLACKLISTED, if (isBlacklisted) 1 else 0)
+            if (isBlacklisted) {
+                put(COLUMN_BLACKLISTED_AT, System.currentTimeMillis() / 1000)
+            }
         }
         db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(songId.toString()))
     }
@@ -423,6 +441,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         val cv = ContentValues().apply {
             put(COLUMN_PS_PLAYLIST_ID, playlistId)
             put(COLUMN_PS_SONG_ID, songId)
+            put(COLUMN_PS_ADDED_AT, System.currentTimeMillis() / 1000)
         }
         val result = db.insertWithOnConflict(TABLE_PLAYLIST_SONGS, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
         return result != -1L
@@ -445,7 +464,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
             FROM $TABLE_SONGS s 
             INNER JOIN $TABLE_PLAYLIST_SONGS ps ON s.$COLUMN_ID = ps.$COLUMN_PS_SONG_ID 
             WHERE ps.$COLUMN_PS_PLAYLIST_ID = ? AND s.$COLUMN_IS_BLACKLISTED = 0
-            ORDER BY s.$COLUMN_TITLE ASC
+            ORDER BY ps.$COLUMN_PS_ADDED_AT DESC, s.$COLUMN_ID DESC
         """.trimIndent()
         
         val cursor = db.rawQuery(query, arrayOf(playlistId.toString()))

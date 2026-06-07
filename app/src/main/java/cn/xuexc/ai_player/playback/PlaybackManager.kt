@@ -21,6 +21,7 @@ enum class PlayMode {
 object PlaybackManager {
     private var mediaPlayer: MediaPlayer? = null
     private var appContext: Context? = null
+    private var isSeeking = false
     
     private val _currentSong = MutableStateFlow<Song?>(null)
     val currentSong: StateFlow<Song?> = _currentSong
@@ -41,6 +42,15 @@ object PlaybackManager {
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
     val databaseUpdateEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    private val _sleepTimerRemaining = MutableStateFlow(0L)
+    val sleepTimerRemaining: StateFlow<Long> = _sleepTimerRemaining
+
+    private val _sleepTimerPlayComplete = MutableStateFlow(false)
+    val sleepTimerPlayComplete: StateFlow<Boolean> = _sleepTimerPlayComplete
+
+    private var sleepTimerJob: Job? = null
+    private var isTimerExpired = false
 
     private var originalQueue: List<Song> = emptyList()
 
@@ -242,8 +252,38 @@ object PlaybackManager {
         playSong(context, prevSong, forceRestart = true)
     }
 
+    fun prepareNextWithoutPlaying(context: Context) {
+        val queue = _playbackQueue.value
+        if (queue.isEmpty()) {
+            stop()
+            return
+        }
+        val current = _currentSong.value
+        val nextSong = when (_playMode.value) {
+            PlayMode.SingleLoop -> {
+                val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
+                val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
+                queue[nextIndex]
+            }
+            else -> {
+                val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
+                val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
+                queue[nextIndex]
+            }
+        }
+        stop(isSwitching = true)
+        _currentSong.value = nextSong
+        _playbackProgress.value = 0L
+        _isPlaying.value = false
+        saveState()
+        triggerServiceUpdate()
+    }
+
     fun playSong(context: Context, song: Song, forceRestart: Boolean = false, startPositionMs: Long = 0L) {
         appContext = context.applicationContext
+        if (isTimerExpired) {
+            resetSleepTimer()
+        }
         if (!forceRestart && _currentSong.value?.id == song.id) {
             if (_isPlaying.value) {
                 pause()
@@ -279,8 +319,15 @@ object PlaybackManager {
                     _isPlaying.value = false
                     _playbackProgress.value = 0L
                     stopProgressTracker()
-                    appContext?.let { ctx ->
-                        playNext(ctx, isUserInitiated = false)
+                    if (isTimerExpired) {
+                        appContext?.let { ctx ->
+                            prepareNextWithoutPlaying(ctx)
+                        }
+                        resetSleepTimer()
+                    } else {
+                        appContext?.let { ctx ->
+                            playNext(ctx, isUserInitiated = false)
+                        }
                     }
                 }
                 setOnErrorListener { _, _, _ ->
@@ -288,6 +335,9 @@ object PlaybackManager {
                     stopProgressTracker()
                     android.widget.Toast.makeText(context, "播放失败: 本地无此音频文件", android.widget.Toast.LENGTH_SHORT).show()
                     true
+                }
+                setOnSeekCompleteListener {
+                    isSeeking = false
                 }
                 prepareAsync()
             }
@@ -341,6 +391,7 @@ object PlaybackManager {
         mediaPlayer = null
         _isPlaying.value = false
         stopProgressTracker()
+        isSeeking = false
         if (!isSwitching) {
             _playbackProgress.value = 0L
             _currentSong.value = null
@@ -366,6 +417,7 @@ object PlaybackManager {
     }
 
     fun seekTo(positionMs: Long) {
+        isSeeking = true
         mediaPlayer?.seekTo(positionMs.toInt())
         _playbackProgress.value = positionMs
         triggerServiceUpdate()
@@ -416,17 +468,17 @@ object PlaybackManager {
             var saveCounter = 0
             while (true) {
                 mediaPlayer?.let {
-                    if (it.isPlaying) {
+                    if (it.isPlaying && !isSeeking) {
                         val pos = it.currentPosition.toLong()
                         _playbackProgress.value = pos
                         saveCounter++
-                        if (saveCounter >= 10) { // 5秒保存一次
+                        if (saveCounter >= 25) { // 5秒保存一次 (25 * 200ms)
                             saveCounter = 0
                             saveProgressOnly(pos)
                         }
                     }
                 }
-                delay(500)
+                delay(200)
             }
         }
     }
@@ -434,5 +486,41 @@ object PlaybackManager {
     private fun stopProgressTracker() {
         progressJob?.cancel()
         progressJob = null
+    }
+
+    fun startSleepTimer(durationMs: Long, playComplete: Boolean) {
+        sleepTimerJob?.cancel()
+        isTimerExpired = false
+        _sleepTimerPlayComplete.value = playComplete
+        _sleepTimerRemaining.value = durationMs
+
+        sleepTimerJob = coroutineScope.launch {
+            while (_sleepTimerRemaining.value > 0) {
+                delay(1000)
+                val nextVal = _sleepTimerRemaining.value - 1000
+                _sleepTimerRemaining.value = maxOf(0L, nextVal)
+            }
+            if (playComplete) {
+                isTimerExpired = true
+                if (!_isPlaying.value) {
+                    resetSleepTimer()
+                }
+            } else {
+                pause()
+                resetSleepTimer()
+            }
+        }
+    }
+
+    fun cancelSleepTimer() {
+        resetSleepTimer()
+    }
+
+    private fun resetSleepTimer() {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        isTimerExpired = false
+        _sleepTimerRemaining.value = 0L
+        _sleepTimerPlayComplete.value = false
     }
 }

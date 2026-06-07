@@ -120,6 +120,8 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     val playbackProgress: StateFlow<Long> = PlaybackManager.playbackProgress
     val playMode: StateFlow<PlayMode> = PlaybackManager.playMode
     val playbackQueue: StateFlow<List<Song>> = PlaybackManager.playbackQueue
+    val sleepTimerRemaining: StateFlow<Long> = PlaybackManager.sleepTimerRemaining
+    val sleepTimerPlayComplete: StateFlow<Boolean> = PlaybackManager.sleepTimerPlayComplete
 
     private val _allScannedSongs = MutableStateFlow<List<Song>>(emptyList())
     private val _allSongs = MutableStateFlow<List<Song>>(emptyList())
@@ -421,6 +423,14 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resumeSong() {
         PlaybackManager.resume()
+    }
+
+    fun startSleepTimer(durationMs: Long, playComplete: Boolean) {
+        PlaybackManager.startSleepTimer(durationMs, playComplete)
+    }
+
+    fun cancelSleepTimer() {
+        PlaybackManager.cancelSleepTimer()
     }
 
     fun seekTo(positionMs: Long) {
