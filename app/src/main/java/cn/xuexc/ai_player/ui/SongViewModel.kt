@@ -363,9 +363,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             dbHelper.setBlacklisted(song.id, true)
             withContext(Dispatchers.Main) {
-                PlaybackManager.removeFromQueue(song.id)
-                if (currentSong.value?.id == song.id) {
-                    PlaybackManager.playNext(context)
+                val nextSong = PlaybackManager.removeFromQueue(song.id)
+                if (currentSong.value?.id == song.id && nextSong != null) {
+                    PlaybackManager.playSong(context, nextSong, forceRestart = true)
                 }
                 loadSongs()
                 loadPlaylists()
@@ -417,9 +417,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
 
     fun removeFromPlaybackQueue(songId: Long, context: Context) {
         val current = currentSong.value
-        PlaybackManager.removeFromQueue(songId)
-        if (current?.id == songId) {
-            PlaybackManager.playNext(context)
+        val nextSong = PlaybackManager.removeFromQueue(songId)
+        if (current?.id == songId && nextSong != null) {
+            PlaybackManager.playSong(context, nextSong, forceRestart = true)
         }
     }
 
@@ -526,11 +526,13 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteSong(context: Context, songId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             dbHelper.deleteSong(songId)
-            PlaybackManager.removeFromQueue(songId)
             val current = PlaybackManager.currentSong.value
-            if (current?.id == songId) {
+            val nextSong = withContext(Dispatchers.Main) {
+                PlaybackManager.removeFromQueue(songId)
+            }
+            if (current?.id == songId && nextSong != null) {
                 withContext(Dispatchers.Main) {
-                    PlaybackManager.playNext(context)
+                    PlaybackManager.playSong(context, nextSong, forceRestart = true)
                 }
             }
             loadSongsInternal()

@@ -155,13 +155,27 @@ object PlaybackManager {
         saveState()
     }
 
-    fun removeFromQueue(songId: Long) {
+    fun removeFromQueue(songId: Long): Song? {
+        val current = _currentSong.value
+        var nextSongToPlay: Song? = null
+        
+        if (current?.id == songId) {
+            val queue = _playbackQueue.value
+            val currentIndex = queue.indexOfFirst { it.id == songId }
+            if (currentIndex != -1 && queue.size > 1) {
+                val nextIndex = currentIndex % (queue.size - 1)
+                val remainingQueue = queue.filter { it.id != songId }
+                nextSongToPlay = remainingQueue.getOrNull(nextIndex)
+            }
+        }
+
         originalQueue = originalQueue.filter { it.id != songId }
         _playbackQueue.value = _playbackQueue.value.filter { it.id != songId }
         if (_playbackQueue.value.isEmpty()) {
             stop(isSwitching = false)
         }
         saveState()
+        return nextSongToPlay
     }
 
     fun updateSongInQueue(songId: Long, isFavorite: Boolean) {
@@ -380,8 +394,10 @@ object PlaybackManager {
         val song = _currentSong.value ?: return
         
         // 乐观更新：立刻将其从当前队列移除，并切换到下一首，达到即时切歌效果
-        removeFromQueue(song.id)
-        playNext(context)
+        val nextSong = removeFromQueue(song.id)
+        if (nextSong != null) {
+            playSong(context, nextSong, forceRestart = true)
+        }
         
         coroutineScope.launch(Dispatchers.IO) {
             val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
