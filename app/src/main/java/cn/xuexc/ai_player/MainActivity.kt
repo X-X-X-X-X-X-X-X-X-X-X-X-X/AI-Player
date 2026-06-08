@@ -1471,9 +1471,6 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 onFavoriteToggle = if (currentPlaylistId == -2L) null else {
                                                     {
                                                         viewModel.toggleFavorite(song)
-                                                        if (currentPlaylistId == -1L) {
-                                                            viewModel.loadFavoriteSongs()
-                                                        }
                                                     }
                                                 },
                                                 onBlacklistToggle = if (currentPlaylistId == -2L) null else {

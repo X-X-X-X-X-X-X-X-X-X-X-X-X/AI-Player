@@ -354,8 +354,14 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                 _allSongs.value = _allSongs.value.map {
                     if (it.id == song.id) it.copy(isFavorite = targetFav) else it
                 }
-                _currentPlaylistSongs.value = _currentPlaylistSongs.value.map {
-                    if (it.id == song.id) it.copy(isFavorite = targetFav) else it
+                // 当取消喜欢时，直接从喜欢歌单列表中移除该歌曲，无需依赖外部 loadFavoriteSongs()
+                // 当添加喜欢时，仅更新 isFavorite 字段（该歌曲不在喜欢歌单当前页，不需插入）
+                if (!targetFav) {
+                    _currentPlaylistSongs.value = _currentPlaylistSongs.value.filter { it.id != song.id }
+                } else {
+                    _currentPlaylistSongs.value = _currentPlaylistSongs.value.map {
+                        if (it.id == song.id) it.copy(isFavorite = true) else it
+                    }
                 }
             }
             favoriteSongsCount.value = if (targetFav) favoriteSongsCount.value + 1 else maxOf(0, favoriteSongsCount.value - 1)
