@@ -1438,7 +1438,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            text = if (currentPlaylistId == -2L) "遗忘的沙漏为空" else "喜欢歌单为空",
+                                            text = if (currentPlaylistId == -2L) "遗忘的沙漏为空" else "歌单为空",
                                             color = appColors.textColorSecondary,
                                             fontSize = 14.sp
                                         )
