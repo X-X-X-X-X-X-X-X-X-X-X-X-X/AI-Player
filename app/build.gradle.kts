@@ -13,8 +13,28 @@ android {
         applicationId = "cn.xuexc.ai_player"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2"
+
+        // 从环境变量读取版本名称（如 v1.2.1），本地开发默认为 v1.2
+        val envVersionName = System.getenv("APP_VERSION_NAME") ?: "v1.2"
+        versionName = envVersionName.replace("v", "")
+
+        // 根据版本号规则（x.y.z）自动计算 versionCode（例：1.2.1 -> 10201）
+        versionCode = run {
+            val envCode = System.getenv("APP_VERSION_CODE")
+            if (!envCode.isNullOrEmpty()) {
+                envCode.toInt()
+            } else {
+                try {
+                    val parts = versionName.split(".")
+                    val major = if (parts.isNotEmpty()) parts[0].toInt() else 1
+                    val minor = if (parts.size >= 2) parts[1].toInt() else 0
+                    val patch = if (parts.size >= 3) parts[2].toInt() else 0
+                    major * 10000 + minor * 100 + patch
+                } catch (e: Exception) {
+                    3
+                }
+            }
+        }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
