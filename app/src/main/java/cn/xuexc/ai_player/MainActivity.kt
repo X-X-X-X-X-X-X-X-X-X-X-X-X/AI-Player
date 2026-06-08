@@ -178,6 +178,11 @@ import cn.xuexc.ai_player.data.ArtistItem
 import cn.xuexc.ai_player.data.PinyinHelper
 import cn.xuexc.ai_player.ui.ScanStatus
 import cn.xuexc.ai_player.ui.SongViewModel
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
+import android.content.Intent
+import androidx.compose.material.icons.filled.CloudDownload
 import cn.xuexc.ai_player.ui.SortOrder
 import cn.xuexc.ai_player.ui.theme.AIPlayerTheme
 import java.util.Locale
@@ -197,6 +202,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+
+data class UpdateInfo(
+    val tagName: String,
+    val body: String,
+    val htmlUrl: String
+)
 
 enum class Screen {
     Library, Playlists, Artists
@@ -477,7 +488,9 @@ fun TopBar(
     appColors: AppColors,
     currentAccent: AccentColor,
     isDark: Boolean,
-    scanState: ScanStatus
+    scanState: ScanStatus,
+    isCheckingUpdate: Boolean,
+    onCheckUpdateClick: () -> Unit
 ) {
     val topBtnBg = if (isDark) Color(0x12FFFFFF) else Color(0x0C000000)
 
@@ -776,6 +789,30 @@ fun TopBar(
                                         modifier = Modifier.requiredHeight(32.dp),
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                                     )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (isCheckingUpdate) "正在检查..." else "检查更新",
+                                                color = if (isCheckingUpdate) appColors.textColorSecondary else appColors.textColorPrimary,
+                                                fontSize = 14.sp
+                                            )
+                                        },
+                                        enabled = !isCheckingUpdate,
+                                        onClick = {
+                                            showMenu = false
+                                            onCheckUpdateClick()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.CloudDownload,
+                                                contentDescription = null,
+                                                tint = if (isCheckingUpdate) appColors.textColorSecondary else appColors.textColorPrimary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        },
+                                        modifier = Modifier.requiredHeight(32.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                    )
                                     if (currentScreen == Screen.Playlists) {
                                         DropdownMenuItem(
                                             text = {
@@ -880,6 +917,37 @@ fun TopBar(
 @Composable
 fun MainScreen(viewModel: SongViewModel) {
     val context = LocalContext.current
+
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var latestVersionInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+
+    val currentVersionName = remember {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: "1.2.2"
+        } catch (e: Exception) {
+            "1.2.2"
+        }
+    }
+
+    fun isNewerVersion(current: String, latest: String): Boolean {
+        val curClean = current.trim().lowercase().removePrefix("v")
+        val latClean = latest.trim().lowercase().removePrefix("v")
+        if (curClean == latClean) return false
+
+        val curParts = curClean.split(".")
+        val latParts = latClean.split(".")
+        val length = maxOf(curParts.size, latParts.size)
+        for (i in 0 until length) {
+            val curNum = curParts.getOrNull(i)?.toIntOrNull() ?: 0
+            val latNum = latParts.getOrNull(i)?.toIntOrNull() ?: 0
+            if (latNum > curNum) return true
+            if (curNum > latNum) return false
+        }
+        return false
+    }
+
     var currentScreen by remember { mutableStateOf(Screen.Library) }
     val pagerState = rememberPagerState(
         initialPage = when (currentScreen) {
@@ -939,6 +1007,66 @@ fun MainScreen(viewModel: SongViewModel) {
     val playlistSongsListState = rememberLazyListState()
     val artistSongsDetailListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    fun checkForUpdates(showToastIfLatest: Boolean = true) {
+        if (isCheckingUpdate) return
+        isCheckingUpdate = true
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val url = URL("https://api.github.com/repos/X-X-X-X-X-X-X-X-X-X-X-X-X/AI-Player/releases/latest")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+                connection.setRequestProperty("User-Agent", "AI-Player-App")
+                
+                if (connection.responseCode == 200) {
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(response)
+                    val tagName = json.getString("tag_name")
+                    val htmlUrl = json.getString("html_url")
+                    val body = json.optString("body", "")
+                    
+                    if (isNewerVersion(currentVersionName, tagName)) {
+                        withContext(Dispatchers.Main) {
+                            latestVersionInfo = UpdateInfo(tagName, body, htmlUrl)
+                            showUpdateDialog = true
+                            isCheckingUpdate = false
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            isCheckingUpdate = false
+                            if (showToastIfLatest) {
+                                Toast.makeText(context, "当前已是最新版本 (v$currentVersionName)", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        isCheckingUpdate = false
+                        Toast.makeText(context, "检查更新失败，响应码: ${connection.responseCode}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: java.io.IOException) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    isCheckingUpdate = false
+                    Toast.makeText(context, "网络连接失败，请检查网络", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    isCheckingUpdate = false
+                    Toast.makeText(context, "检查更新出错: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(2000)
+        checkForUpdates(showToastIfLatest = false)
+    }
 
     var showFullPlayer by remember { mutableStateOf(false) }
 
@@ -1374,7 +1502,9 @@ fun MainScreen(viewModel: SongViewModel) {
                     appColors = appColors,
                     currentAccent = currentAccent,
                     isDark = isDarkMode,
-                    scanState = scanState
+                    scanState = scanState,
+                    isCheckingUpdate = isCheckingUpdate,
+                    onCheckUpdateClick = { checkForUpdates(true) }
                 )
 
                 Box(
@@ -3829,6 +3959,150 @@ fun MainScreen(viewModel: SongViewModel) {
             currentAccent = currentAccent,
             onDismissRequest = { showSleepTimerDialog = false }
         )
+    }
+
+    // 检查更新弹窗
+    if (showUpdateDialog && latestVersionInfo != null) {
+        val info = latestVersionInfo!!
+        val dialogBg = appColors.surfaceColor
+
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showUpdateDialog = false }
+        ) {
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = dialogBg,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(18.dp)
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "发现新版本 ${info.tagName}",
+                            color = currentAccent.mainColor,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "当前版本: v$currentVersionName",
+                                color = appColors.textColorSecondary,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "•",
+                                color = appColors.textColorSecondary,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "最新版本: ${info.tagName}",
+                                color = currentAccent.mainColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        Text(
+                            text = "更新内容：",
+                            color = appColors.textColorPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
+                                .background(
+                                    if (isDarkMode) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(10.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                Text(
+                                    text = info.body.ifBlank { "无更新日志说明。" },
+                                    color = appColors.textColorPrimary.copy(alpha = 0.9f),
+                                    fontSize = 12.sp,
+                                    lineHeight = 18.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { showUpdateDialog = false }
+                            ) {
+                                Text(
+                                    text = "以后再说",
+                                    color = appColors.textColorSecondary,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    showUpdateDialog = false
+                                    try {
+                                        val intent = android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(info.htmlUrl)
+                                        )
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = currentAccent.mainColor,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = "立即更新",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { showUpdateDialog = false },
+                        modifier = Modifier.align(Alignment.TopEnd).size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "关闭",
+                            tint = appColors.textColorSecondary.copy(alpha = 0.7f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 
     val isPlayerVisible = (showFullPlayer || playerOffsetY.value < screenHeight) && currentSong != null
