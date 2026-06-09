@@ -5947,33 +5947,18 @@ fun FullPlayerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "当前播放列表",
-                                color = currentAccent.mainColor,
-                                fontSize = DialogTitleFontSize,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "${playbackQueue.size} 首",
-                                color = appColors.textColorSecondary.copy(alpha = 0.65f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal
-                            )
-                        }
-                        IconButton(
-                            onClick = { showPlaybackQueueDialog = false }, modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "关闭",
-                                tint = appColors.textColorSecondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
+                        Text(
+                            text = "当前播放列表",
+                            color = currentAccent.mainColor,
+                            fontSize = DialogTitleFontSize,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${playbackQueue.size} 首",
+                            color = appColors.textColorSecondary.copy(alpha = 0.65f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
@@ -5985,7 +5970,7 @@ fun FullPlayerScreen(
                     } else {
                         LazyColumn(
                             state = queueListState,
-                            verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
+                            verticalArrangement = Arrangement.spacedBy(3.dp),
                             modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)
                         ) {
                             items(playbackQueue) { qSong ->
@@ -5995,7 +5980,7 @@ fun FullPlayerScreen(
                                         viewModel.playSong(context, qSong)
                                     }.clip(RoundedCornerShape(8.dp))
                                         .background(if (isCurrent) qItemHighlightBg else Color.Transparent)
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
