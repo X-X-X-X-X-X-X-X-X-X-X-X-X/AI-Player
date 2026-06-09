@@ -46,3 +46,5 @@ release
 .kotlin
 
 gradle-wrapper.jar
+
+.agents
