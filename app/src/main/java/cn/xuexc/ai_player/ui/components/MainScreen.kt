@@ -216,10 +216,7 @@ fun MainScreen(viewModel: SongViewModel) {
         }
     }
 
-    LaunchedEffect(Unit) {
-        delay(2000)
-        checkForUpdates(showToastIfLatest = false)
-    }
+
 
     var showFullPlayer by remember { mutableStateOf(false) }
 
