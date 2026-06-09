@@ -768,51 +768,6 @@ fun TopBar(
                                         modifier = Modifier.requiredHeight(32.dp),
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                                     )
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "定时关闭", color = appColors.textColorPrimary, fontSize = 14.sp
-                                            )
-                                        },
-                                        onClick = {
-                                            showMenu = false
-                                            showSleepTimerDialog()
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.AccessTime,
-                                                contentDescription = null,
-                                                tint = appColors.textColorPrimary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.requiredHeight(32.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                    )
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                if (isCheckingUpdate) "正在检查..." else "检查更新",
-                                                color = if (isCheckingUpdate) appColors.textColorSecondary else appColors.textColorPrimary,
-                                                fontSize = 14.sp
-                                            )
-                                        },
-                                        enabled = !isCheckingUpdate,
-                                        onClick = {
-                                            showMenu = false
-                                            onCheckUpdateClick()
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.CloudDownload,
-                                                contentDescription = null,
-                                                tint = if (isCheckingUpdate) appColors.textColorSecondary else appColors.textColorPrimary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.requiredHeight(32.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                    )
                                     if (currentScreen == Screen.Playlists) {
                                         DropdownMenuItem(
                                             text = {
@@ -904,6 +859,51 @@ fun TopBar(
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                                         )
                                     }
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "定时关闭", color = appColors.textColorPrimary, fontSize = 14.sp
+                                            )
+                                        },
+                                        onClick = {
+                                            showMenu = false
+                                            showSleepTimerDialog()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.AccessTime,
+                                                contentDescription = null,
+                                                tint = appColors.textColorPrimary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        },
+                                        modifier = Modifier.requiredHeight(32.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (isCheckingUpdate) "正在检查..." else "检查更新",
+                                                color = if (isCheckingUpdate) appColors.textColorSecondary else appColors.textColorPrimary,
+                                                fontSize = 14.sp
+                                            )
+                                        },
+                                        enabled = !isCheckingUpdate,
+                                        onClick = {
+                                            showMenu = false
+                                            onCheckUpdateClick()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.CloudDownload,
+                                                contentDescription = null,
+                                                tint = if (isCheckingUpdate) appColors.textColorSecondary else appColors.textColorPrimary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        },
+                                        modifier = Modifier.requiredHeight(32.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                    )
                                 }
                             }
                         }

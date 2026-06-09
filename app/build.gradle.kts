@@ -15,7 +15,7 @@ android {
         targetSdk = 36
 
         // 从环境变量读取版本名称（如 v1.2.1），本地开发默认为 v1.2
-        val envVersionName = System.getenv("APP_VERSION_NAME") ?: "v1.2"
+        val envVersionName = System.getenv("APP_VERSION_NAME") ?: "v999"
         val cleanVersion = envVersionName.replace("v", "")
         versionName = cleanVersion
 
