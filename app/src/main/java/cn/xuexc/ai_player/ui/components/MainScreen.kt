@@ -2011,7 +2011,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 selectedSongs.clear()
                                             }
                                         )
-                                        val anyNotFav = selectedSongs.any { !it.isFavorite }
+                                        val anyNotFav = selectedSongs.isEmpty() || selectedSongs.any { !it.isFavorite }
                                         BatchActionButton(
                                             icon = if (anyNotFav) Icons.Default.FavoriteBorder else Icons.Default.Favorite,
                                             label = if (anyNotFav) "喜欢" else "取消喜欢",
@@ -2065,7 +2065,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 selectedSongs.clear()
                                             }
                                         )
-                                        val anyNotFav = selectedSongs.any { !it.isFavorite }
+                                        val anyNotFav = selectedSongs.isEmpty() || selectedSongs.any { !it.isFavorite }
                                         BatchActionButton(
                                             icon = if (anyNotFav) Icons.Default.FavoriteBorder else Icons.Default.Favorite,
                                             label = if (anyNotFav) "喜欢" else "取消喜欢",
