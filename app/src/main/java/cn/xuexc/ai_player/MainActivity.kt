@@ -202,6 +202,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.widthIn
 
 data class UpdateInfo(
     val tagName: String,
@@ -224,6 +225,11 @@ val DialogContentToButtonsSpace = 20.dp
 val DialogButtonSpacing = 12.dp
 val DialogButtonHeight = 40.dp
 val DialogButtonShape = RoundedCornerShape(12.dp)
+val DialogMaxWidth = 400.dp
+val DialogModifier = Modifier
+    .widthIn(max = DialogMaxWidth)
+    .fillMaxWidth()
+    .padding(horizontal = DialogHorizontalPadding)
 
 enum class AccentColor(
     val id: String, val label: String, val mainColor: Color, val gradientColors: List<Color>
@@ -2917,7 +2923,7 @@ fun MainScreen(viewModel: SongViewModel) {
             androidx.compose.material3.Surface(
                 shape = DialogShape,
                 color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogHorizontalPadding)
+                modifier = DialogModifier
             ) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
@@ -3029,7 +3035,7 @@ fun MainScreen(viewModel: SongViewModel) {
             androidx.compose.material3.Surface(
                 shape = DialogShape,
                 color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogHorizontalPadding)
+                modifier = DialogModifier
             ) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
@@ -3209,13 +3215,13 @@ fun MainScreen(viewModel: SongViewModel) {
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showCreatePlaylistDialog = false }) {
             androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(20.dp),
+                shape = DialogShape,
                 color = dialogBg,
                 tonalElevation = 6.dp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogHorizontalPadding).border(
+                modifier = DialogModifier.border(
                     width = 1.dp,
                     color = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = DialogShape
                 )
             ) {
                 Column(
@@ -3752,7 +3758,7 @@ fun MainScreen(viewModel: SongViewModel) {
             androidx.compose.material3.Surface(
                 shape = DialogShape,
                 color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogHorizontalPadding)
+                modifier = DialogModifier
             ) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
@@ -3852,7 +3858,7 @@ fun MainScreen(viewModel: SongViewModel) {
             androidx.compose.material3.Surface(
                 shape = DialogShape,
                 color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogHorizontalPadding)
+                modifier = DialogModifier
             ) {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
@@ -4482,7 +4488,7 @@ fun SongItemCard(
 
         androidx.compose.ui.window.Dialog(onDismissRequest = { showDetailsDialog = false }) {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogHorizontalPadding).border(
+                modifier = DialogModifier.border(
                     width = 0.5.dp,
                     color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
                         alpha = 0.08f
@@ -5910,7 +5916,6 @@ fun FullPlayerScreen(
 
     // 7. Current Playback Queue Dialog
     if (showPlaybackQueueDialog) {
-        val qDialogBg = appColors.surfaceColor
         val qItemHighlightBg = if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000)
         val queueListState = rememberLazyListState()
 
@@ -5923,26 +5928,33 @@ fun FullPlayerScreen(
 
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showPlaybackQueueDialog = false }) {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = qDialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            Card(
+                modifier = DialogModifier.border(
+                    width = 0.5.dp,
+                    color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
+                        alpha = 0.08f
+                    ),
+                    shape = DialogShape
+                ),
+                shape = DialogShape,
+                colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
                                 text = "当前播放列表",
                                 color = currentAccent.mainColor,
-                                fontSize = 15.sp,
+                                fontSize = DialogTitleFontSize,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
@@ -5952,61 +5964,71 @@ fun FullPlayerScreen(
                                 fontWeight = FontWeight.Normal
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        if (playbackQueue.isEmpty()) {
-                            Text(
-                                text = "播放列表为空", color = appColors.textColorSecondary, fontSize = 13.sp
+                        IconButton(
+                            onClick = { showPlaybackQueueDialog = false }, modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "关闭",
+                                tint = appColors.textColorSecondary,
+                                modifier = Modifier.size(16.dp)
                             )
-                        } else {
-                            LazyColumn(
-                                state = queueListState,
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                                modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)
-                            ) {
-                                items(playbackQueue) { qSong ->
-                                    val isCurrent = qSong.id == song.id
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().clickable {
-                                            viewModel.playSong(context, qSong)
-                                        }.clip(RoundedCornerShape(8.dp))
-                                            .background(if (isCurrent) qItemHighlightBg else Color.Transparent)
-                                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column(modifier = Modifier.weight(1.0f)) {
-                                            Text(
-                                                text = qSong.title,
-                                                color = if (isCurrent) currentAccent.mainColor else appColors.textColorPrimary,
-                                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                                fontSize = 13.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = qSong.artist,
-                                                color = appColors.textColorSecondary,
-                                                fontSize = 10.sp,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                        }
+                    }
 
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.removeFromPlaybackQueue(qSong.id, context)
-                                                Toast.makeText(context, "已从播放列表移出", Toast.LENGTH_SHORT).show()
-                                            }, modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Clear,
-                                                contentDescription = "移出播放列表",
-                                                tint = appColors.textColorSecondary,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
+                    Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
+
+                    if (playbackQueue.isEmpty()) {
+                        Text(
+                            text = "播放列表为空", color = appColors.textColorSecondary, fontSize = 13.sp
+                        )
+                    } else {
+                        LazyColumn(
+                            state = queueListState,
+                            verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)
+                        ) {
+                            items(playbackQueue) { qSong ->
+                                val isCurrent = qSong.id == song.id
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clickable {
+                                        viewModel.playSong(context, qSong)
+                                    }.clip(RoundedCornerShape(8.dp))
+                                        .background(if (isCurrent) qItemHighlightBg else Color.Transparent)
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1.0f)) {
+                                        Text(
+                                            text = qSong.title,
+                                            color = if (isCurrent) currentAccent.mainColor else appColors.textColorPrimary,
+                                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 13.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = qSong.artist,
+                                            color = appColors.textColorSecondary,
+                                            fontSize = 10.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.removeFromPlaybackQueue(qSong.id, context)
+                                            Toast.makeText(context, "已从播放列表移出", Toast.LENGTH_SHORT).show()
+                                        }, modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = "移出播放列表",
+                                            tint = appColors.textColorSecondary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
                                 }
                             }
@@ -6017,13 +6039,14 @@ fun FullPlayerScreen(
         }
     }
 
+
     if (showDetailsDialog) {
         val sizeMb = song.size / (1024f * 1024f)
         val sizeText = String.format(Locale.getDefault(), "%.2f MB", sizeMb)
 
         androidx.compose.ui.window.Dialog(onDismissRequest = { showDetailsDialog = false }) {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = DialogHorizontalPadding).border(
+                modifier = DialogModifier.border(
                     width = 0.5.dp,
                     color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
                         alpha = 0.08f
@@ -6130,7 +6153,6 @@ fun SleepTimerDialog(
     onDismissRequest: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val dialogBg = appColors.surfaceColor
     val remainingMs by viewModel.sleepTimerRemaining.collectAsState()
     val playComplete by viewModel.sleepTimerPlayComplete.collectAsState()
 
@@ -6140,192 +6162,201 @@ fun SleepTimerDialog(
     androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismissRequest
     ) {
-        androidx.compose.material3.Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = dialogBg,
-            modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+        Card(
+            modifier = DialogModifier.border(
+                width = 0.5.dp,
+                color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
+                    alpha = 0.08f
+                ),
+                shape = DialogShape
+            ),
+            shape = DialogShape,
+            colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
         ) {
-            Box(
-                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(16.dp)
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding),
+                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
             ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = androidx.compose.ui.Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "定时关闭",
                         color = currentAccent.mainColor,
-                        fontSize = 16.sp,
+                        fontSize = DialogTitleFontSize,
                         fontWeight = FontWeight.Bold
                     )
-
-                    Box(
-                        modifier = androidx.compose.ui.Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (remainingMs > 0L) currentAccent.mainColor.copy(alpha = 0.1f)
-                                else if (isDarkMode) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.02f)
-                            )
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.CenterStart
+                    IconButton(
+                        onClick = onDismissRequest, modifier = Modifier.size(24.dp)
                     ) {
-                        androidx.compose.animation.Crossfade(
-                            targetState = remainingMs > 0L,
-                            label = "sleep_timer_state_crossfade"
-                        ) { isRunning ->
-                            if (isRunning) {
-                                val minutes = remainingMs / 1000 / 60
-                                val seconds = (remainingMs / 1000) % 60
-                                Row(
-                                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "倒计时中：${minutes}分${seconds}秒",
-                                        color = appColors.textColorPrimary,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = "取消定时",
-                                        color = currentAccent.mainColor,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = androidx.compose.ui.Modifier.clickable {
-                                            viewModel.cancelSleepTimer()
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                "定时关闭已取消",
-                                                android.widget.Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    )
-                                }
-                            } else {
-                                Row(
-                                    modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "定时关闭未开启",
-                                        color = appColors.textColorSecondary,
-                                        fontSize = 13.sp
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.AccessTime,
-                                        contentDescription = null,
-                                        tint = appColors.textColorSecondary.copy(alpha = 0.5f),
-                                        modifier = androidx.compose.ui.Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Box(
-                        modifier = androidx.compose.ui.Modifier.fillMaxWidth().height(0.5.dp)
-                            .background(if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
-                    )
-
-                    Column(
-                        modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(top = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "自定义定时时间",
-                                color = appColors.textColorSecondary,
-                                fontSize = 11.sp
-                            )
-                            Text(
-                                text = "${customMinutes.toInt()} 分钟",
-                                color = currentAccent.mainColor,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        androidx.compose.material3.Slider(
-                            value = customMinutes,
-                            onValueChange = { customMinutes = it },
-                            valueRange = 1f..120f,
-                            colors = androidx.compose.material3.SliderDefaults.colors(
-                                thumbColor = currentAccent.mainColor,
-                                activeTrackColor = currentAccent.mainColor,
-                                inactiveTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
-                                    alpha = 0.05f
-                                )
-                            )
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "关闭",
+                            tint = appColors.textColorSecondary,
+                            modifier = Modifier.size(16.dp)
                         )
-                        Row(
-                            modifier = androidx.compose.ui.Modifier.fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { localPlayComplete = !localPlayComplete }
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "播放完整首再关闭",
-                                color = appColors.textColorPrimary,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            androidx.compose.material3.Switch(
-                                checked = localPlayComplete,
-                                onCheckedChange = { localPlayComplete = it },
-                                colors = androidx.compose.material3.SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = currentAccent.mainColor,
-                                    uncheckedThumbColor = appColors.textColorSecondary,
-                                    uncheckedTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
-                                        alpha = 0.05f
-                                    )
-                                ),
-                                modifier = androidx.compose.ui.Modifier.graphicsLayer {
-                                    scaleX = 0.85f
-                                    scaleY = 0.85f
-                                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
-                                }
-                            )
-                        }
-                        androidx.compose.material3.Button(
-                            onClick = {
-                                viewModel.startSleepTimer(customMinutes.toLong() * 60 * 1000L, localPlayComplete)
-                                onDismissRequest()
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "已设置 ${customMinutes.toInt()} 分钟后关闭",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = currentAccent.mainColor),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = androidx.compose.ui.Modifier.fillMaxWidth().height(36.dp),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("开启自定义定时", color = Color.White, fontSize = 13.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (remainingMs > 0L) currentAccent.mainColor.copy(alpha = 0.1f)
+                            else if (isDarkMode) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.02f)
+                        )
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    androidx.compose.animation.Crossfade(
+                        targetState = remainingMs > 0L,
+                        label = "sleep_timer_state_crossfade"
+                    ) { isRunning ->
+                        if (isRunning) {
+                            val minutes = remainingMs / 1000 / 60
+                            val seconds = (remainingMs / 1000) % 60
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "倒计时中：${minutes}分${seconds}秒",
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "取消定时",
+                                    color = currentAccent.mainColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable {
+                                        viewModel.cancelSleepTimer()
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "定时关闭已取消",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                )
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "定时关闭未开启",
+                                    color = appColors.textColorSecondary,
+                                    fontSize = 13.sp
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.AccessTime,
+                                    contentDescription = null,
+                                    tint = appColors.textColorSecondary.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }
 
-                IconButton(
-                    onClick = onDismissRequest,
-                    modifier = androidx.compose.ui.Modifier.align(Alignment.TopEnd).size(28.dp)
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(0.5.dp)
+                        .background(if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
+                )
+
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "关闭",
-                        tint = appColors.textColorSecondary,
-                        modifier = androidx.compose.ui.Modifier.size(18.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "自定义定时时间",
+                            color = appColors.textColorSecondary,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            text = "${customMinutes.toInt()} 分钟",
+                            color = currentAccent.mainColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    androidx.compose.material3.Slider(
+                        value = customMinutes,
+                        onValueChange = { customMinutes = it },
+                        valueRange = 1f..120f,
+                        colors = androidx.compose.material3.SliderDefaults.colors(
+                            thumbColor = currentAccent.mainColor,
+                            activeTrackColor = currentAccent.mainColor,
+                            inactiveTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
+                                alpha = 0.05f
+                            )
+                        )
                     )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { localPlayComplete = !localPlayComplete }
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "播放完整首再关闭",
+                            color = appColors.textColorPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        androidx.compose.material3.Switch(
+                            checked = localPlayComplete,
+                            onCheckedChange = { localPlayComplete = it },
+                            colors = androidx.compose.material3.SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = currentAccent.mainColor,
+                                uncheckedThumbColor = appColors.textColorSecondary,
+                                uncheckedTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
+                                    alpha = 0.05f
+                                )
+                            ),
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = 0.85f
+                                scaleY = 0.85f
+                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
+                            }
+                        )
+                    }
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            viewModel.startSleepTimer(customMinutes.toLong() * 60 * 1000L, localPlayComplete)
+                            onDismissRequest()
+                            android.widget.Toast.makeText(
+                                context,
+                                "已设置 ${customMinutes.toInt()} 分钟后关闭",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = currentAccent.mainColor),
+                        shape = DialogButtonShape,
+                        modifier = Modifier.fillMaxWidth().height(DialogButtonHeight),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("开启自定义定时", color = Color.White, fontSize = 13.sp)
+                    }
                 }
             }
         }
