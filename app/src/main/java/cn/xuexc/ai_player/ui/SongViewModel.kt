@@ -859,11 +859,150 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun toggleFavoriteBatch(songs: List<Song>, isFavorite: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ids = songs.map { it.id }
+            dbHelper.setFavoriteBatch(ids, isFavorite)
+
+            // 同步修改内存中当前歌曲的 favorite 状态以实现 UI 的即时反应
+            val current = PlaybackManager.currentSong.value
+            if (current != null && ids.contains(current.id)) {
+                PlaybackManager.updateCurrentSongFavorite(isFavorite)
+            }
+
+            // 同步更新播放队列中的状态
+            for (id in ids) {
+                PlaybackManager.updateSongInQueue(id, isFavorite)
+            }
+
+            // 更新大列表
+            _allScannedSongs.value = _allScannedSongs.value.map {
+                if (ids.contains(it.id)) it.copy(isFavorite = isFavorite) else it
+            }
+            _allSongs.value = _allSongs.value.map {
+                if (ids.contains(it.id)) it.copy(isFavorite = isFavorite) else it
+            }
+
+            // 联动更新当前歌单列表
+            if (!isFavorite) {
+                _currentPlaylistSongs.value = _currentPlaylistSongs.value.filterNot { ids.contains(it.id) }
+            } else {
+                _currentPlaylistSongs.value = _currentPlaylistSongs.value.map {
+                    if (ids.contains(it.id)) it.copy(isFavorite = true) else it
+                }
+            }
+
+            // 更新喜欢歌曲总数计数器
+            val standardBlocked = _blockedFolders.value.map {
+                try {
+                    java.io.File(it).absolutePath
+                } catch (e: Exception) {
+                    it
+                }
+            }
+            val favoriteSongs = dbHelper.getFavoriteSongs()
+            favoriteSongsCount.value = favoriteSongs.count { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+
+            withContext(Dispatchers.Main) {
+                val msg = if (isFavorite) "已批量添加到喜欢" else "已批量取消喜欢"
+                Toast.makeText(getApplication(), msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun addSongsToBlacklist(context: Context, songs: List<Song>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ids = songs.map { it.id }
+            dbHelper.setBlacklistedBatch(ids, true)
+            withContext(Dispatchers.Main) {
+                val current = currentSong.value
+                val isCurrentPlayingInBlacklist = current != null && ids.contains(current.id)
+
+                var nextSong: Song? = null
+                for (song in songs) {
+                    val res = PlaybackManager.removeFromQueue(song.id)
+                    if (nextSong == null) {
+                        nextSong = res
+                    }
+                }
+
+                if (isCurrentPlayingInBlacklist && nextSong != null) {
+                    PlaybackManager.playSong(context, nextSong, forceRestart = true)
+                }
+
+                loadSongs()
+                loadPlaylists()
+
+                if (isCurrentPlayingInBlacklist) {
+                    Toast.makeText(context, "已批量移入遗忘的沙漏，自动切歌", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "已批量移入遗忘的沙漏", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun removeSongsFromBlacklist(songs: List<Song>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val ids = songs.map { it.id }
+            dbHelper.setBlacklistedBatch(ids, false)
+            loadSongs()
+            loadPlaylists()
+            loadBlacklistSongs()
+        }
+    }
+
+    fun addSongsToPlaylist(playlistId: Long, songIds: List<Long>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dbHelper.addSongsToPlaylistBatch(playlistId, songIds)
+            loadPlaylists()
+        }
+    }
+
+    fun removeSongsFromPlaylist(playlistId: Long, songIds: List<Long>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dbHelper.removeSongsFromPlaylistBatch(playlistId, songIds)
+            loadPlaylists()
+            loadSongsInPlaylist(playlistId)
+        }
+    }
+
+    fun deleteSongs(context: Context, songIds: List<Long>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dbHelper.deleteSongsBatch(songIds)
+            val current = PlaybackManager.currentSong.value
+            val isCurrentPlayingDeleted = current != null && songIds.contains(current.id)
+
+            val nextSong = withContext(Dispatchers.Main) {
+                var firstNext: Song? = null
+                for (id in songIds) {
+                    val res = PlaybackManager.removeFromQueue(id)
+                    if (firstNext == null) {
+                        firstNext = res
+                    }
+                }
+                firstNext
+            }
+
+            if (isCurrentPlayingDeleted && nextSong != null) {
+                withContext(Dispatchers.Main) {
+                    PlaybackManager.playSong(context, nextSong, forceRestart = true)
+                }
+            }
+
+            loadSongsInternal()
+            loadPlaylistsInternal()
+
+            _currentPlaylistSongs.value = _currentPlaylistSongs.value.filterNot { songIds.contains(it.id) }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         PlaybackManager.stop()
     }
 }
+
 
 data class LibraryDisplayData(
     val displayList: List<Any> = emptyList(),

@@ -1,6 +1,6 @@
 package cn.xuexc.ai_player.ui.components
 
-import android.annotation.SuppressLint
+import android.content.res.Configuration
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -34,9 +34,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.xuexc.ai_player.data.*
@@ -45,9 +47,6 @@ import cn.xuexc.ai_player.ui.SongViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
-import androidx.compose.ui.platform.LocalConfiguration
-import android.content.res.Configuration
-import androidx.compose.ui.unit.Dp
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable

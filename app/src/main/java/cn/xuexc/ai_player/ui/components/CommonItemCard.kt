@@ -1,6 +1,7 @@
 package cn.xuexc.ai_player.ui.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CommonItemCard(
     cover: @Composable () -> Unit,
@@ -28,7 +30,8 @@ fun CommonItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color? = null,
-    actionArea: @Composable (() -> Unit)? = null
+    actionArea: @Composable (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -40,10 +43,11 @@ fun CommonItemCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
+                onLongClick = onLongClick
             ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardBg)

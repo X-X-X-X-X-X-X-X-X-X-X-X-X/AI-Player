@@ -506,4 +506,97 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         }
         return songsList
     }
+
+    fun setFavoriteBatch(songIds: List<Long>, isFavorite: Boolean) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val cv = ContentValues().apply {
+                put(COLUMN_IS_FAVORITE, if (isFavorite) 1 else 0)
+                if (isFavorite) {
+                    put(COLUMN_FAVORITED_AT, System.currentTimeMillis() / 1000)
+                }
+            }
+            for (id in songIds) {
+                db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(id.toString()))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun setBlacklistedBatch(songIds: List<Long>, isBlacklisted: Boolean) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val cv = ContentValues().apply {
+                put(COLUMN_IS_BLACKLISTED, if (isBlacklisted) 1 else 0)
+                if (isBlacklisted) {
+                    put(COLUMN_BLACKLISTED_AT, System.currentTimeMillis() / 1000)
+                }
+            }
+            for (id in songIds) {
+                db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(id.toString()))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun addSongsToPlaylistBatch(playlistId: Long, songIds: List<Long>): Int {
+        val db = writableDatabase
+        var addedCount = 0
+        db.beginTransaction()
+        try {
+            for (id in songIds) {
+                val cv = ContentValues().apply {
+                    put(COLUMN_PS_PLAYLIST_ID, playlistId)
+                    put(COLUMN_PS_SONG_ID, id)
+                    put(COLUMN_PS_ADDED_AT, System.currentTimeMillis() / 1000)
+                }
+                val result = db.insertWithOnConflict(TABLE_PLAYLIST_SONGS, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
+                if (result != -1L) {
+                    addedCount++
+                }
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return addedCount
+    }
+
+    fun removeSongsFromPlaylistBatch(playlistId: Long, songIds: List<Long>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            for (id in songIds) {
+                db.delete(
+                    TABLE_PLAYLIST_SONGS,
+                    "$COLUMN_PS_PLAYLIST_ID = ? AND $COLUMN_PS_SONG_ID = ?",
+                    arrayOf(playlistId.toString(), id.toString())
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun deleteSongsBatch(songIds: List<Long>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            for (id in songIds) {
+                db.delete(TABLE_SONGS, "$COLUMN_ID = ?", arrayOf(id.toString()))
+                db.delete(TABLE_PLAYLIST_SONGS, "$COLUMN_PS_SONG_ID = ?", arrayOf(id.toString()))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
 }
+
