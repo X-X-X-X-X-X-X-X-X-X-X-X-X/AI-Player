@@ -44,3 +44,5 @@ google-services.json
 release
 
 .kotlin
+
+gradle-wrapper.jar
