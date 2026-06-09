@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -85,7 +85,11 @@ fun SongCover(
 
 @Composable
 fun PlaylistCover(
-    firstSongId: Long?, currentAccent: AccentColor, modifier: Modifier = Modifier
+    firstSongId: Long?,
+    currentAccent: AccentColor,
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
+    iconSize: androidx.compose.ui.unit.Dp = 24.dp
 ) {
     val context = LocalContext.current
     var bitmap by remember(firstSongId) { mutableStateOf(firstSongId?.let { getCachedCoverById(it) }) }
@@ -104,7 +108,7 @@ fun PlaylistCover(
     }
 
     Box(
-        modifier = modifier.clip(RoundedCornerShape(8.dp)).background(
+        modifier = modifier.clip(shape).background(
             if (bitmap != null) Color(0xFF2C2C2E) else currentAccent.mainColor
         ), contentAlignment = Alignment.Center
     ) {
@@ -117,10 +121,10 @@ fun PlaylistCover(
             )
         } else {
             Icon(
-                imageVector = Icons.Default.List,
+                imageVector = Icons.AutoMirrored.Filled.List,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(iconSize)
             )
         }
     }

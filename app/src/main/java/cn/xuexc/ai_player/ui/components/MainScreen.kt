@@ -1382,23 +1382,11 @@ fun MainScreen(viewModel: SongViewModel) {
                                         ) {
                                             // 1. Fixed Favorites Playlist Card
                                             item {
-                                                Card(
-                                                    modifier = Modifier.fillMaxWidth().clickable {
-                                                        activePlaylistId = -1L
-                                                        activePlaylistName = "我喜欢的音乐"
-                                                        viewModel.loadFavoriteSongs()
-                                                    }.padding(top = 4.dp),
-                                                    shape = RoundedCornerShape(16.dp),
-                                                    colors = CardDefaults.cardColors(containerColor = appColors.cardBackground)
-                                                ) {
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth()
-                                                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
+                                                CommonItemCard(
+                                                    cover = {
                                                         Box(
-                                                            modifier = Modifier.size(36.dp)
-                                                                .clip(RoundedCornerShape(8.dp))
+                                                            modifier = Modifier.size(42.dp)
+                                                                .clip(RoundedCornerShape(12.dp))
                                                                 .background(
                                                                     if (isDarkMode) Color.White.copy(alpha = 0.1f)
                                                                     else Color(0x0F000000)
@@ -1409,51 +1397,29 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                 imageVector = Icons.Default.Favorite,
                                                                 contentDescription = "我喜欢的音乐",
                                                                 tint = Color(0xFFE06C75),
-                                                                modifier = Modifier.size(18.dp)
+                                                                modifier = Modifier.size(21.dp)
                                                             )
                                                         }
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Column(modifier = Modifier.weight(1.0f)) {
-                                                            Text(
-                                                                text = "我喜欢的音乐",
-                                                                fontSize = 13.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = appColors.textColorPrimary,
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                            Spacer(modifier = Modifier.height(1.dp))
-                                                            Text(
-                                                                text = "$favoriteSongsCount 首歌曲",
-                                                                fontSize = 11.sp,
-                                                                color = appColors.textColorSecondary,
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                        }
-                                                    }
-                                                }
+                                                    },
+                                                    title = "我喜欢的音乐",
+                                                    subtitleText = "$favoriteSongsCount 首歌曲",
+                                                    appColors = appColors,
+                                                    onClick = {
+                                                        activePlaylistId = -1L
+                                                        activePlaylistName = "我喜欢的音乐"
+                                                        viewModel.loadFavoriteSongs()
+                                                    },
+                                                    modifier = Modifier.padding(top = 4.dp)
+                                                )
                                             }
 
                                             // 2. Fixed Blacklist Playlist Card
                                             item {
-                                                Card(
-                                                    modifier = Modifier.fillMaxWidth().clickable {
-                                                        activePlaylistId = -2L
-                                                        activePlaylistName = "遗忘的沙漏"
-                                                        viewModel.loadBlacklistSongs()
-                                                    },
-                                                    shape = RoundedCornerShape(16.dp),
-                                                    colors = CardDefaults.cardColors(containerColor = appColors.cardBackground)
-                                                ) {
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth()
-                                                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
+                                                CommonItemCard(
+                                                    cover = {
                                                         Box(
-                                                            modifier = Modifier.size(36.dp)
-                                                                .clip(RoundedCornerShape(8.dp)).background(
+                                                            modifier = Modifier.size(42.dp)
+                                                                .clip(RoundedCornerShape(12.dp)).background(
                                                                     if (isDarkMode) Color.White.copy(
                                                                         alpha = 0.1f
                                                                     ) else Color(0x0F000000)
@@ -1465,30 +1431,19 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                 tint = if (isDarkMode) Color(0xFFE5C07B).copy(
                                                                     alpha = 0.8f
                                                                 ) else Color(0xFFE5C07B),
-                                                                modifier = Modifier.size(18.dp)
+                                                                modifier = Modifier.size(21.dp)
                                                             )
                                                         }
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Column(modifier = Modifier.weight(1.0f)) {
-                                                            Text(
-                                                                text = "遗忘的沙漏",
-                                                                fontSize = 13.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = appColors.textColorPrimary,
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                            Spacer(modifier = Modifier.height(1.dp))
-                                                            Text(
-                                                                text = "$blacklistSongsCount 首歌曲",
-                                                                fontSize = 11.sp,
-                                                                color = appColors.textColorSecondary,
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis
-                                                            )
-                                                        }
+                                                    },
+                                                    title = "遗忘的沙漏",
+                                                    subtitleText = "$blacklistSongsCount 首歌曲",
+                                                    appColors = appColors,
+                                                    onClick = {
+                                                        activePlaylistId = -2L
+                                                        activePlaylistName = "遗忘的沙漏"
+                                                        viewModel.loadBlacklistSongs()
                                                     }
-                                                }
+                                                )
                                             }
 
                                             // 3. Custom Playlists Header
@@ -1504,43 +1459,23 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 }
 
                                                 items(playlists, key = { it.id }) { playlist ->
-                                                    Card(
-                                                        modifier = Modifier.fillMaxWidth().clickable {
+                                                    CommonItemCard(
+                                                        cover = {
+                                                            PlaylistCover(
+                                                                firstSongId = playlist.firstSongId,
+                                                                currentAccent = currentAccent,
+                                                                modifier = Modifier.size(42.dp)
+                                                            )
+                                                        },
+                                                        title = playlist.name,
+                                                        subtitleText = "${playlist.songCount} 首歌曲",
+                                                        appColors = appColors,
+                                                        onClick = {
                                                             activePlaylistId = playlist.id
                                                             activePlaylistName = playlist.name
                                                             viewModel.loadSongsInPlaylist(playlist.id)
                                                         },
-                                                        shape = RoundedCornerShape(16.dp),
-                                                        colors = CardDefaults.cardColors(containerColor = appColors.cardBackground)
-                                                    ) {
-                                                        Row(
-                                                            modifier = Modifier.fillMaxWidth()
-                                                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                            verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                            PlaylistCover(
-                                                                firstSongId = playlist.firstSongId,
-                                                                currentAccent = currentAccent,
-                                                                modifier = Modifier.size(36.dp)
-                                                            )
-
-                                                            Spacer(modifier = Modifier.width(8.dp))
-
-                                                            Column(modifier = Modifier.weight(1.0f)) {
-                                                                Text(
-                                                                    text = playlist.name,
-                                                                    fontSize = 14.sp,
-                                                                    fontWeight = FontWeight.Bold,
-                                                                    color = appColors.textColorPrimary
-                                                                )
-                                                                Spacer(modifier = Modifier.height(2.dp))
-                                                                Text(
-                                                                    text = "${playlist.songCount} 首歌曲",
-                                                                    fontSize = 11.sp,
-                                                                    color = appColors.textColorSecondary
-                                                                )
-                                                            }
-
+                                                        actionArea = {
                                                             IconButton(
                                                                 onClick = { playlistToDelete = playlist },
                                                                 modifier = Modifier.size(36.dp)
@@ -1553,7 +1488,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                 )
                                                             }
                                                         }
-                                                    }
+                                                    )
                                                 }
                                             } else {
                                                 if (isPlaylistsLoaded) {
@@ -1655,33 +1590,22 @@ fun MainScreen(viewModel: SongViewModel) {
                                                             }
 
                                                             is ArtistItem -> {
-                                                                Card(
-                                                                    modifier = Modifier.fillMaxWidth().clickable {
-                                                                        activeArtistName = item.artistKey
-                                                                    },
-                                                                    shape = RoundedCornerShape(10.dp),
-                                                                    colors = CardDefaults.cardColors(containerColor = appColors.cardBackground)
-                                                                ) {
-                                                                    Row(
-                                                                        modifier = Modifier.fillMaxWidth().padding(
-                                                                            horizontal = 10.dp, vertical = 6.dp
-                                                                        ),
-                                                                        verticalAlignment = Alignment.CenterVertically
-                                                                    ) {
+                                                                CommonItemCard(
+                                                                    cover = {
                                                                         val firstSong = item.songs.firstOrNull()
                                                                         if (firstSong != null) {
                                                                             SongCover(
                                                                                 song = firstSong,
                                                                                 isCurrent = false,
                                                                                 isPlaying = false,
-                                                                                modifier = Modifier.size(36.dp),
-                                                                                shape = CircleShape,
+                                                                                modifier = Modifier.size(42.dp),
+                                                                                shape = RoundedCornerShape(12.dp),
                                                                                 fallbackIcon = Icons.Default.Person
                                                                             )
                                                                         } else {
                                                                             Box(
-                                                                                modifier = Modifier.size(36.dp)
-                                                                                    .clip(CircleShape).background(
+                                                                                modifier = Modifier.size(42.dp)
+                                                                                    .clip(RoundedCornerShape(12.dp)).background(
                                                                                         currentAccent.mainColor.copy(
                                                                                             alpha = 0.15f
                                                                                         )
@@ -1692,31 +1616,18 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                                     imageVector = Icons.Default.Person,
                                                                                     contentDescription = null,
                                                                                     tint = currentAccent.mainColor,
-                                                                                    modifier = Modifier.size(18.dp)
+                                                                                    modifier = Modifier.size(24.dp)
                                                                                 )
                                                                             }
                                                                         }
-
-                                                                        Spacer(modifier = Modifier.width(10.dp))
-
-                                                                        Column(modifier = Modifier.weight(1.0f)) {
-                                                                            Text(
-                                                                                text = item.displayName,
-                                                                                fontSize = 15.sp,
-                                                                                fontWeight = FontWeight.Bold,
-                                                                                color = appColors.textColorPrimary,
-                                                                                maxLines = 1,
-                                                                                overflow = TextOverflow.Ellipsis
-                                                                            )
-                                                                            Spacer(modifier = Modifier.height(2.dp))
-                                                                            Text(
-                                                                                text = "${item.songs.size} 首歌曲",
-                                                                                fontSize = 12.sp,
-                                                                                color = appColors.textColorSecondary
-                                                                            )
-                                                                        }
+                                                                    },
+                                                                    title = item.displayName,
+                                                                    subtitleText = "${item.songs.size} 首歌曲",
+                                                                    appColors = appColors,
+                                                                    onClick = {
+                                                                        activeArtistName = item.artistKey
                                                                     }
-                                                                }
+                                                                )
                                                             }
                                                         }
                                                     }
@@ -2721,41 +2632,29 @@ fun MainScreen(viewModel: SongViewModel) {
                     modifier = Modifier.heightIn(max = 220.dp)
                 ) {
                     items(playlists) { playlist ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                .background(itemBg).clickable {
-                                    viewModel.addSongToPlaylist(
-                                        playlist.id, selectedSongForAddToPlaylist!!.id
-                                    )
-                                    Toast.makeText(
-                                        context, "已成功加入: ${playlist.name}", Toast.LENGTH_SHORT
-                                    ).show()
-                                    showAddToPlaylistDialog = false
-                                    selectedSongForAddToPlaylist = null
-                                }.padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            PlaylistCover(
-                                firstSongId = playlist.firstSongId,
-                                currentAccent = currentAccent,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1.0f)) {
-                                Text(
-                                    text = playlist.name,
-                                    color = appColors.textColorPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
+                        CommonItemCard(
+                            cover = {
+                                PlaylistCover(
+                                    firstSongId = playlist.firstSongId,
+                                    currentAccent = currentAccent,
+                                    modifier = Modifier.size(42.dp)
                                 )
-                                Spacer(modifier = Modifier.height(1.dp))
-                                Text(
-                                    text = "${playlist.songCount} 首歌曲",
-                                    color = appColors.textColorSecondary,
-                                    fontSize = 10.sp
+                            },
+                            title = playlist.name,
+                            subtitleText = "${playlist.songCount} 首歌曲",
+                            appColors = appColors,
+                            onClick = {
+                                viewModel.addSongToPlaylist(
+                                    playlist.id, selectedSongForAddToPlaylist!!.id
                                 )
-                            }
-                        }
+                                Toast.makeText(
+                                    context, "已成功加入: ${playlist.name}", Toast.LENGTH_SHORT
+                                ).show()
+                                showAddToPlaylistDialog = false
+                                selectedSongForAddToPlaylist = null
+                            },
+                            containerColor = itemBg
+                        )
                     }
                 }
             }

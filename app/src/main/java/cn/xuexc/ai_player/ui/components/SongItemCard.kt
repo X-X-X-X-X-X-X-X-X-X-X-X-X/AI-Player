@@ -88,54 +88,35 @@ fun SongItemCard(
     var showMenu by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(
-            interactionSource = interactionSource, indication = null, onClick = onClick
-        ), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = cardBg)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    CommonItemCard(
+        cover = {
             // Album Art or LiveVisualizer (slightly downscaled to 42.dp for denser presentation)
             SongCover(
                 song = song, isCurrent = isCurrent, isPlaying = isPlaying, modifier = Modifier.size(42.dp)
             )
-
-            Spacer(modifier = Modifier.width(10.dp))
-
-            // Metadata (Optimized 2-line structure for maximum density and readability)
-            Column(
-                modifier = Modifier.weight(1.0f)
+        },
+        title = song.title,
+        subtitle = {
+            val quality = song.getQualityType()
+            Row(
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                if (quality != QualityType.SQ) {
+                    QualityBadge(quality = quality, isDarkMode = isDarkMode)
+                }
                 Text(
-                    text = song.title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = appColors.textColorPrimary,
+                    text = "${song.artist}  •  ${song.album}",
+                    fontSize = 11.sp,
+                    color = appColors.textColorSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(1.dp))
-                val quality = song.getQualityType()
-                Row(
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (quality != QualityType.SQ) {
-                        QualityBadge(quality = quality, isDarkMode = isDarkMode)
-                    }
-                    Text(
-                        text = "${song.artist}  •  ${song.album}",
-                        fontSize = 11.sp,
-                        color = appColors.textColorSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
-
-            Spacer(modifier = Modifier.width(2.dp))
-
+        },
+        appColors = appColors,
+        onClick = onClick,
+        containerColor = cardBg,
+        actionArea = {
             Box {
                 Box(modifier = Modifier.clip(CircleShape).clickable { showMenu = true }.padding(6.dp)) {
                     Icon(
@@ -327,7 +308,7 @@ fun SongItemCard(
                 }
             }
         }
-    }
+    )
 
     if (showDetailsDialog) {
         val sizeMb = song.size / (1024f * 1024f)
