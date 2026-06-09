@@ -667,11 +667,11 @@ fun MainScreen(viewModel: SongViewModel) {
                         if (currentPlaylistId != null) {
                             // PLAYLIST DETAILS PAGE
                             Column(
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 // 随机播放控制栏
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -712,7 +712,7 @@ fun MainScreen(viewModel: SongViewModel) {
 
                                 if (playlistSongs.isEmpty()) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f),
+                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -724,7 +724,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                 } else {
                                     LazyColumn(
                                         state = playlistSongsListState,
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f),
+                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                         contentPadding = PaddingValues(bottom = 100.dp)
                                     ) {
@@ -807,11 +807,11 @@ fun MainScreen(viewModel: SongViewModel) {
                                 songs.filter { it.artist == currentArtistName }
                             }
                             Column(
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 // 随机播放控制栏
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -852,7 +852,7 @@ fun MainScreen(viewModel: SongViewModel) {
 
                                 if (artistSongs.isEmpty()) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f),
+                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
@@ -864,7 +864,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                 } else {
                                     LazyColumn(
                                         state = artistSongsDetailListState,
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f),
+                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                         contentPadding = PaddingValues(bottom = 100.dp)
                                     ) {
@@ -1129,7 +1129,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                     // 随机播放控制栏
                                                     Row(
                                                         modifier = Modifier.fillMaxWidth()
-                                                            .padding(horizontal = 16.dp, vertical = 2.dp),
+                                                            .padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                         horizontalArrangement = Arrangement.SpaceBetween
                                                     ) {
