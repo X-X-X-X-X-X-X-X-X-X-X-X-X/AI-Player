@@ -87,7 +87,7 @@ fun AppDialog(
                                 modifier = Modifier.size(16.dp)
                             )
                         }
-                        
+
                         Text(
                             text = title,
                             color = if (titleColor != Color.Unspecified) titleColor else appColors.navBarItemActive,
@@ -97,7 +97,7 @@ fun AppDialog(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    
+
                     if (actionArea != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -107,9 +107,9 @@ fun AppDialog(
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-                
+
                 content()
             }
         }

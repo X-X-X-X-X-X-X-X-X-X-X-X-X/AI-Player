@@ -161,7 +161,11 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         return getAllSongsInternal(readableDatabase, includeBlacklisted, orderBy)
     }
 
-    private fun getAllSongsInternal(db: SQLiteDatabase, includeBlacklisted: Boolean, orderBy: String = "$COLUMN_TITLE ASC"): List<Song> {
+    private fun getAllSongsInternal(
+        db: SQLiteDatabase,
+        includeBlacklisted: Boolean,
+        orderBy: String = "$COLUMN_TITLE ASC"
+    ): List<Song> {
         val songsList = mutableListOf<Song>()
         val selection = if (includeBlacklisted) null else "$COLUMN_IS_BLACKLISTED = 0"
         val cursor = db.query(
@@ -413,16 +417,17 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
             GROUP BY p.$COLUMN_PLAYLIST_ID
             ORDER BY p.$COLUMN_PLAYLIST_NAME ASC
         """.trimIndent()
-        
+
         val cursor = db.rawQuery(query, null)
         cursor.use {
             val idCol = cursor.getColumnIndexOrThrow(COLUMN_PLAYLIST_ID)
             val nameCol = cursor.getColumnIndexOrThrow(COLUMN_PLAYLIST_NAME)
             val countCol = cursor.getColumnIndexOrThrow("count")
             val firstSongIdCol = cursor.getColumnIndex("first_song_id")
-            
+
             while (cursor.moveToNext()) {
-                val firstSongId = if (firstSongIdCol != -1 && !cursor.isNull(firstSongIdCol)) cursor.getLong(firstSongIdCol) else null
+                val firstSongId =
+                    if (firstSongIdCol != -1 && !cursor.isNull(firstSongIdCol)) cursor.getLong(firstSongIdCol) else null
                 playlists.add(
                     Playlist(
                         id = cursor.getLong(idCol),
@@ -466,7 +471,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
             WHERE ps.$COLUMN_PS_PLAYLIST_ID = ? AND s.$COLUMN_IS_BLACKLISTED = 0
             ORDER BY ps.$COLUMN_PS_ADDED_AT DESC, s.$COLUMN_ID DESC
         """.trimIndent()
-        
+
         val cursor = db.rawQuery(query, arrayOf(playlistId.toString()))
         cursor.use {
             val idCol = cursor.getColumnIndexOrThrow(COLUMN_ID)

@@ -89,7 +89,7 @@ private suspend fun loadCoverFromPath(path: String, size: Int): android.graphics
     val retriever = android.media.MediaMetadataRetriever()
     try {
         retriever.setDataSource(path)
-        
+
         currentCoroutineContext().ensureActive()
         val artBytes = retriever.embeddedPicture
         if (artBytes != null) {
@@ -98,11 +98,11 @@ private suspend fun loadCoverFromPath(path: String, size: Int): android.graphics
                 inJustDecodeBounds = true
             }
             android.graphics.BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size, opts)
-            
+
             currentCoroutineContext().ensureActive()
             opts.inSampleSize = calculateInSampleSize(opts, size, size)
             opts.inJustDecodeBounds = false
-            
+
             currentCoroutineContext().ensureActive()
             return android.graphics.BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size, opts)
         }
@@ -112,7 +112,8 @@ private suspend fun loadCoverFromPath(path: String, size: Int): android.graphics
     } finally {
         try {
             retriever.release()
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+        }
     }
     return null
 }
@@ -143,7 +144,8 @@ private fun loadCoverFromPathSync(path: String, size: Int): android.graphics.Bit
     } finally {
         try {
             retriever.release()
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+        }
     }
     return null
 }
@@ -189,7 +191,8 @@ suspend fun Song.loadCover(context: android.content.Context, size: Int = 150): a
         } catch (e: Exception) {
             try {
                 cacheFile.delete()
-            } catch (ex: Exception) {}
+            } catch (ex: Exception) {
+            }
         }
     }
 
@@ -209,7 +212,8 @@ suspend fun Song.loadCover(context: android.content.Context, size: Int = 150): a
             } catch (e: Exception) {
                 try {
                     cacheFile.delete()
-                } catch (ex: Exception) {}
+                } catch (ex: Exception) {
+                }
             }
         }
 
@@ -253,7 +257,8 @@ fun Song.loadCoverSync(context: android.content.Context, size: Int = 150): andro
         } catch (e: Exception) {
             try {
                 cacheFile.delete()
-            } catch (ex: Exception) {}
+            } catch (ex: Exception) {
+            }
         }
     }
 
@@ -295,7 +300,8 @@ suspend fun loadCoverById(context: android.content.Context, songId: Long, size: 
         } catch (e: Exception) {
             try {
                 cacheFile.delete()
-            } catch (ex: Exception) {}
+            } catch (ex: Exception) {
+            }
         }
     }
 
@@ -313,13 +319,14 @@ suspend fun loadCoverById(context: android.content.Context, songId: Long, size: 
             } catch (e: Exception) {
                 try {
                     cacheFile.delete()
-                } catch (ex: Exception) {}
+                } catch (ex: Exception) {
+                }
             }
         }
 
         currentCoroutineContext().ensureActive()
         val path = getSongPathById(context, songId) ?: return@withPermit null
-        
+
         currentCoroutineContext().ensureActive()
         val loaded = loadCoverFromPath(path, size)
         if (loaded != null) {

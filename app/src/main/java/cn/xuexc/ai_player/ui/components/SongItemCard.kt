@@ -10,28 +10,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,7 +24,7 @@ import androidx.compose.ui.unit.sp
 import cn.xuexc.ai_player.data.QualityType
 import cn.xuexc.ai_player.data.Song
 import cn.xuexc.ai_player.data.getQualityType
-import java.util.Locale
+import java.util.*
 
 @Composable
 fun QualityBadge(quality: QualityType, isDarkMode: Boolean) {
@@ -92,13 +73,14 @@ fun SongItemCard(
     val pressedBgColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
     val cardBg = when {
         isCurrent -> {
-            val isTitanium = appColors.navBarItemActive == Color(0xFFBAC7D5) || 
-                             appColors.navBarItemActive == Color(0xFF4A5568) ||
-                             appColors.navBarItemActive == Color(0xFF9AA5B1) ||
-                             appColors.navBarItemActive == Color(0xFF8E8E93)
+            val isTitanium = appColors.navBarItemActive == Color(0xFFBAC7D5) ||
+                    appColors.navBarItemActive == Color(0xFF4A5568) ||
+                    appColors.navBarItemActive == Color(0xFF9AA5B1) ||
+                    appColors.navBarItemActive == Color(0xFF8E8E93)
             val alpha = if (isTitanium) 0.20f else 0.12f
             appColors.navBarItemActive.copy(alpha = alpha)
         }
+
         isPressed -> pressedBgColor
         else -> appColors.cardBackground
     }

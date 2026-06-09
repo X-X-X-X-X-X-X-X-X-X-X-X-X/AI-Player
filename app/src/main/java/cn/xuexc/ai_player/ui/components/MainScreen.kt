@@ -2,7 +2,6 @@ package cn.xuexc.ai_player.ui.components
 
 import android.Manifest
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -11,31 +10,9 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -48,29 +25,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -94,15 +52,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import cn.xuexc.ai_player.data.ArtistItem
-import cn.xuexc.ai_player.data.Playlist
-import cn.xuexc.ai_player.data.QualityType
-import cn.xuexc.ai_player.data.Song
-import cn.xuexc.ai_player.data.getQualityType
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Palette
-import cn.xuexc.ai_player.data.SongItemWithLetter
+import cn.xuexc.ai_player.data.*
 import cn.xuexc.ai_player.playback.PlayMode
 import cn.xuexc.ai_player.ui.ScanStatus
 import cn.xuexc.ai_player.ui.SongViewModel
@@ -220,14 +170,14 @@ fun MainScreen(viewModel: SongViewModel) {
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
                 connection.setRequestProperty("User-Agent", "AI-Player-App")
-                
+
                 if (connection.responseCode == 200) {
                     val response = connection.inputStream.bufferedReader().use { it.readText() }
                     val json = JSONObject(response)
                     val tagName = json.getString("tag_name")
                     val htmlUrl = json.getString("html_url")
                     val body = json.optString("body", "")
-                    
+
                     if (isNewerVersion(currentVersionName, tagName)) {
                         withContext(Dispatchers.Main) {
                             latestVersionInfo = UpdateInfo(tagName, body, htmlUrl)
@@ -238,14 +188,16 @@ fun MainScreen(viewModel: SongViewModel) {
                         withContext(Dispatchers.Main) {
                             isCheckingUpdate = false
                             if (showToastIfLatest) {
-                                Toast.makeText(context, "当前已是最新版本 (v$currentVersionName)", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "当前已是最新版本 (v$currentVersionName)", Toast.LENGTH_SHORT)
+                                    .show()
                             }
                         }
                     }
                 } else {
                     withContext(Dispatchers.Main) {
                         isCheckingUpdate = false
-                        Toast.makeText(context, "检查更新失败，响应码: ${connection.responseCode}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "检查更新失败，响应码: ${connection.responseCode}", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
             } catch (e: java.io.IOException) {
@@ -1327,15 +1279,18 @@ fun MainScreen(viewModel: SongViewModel) {
                                                         // 右侧字母定位滑块
                                                         if (isTitleSort && songsDisplayList.isNotEmpty()) {
                                                             Column(
-                                                                modifier = Modifier.align(Alignment.CenterEnd).width(16.dp)
+                                                                modifier = Modifier.align(Alignment.CenterEnd)
+                                                                    .width(16.dp)
                                                                     .padding(end = 4.dp).onGloballyPositioned {
                                                                         alphabetHeight = it.size.height.toFloat()
                                                                     }.pointerInput(alphabet) {
                                                                         detectTapGestures(
                                                                             onPress = { offset ->
-                                                                                val itemHeight = alphabetHeight / alphabet.size
-                                                                                val index = (offset.y / itemHeight).toInt()
-                                                                                    .coerceIn(0, alphabet.lastIndex)
+                                                                                val itemHeight =
+                                                                                    alphabetHeight / alphabet.size
+                                                                                val index =
+                                                                                    (offset.y / itemHeight).toInt()
+                                                                                        .coerceIn(0, alphabet.lastIndex)
                                                                                 val letter = alphabet[index]
                                                                                 selectedLetter = letter
                                                                                 showLetterIndicator = true
@@ -1345,7 +1300,8 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                             })
                                                                     }.pointerInput(alphabet) {
                                                                         detectDragGestures(onDragStart = { offset ->
-                                                                            val itemHeight = alphabetHeight / alphabet.size
+                                                                            val itemHeight =
+                                                                                alphabetHeight / alphabet.size
                                                                             val index = (offset.y / itemHeight).toInt()
                                                                                 .coerceIn(0, alphabet.lastIndex)
                                                                             val letter = alphabet[index]
@@ -1353,9 +1309,11 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                             showLetterIndicator = true
                                                                             scrollToLetter(letter)
                                                                         }, onDrag = { change, _ ->
-                                                                            val itemHeight = alphabetHeight / alphabet.size
-                                                                            val index = (change.position.y / itemHeight).toInt()
-                                                                                .coerceIn(0, alphabet.lastIndex)
+                                                                            val itemHeight =
+                                                                                alphabetHeight / alphabet.size
+                                                                            val index =
+                                                                                (change.position.y / itemHeight).toInt()
+                                                                                    .coerceIn(0, alphabet.lastIndex)
                                                                             val letter = alphabet[index]
                                                                             if (selectedLetter != letter) {
                                                                                 selectedLetter = letter
@@ -1439,7 +1397,8 @@ fun MainScreen(viewModel: SongViewModel) {
                                                         verticalAlignment = Alignment.CenterVertically
                                                     ) {
                                                         Box(
-                                                            modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp))
+                                                            modifier = Modifier.size(36.dp)
+                                                                .clip(RoundedCornerShape(8.dp))
                                                                 .background(
                                                                     if (isDarkMode) Color.White.copy(alpha = 0.1f)
                                                                     else Color(0x0F000000)
@@ -1850,219 +1809,219 @@ fun MainScreen(viewModel: SongViewModel) {
                         }
                     }
 
-                // Bottom Fixed Docked Mini Player
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = currentSong != null,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                ) {
-                    currentSong?.let { song ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth().clickable { showFullPlayer = true }
-                                .then(miniPlayerDragModifier),
-                            shape = RoundedCornerShape(0.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDarkMode) Color(0xFF161619) else Color(0xFFFFFFFF)
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                        ) {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().height(68.dp)
-                                ) {
+                    // Bottom Fixed Docked Mini Player
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = currentSong != null,
+                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    ) {
+                        currentSong?.let { song ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().clickable { showFullPlayer = true }
+                                    .then(miniPlayerDragModifier),
+                                shape = RoundedCornerShape(0.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDarkMode) Color(0xFF161619) else Color(0xFFFFFFFF)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            ) {
+                                Column(modifier = Modifier.fillMaxWidth()) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().height(1.dp)
-                                            .background(if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000))
-                                            .align(Alignment.TopCenter)
-                                    )
-
-                                    val progress = if (song.duration > 0) {
-                                        playbackProgress.toFloat() / song.duration.toFloat()
-                                    } else {
-                                        0f
-                                    }
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(2.5.dp)
-                                            .background(currentAccent.mainColor).align(Alignment.TopStart)
-                                    )
-
-                                    Row(
-                                        modifier = Modifier.fillMaxSize().padding(start = 26.dp, end = 16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        modifier = Modifier.fillMaxWidth().height(68.dp)
                                     ) {
-                                        SongCover(
-                                            song = song,
-                                            isCurrent = false,
-                                            isPlaying = false,
-                                            modifier = Modifier.size(42.dp)
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().height(1.dp)
+                                                .background(if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000))
+                                                .align(Alignment.TopCenter)
                                         )
 
-                                        Spacer(modifier = Modifier.width(12.dp))
+                                        val progress = if (song.duration > 0) {
+                                            playbackProgress.toFloat() / song.duration.toFloat()
+                                        } else {
+                                            0f
+                                        }
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(2.5.dp)
+                                                .background(currentAccent.mainColor).align(Alignment.TopStart)
+                                        )
 
-                                        Column(modifier = Modifier.weight(1.0f)) {
-                                            Text(
-                                                text = song.title,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = appColors.textColorPrimary,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
+                                        Row(
+                                            modifier = Modifier.fillMaxSize().padding(start = 26.dp, end = 16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            SongCover(
+                                                song = song,
+                                                isCurrent = false,
+                                                isPlaying = false,
+                                                modifier = Modifier.size(42.dp)
                                             )
-                                            val quality = song.getQualityType()
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                if (quality != QualityType.SQ) {
-                                                    QualityBadge(quality = quality, isDarkMode = isDarkMode)
-                                                }
+
+                                            Spacer(modifier = Modifier.width(12.dp))
+
+                                            Column(modifier = Modifier.weight(1.0f)) {
                                                 Text(
-                                                    text = song.artist,
-                                                    fontSize = 11.sp,
-                                                    color = appColors.textColorSecondary,
+                                                    text = song.title,
+                                                    fontSize = 14.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = appColors.textColorPrimary,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis
                                                 )
+                                                val quality = song.getQualityType()
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    if (quality != QualityType.SQ) {
+                                                        QualityBadge(quality = quality, isDarkMode = isDarkMode)
+                                                    }
+                                                    Text(
+                                                        text = song.artist,
+                                                        fontSize = 11.sp,
+                                                        color = appColors.textColorSecondary,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            IconButton(
+                                                onClick = {
+                                                    if (isPlaying) {
+                                                        viewModel.pauseSong()
+                                                    } else {
+                                                        viewModel.resumeSong()
+                                                    }
+                                                }, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp))
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                    contentDescription = "Play/Pause",
+                                                    tint = currentAccent.mainColor,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
                                             }
                                         }
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        IconButton(
-                                            onClick = {
-                                                if (isPlaying) {
-                                                    viewModel.pauseSong()
-                                                } else {
-                                                    viewModel.resumeSong()
-                                                }
-                                            }, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp))
-                                        ) {
-                                            Icon(
-                                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                                contentDescription = "Play/Pause",
-                                                tint = currentAccent.mainColor,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        }
                                     }
+                                    Spacer(modifier = Modifier.navigationBarsPadding())
                                 }
-                                Spacer(modifier = Modifier.navigationBarsPadding())
                             }
                         }
                     }
-                }
 
-                val backToTopBottomPadding by animateDpAsState(
-                    targetValue = if (currentSong != null) 84.dp else 16.dp, label = "back_to_top_padding"
-                )
+                    val backToTopBottomPadding by animateDpAsState(
+                        targetValue = if (currentSong != null) 84.dp else 16.dp, label = "back_to_top_padding"
+                    )
 
-                val locateInteractionSource = remember { MutableInteractionSource() }
-                val isLocatePressed by locateInteractionSource.collectIsPressedAsState()
-                val locateAlpha by animateFloatAsState(
-                    targetValue = if (isLocatePressed) 1.0f else 0.92f, label = "locate_alpha"
-                )
-                val locateScale by animateFloatAsState(
-                    targetValue = if (isLocatePressed) 0.86f else 1.0f, animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
-                    ), label = "locate_scale"
-                )
+                    val locateInteractionSource = remember { MutableInteractionSource() }
+                    val isLocatePressed by locateInteractionSource.collectIsPressedAsState()
+                    val locateAlpha by animateFloatAsState(
+                        targetValue = if (isLocatePressed) 1.0f else 0.92f, label = "locate_alpha"
+                    )
+                    val locateScale by animateFloatAsState(
+                        targetValue = if (isLocatePressed) 0.86f else 1.0f, animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
+                        ), label = "locate_scale"
+                    )
 
-                val topInteractionSource = remember { MutableInteractionSource() }
-                val isTopPressed by topInteractionSource.collectIsPressedAsState()
-                val topAlpha by animateFloatAsState(
-                    targetValue = if (isTopPressed) 1.0f else 0.92f, label = "top_alpha"
-                )
-                val topScale by animateFloatAsState(
-                    targetValue = if (isTopPressed) 0.86f else 1.0f, animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
-                    ), label = "top_scale"
-                )
+                    val topInteractionSource = remember { MutableInteractionSource() }
+                    val isTopPressed by topInteractionSource.collectIsPressedAsState()
+                    val topAlpha by animateFloatAsState(
+                        targetValue = if (isTopPressed) 1.0f else 0.92f, label = "top_alpha"
+                    )
+                    val topScale by animateFloatAsState(
+                        targetValue = if (isTopPressed) 0.86f else 1.0f, animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
+                        ), label = "top_scale"
+                    )
 
-                val locateOffset by animateDpAsState(
-                    targetValue = if (showBackToTop) 52.dp else 0.dp, animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
-                    ), label = "locate_offset"
-                )
+                    val locateOffset by animateDpAsState(
+                        targetValue = if (showBackToTop) 52.dp else 0.dp, animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
+                        ), label = "locate_offset"
+                    )
 
-                val buttonBorder = Modifier.border(
-                    width = 1.dp,
-                    color = if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
-                    shape = CircleShape
-                )
+                    val buttonBorder = Modifier.border(
+                        width = 1.dp,
+                        color = if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
+                        shape = CircleShape
+                    )
 
-                Box(
-                    modifier = Modifier.align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = backToTopBottomPadding).navigationBarsPadding(),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    // 1. 定位当前歌曲按钮
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = showLocateSong && !isAtBottom,
-                        enter = scaleIn() + fadeIn(),
-                        exit = scaleOut() + fadeOut(),
-                        modifier = Modifier.padding(bottom = if (locateOffset < 0.dp) 0.dp else locateOffset)
+                    Box(
+                        modifier = Modifier.align(Alignment.BottomEnd)
+                            .padding(end = 16.dp, bottom = backToTopBottomPadding).navigationBarsPadding(),
+                        contentAlignment = Alignment.BottomCenter
                     ) {
-                        Box(
-                            modifier = Modifier.size(40.dp).graphicsLayer {
-                                alpha = locateAlpha
-                                scaleX = locateScale
-                                scaleY = locateScale
-                            }.clip(CircleShape).background(currentAccent.mainColor).then(buttonBorder).clickable(
-                                interactionSource = locateInteractionSource,
-                                indication = androidx.compose.material3.ripple(color = Color.White),
-                                onClick = {
-                                    locateCurrentSong()
-                                }), contentAlignment = Alignment.Center
+                        // 1. 定位当前歌曲按钮
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showLocateSong && !isAtBottom,
+                            enter = scaleIn() + fadeIn(),
+                            exit = scaleOut() + fadeOut(),
+                            modifier = Modifier.padding(bottom = if (locateOffset < 0.dp) 0.dp else locateOffset)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.MyLocation,
-                                contentDescription = "定位当前歌曲",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
                             Box(
-                                modifier = Modifier.fillMaxSize().background(
-                                    if (isLocatePressed) Color.White.copy(alpha = 0.15f) else Color.Transparent
+                                modifier = Modifier.size(40.dp).graphicsLayer {
+                                    alpha = locateAlpha
+                                    scaleX = locateScale
+                                    scaleY = locateScale
+                                }.clip(CircleShape).background(currentAccent.mainColor).then(buttonBorder).clickable(
+                                    interactionSource = locateInteractionSource,
+                                    indication = androidx.compose.material3.ripple(color = Color.White),
+                                    onClick = {
+                                        locateCurrentSong()
+                                    }), contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MyLocation,
+                                    contentDescription = "定位当前歌曲",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
                                 )
-                            )
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(
+                                        if (isLocatePressed) Color.White.copy(alpha = 0.15f) else Color.Transparent
+                                    )
+                                )
+                            }
+                        }
+
+                        // 2. 回到顶部按钮
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showBackToTop && !isAtBottom,
+                            enter = scaleIn() + fadeIn(),
+                            exit = scaleOut() + fadeOut()
+                        ) {
+                            Box(
+                                modifier = Modifier.size(40.dp).graphicsLayer {
+                                    alpha = topAlpha
+                                    scaleX = topScale
+                                    scaleY = topScale
+                                }.clip(CircleShape).background(currentAccent.mainColor).then(buttonBorder).clickable(
+                                    interactionSource = topInteractionSource,
+                                    indication = androidx.compose.material3.ripple(color = Color.White),
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            activeListState?.scrollToItem(0)
+                                        }
+                                    }), contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "回到顶部",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(
+                                        if (isTopPressed) Color.White.copy(alpha = 0.15f) else Color.Transparent
+                                    )
+                                )
+                            }
                         }
                     }
-
-                    // 2. 回到顶部按钮
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = showBackToTop && !isAtBottom,
-                        enter = scaleIn() + fadeIn(),
-                        exit = scaleOut() + fadeOut()
-                    ) {
-                        Box(
-                            modifier = Modifier.size(40.dp).graphicsLayer {
-                                alpha = topAlpha
-                                scaleX = topScale
-                                scaleY = topScale
-                            }.clip(CircleShape).background(currentAccent.mainColor).then(buttonBorder).clickable(
-                                interactionSource = topInteractionSource,
-                                indication = androidx.compose.material3.ripple(color = Color.White),
-                                onClick = {
-                                    coroutineScope.launch {
-                                        activeListState?.scrollToItem(0)
-                                    }
-                                }), contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = "回到顶部",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Box(
-                                modifier = Modifier.fillMaxSize().background(
-                                    if (isTopPressed) Color.White.copy(alpha = 0.15f) else Color.Transparent
-                                )
-                            )
-                        }
-                    }
-                }
                 }
             }
         }

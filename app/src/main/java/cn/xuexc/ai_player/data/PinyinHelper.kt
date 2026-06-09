@@ -29,12 +29,12 @@ object PinyinHelper {
     fun getArtistLetter(artist: String): Char {
         if (artist.isBlank()) return '#'
         val firstChar = artist.trim().first()
-        
+
         // 快速通道：如果是英文字符，直接返回其大写，无需查缓存或做拼音转换
         if (firstChar in 'a'..'z' || firstChar in 'A'..'Z') {
             return firstChar.uppercaseChar()
         }
-        
+
         // 快速通道：检查缓存
         val cached = charLetterCache[firstChar]
         if (cached != null) return cached
@@ -51,7 +51,7 @@ object PinyinHelper {
         } catch (e: Exception) {
             '#'
         }
-        
+
         charLetterCache[firstChar] = result
         return result
     }

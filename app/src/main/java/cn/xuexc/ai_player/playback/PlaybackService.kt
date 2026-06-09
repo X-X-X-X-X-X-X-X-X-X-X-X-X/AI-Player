@@ -1,33 +1,21 @@
 package cn.xuexc.ai_player.playback
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
-import android.content.ContentUris
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.IBinder
-import android.util.Size
-import androidx.core.app.NotificationCompat
-import androidx.media.app.NotificationCompat.MediaStyle
+import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.support.v4.media.MediaMetadataCompat
+import androidx.core.app.NotificationCompat
+import androidx.media.app.NotificationCompat.MediaStyle
 import cn.xuexc.ai_player.MainActivity
 import cn.xuexc.ai_player.data.Song
-import cn.xuexc.ai_player.data.loadCover
 import cn.xuexc.ai_player.data.getCachedCover
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Job
+import cn.xuexc.ai_player.data.loadCover
+import kotlinx.coroutines.*
 
 class PlaybackService : Service() {
 
@@ -40,7 +28,7 @@ class PlaybackService : Service() {
     companion object {
         const val NOTIFICATION_ID = 101
         const val CHANNEL_ID = "ai_player_playback_channel"
-        
+
         const val ACTION_START = "cn.xuexc.ai_player.ACTION_START"
         const val ACTION_UPDATE = "cn.xuexc.ai_player.ACTION_UPDATE"
         const val ACTION_PLAY_PAUSE = "cn.xuexc.ai_player.ACTION_PLAY_PAUSE"
@@ -86,6 +74,7 @@ class PlaybackService : Service() {
                         "ACTION_FAVORITE" -> {
                             PlaybackManager.toggleFavoriteCurrent(applicationContext)
                         }
+
                         "ACTION_BLACKLIST" -> {
                             PlaybackManager.blacklistCurrent(applicationContext)
                         }
@@ -111,25 +100,31 @@ class PlaybackService : Service() {
                 }
                 updateNotification()
             }
+
             ACTION_NEXT -> {
                 PlaybackManager.playNext(applicationContext, isUserInitiated = true)
                 updateNotification()
             }
+
             ACTION_PREV -> {
                 PlaybackManager.playPrevious(applicationContext)
                 updateNotification()
             }
+
             ACTION_STOP -> {
                 PlaybackManager.stop()
                 stopForeground(true)
                 stopSelf()
             }
+
             ACTION_FAVORITE -> {
                 PlaybackManager.toggleFavoriteCurrent(applicationContext)
             }
+
             ACTION_BLACKLIST -> {
                 PlaybackManager.blacklistCurrent(applicationContext)
             }
+
             ACTION_START, ACTION_UPDATE -> {
                 updateNotification()
             }
@@ -163,23 +158,53 @@ class PlaybackService : Service() {
 
         // PendingIntents for actions
         val playPauseIntent = Intent(this, PlaybackService::class.java).apply { action = ACTION_PLAY_PAUSE }
-        val playPausePI = PendingIntent.getService(this, 1, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val playPausePI = PendingIntent.getService(
+            this,
+            1,
+            playPauseIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val nextIntent = Intent(this, PlaybackService::class.java).apply { action = ACTION_NEXT }
-        val nextPI = PendingIntent.getService(this, 2, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val nextPI = PendingIntent.getService(
+            this,
+            2,
+            nextIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val prevIntent = Intent(this, PlaybackService::class.java).apply { action = ACTION_PREV }
-        val prevPI = PendingIntent.getService(this, 3, prevIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val prevPI = PendingIntent.getService(
+            this,
+            3,
+            prevIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val favoriteIntent = Intent(this, PlaybackService::class.java).apply { action = ACTION_FAVORITE }
-        val favoritePI = PendingIntent.getService(this, 5, favoriteIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val favoritePI = PendingIntent.getService(
+            this,
+            5,
+            favoriteIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val blacklistIntent = Intent(this, PlaybackService::class.java).apply { action = ACTION_BLACKLIST }
-        val blacklistPI = PendingIntent.getService(this, 6, blacklistIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val blacklistPI = PendingIntent.getService(
+            this,
+            6,
+            blacklistIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         // Content intent (Click notification to open app)
         val contentIntent = Intent(this, MainActivity::class.java)
-        val contentPI = PendingIntent.getActivity(this, 0, contentIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val contentPI = PendingIntent.getActivity(
+            this,
+            0,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val playPauseIcon = if (isPlaying) {
             android.R.drawable.ic_media_pause
@@ -195,7 +220,18 @@ class PlaybackService : Service() {
             // 2. 若没有内存缓存，我们先以“无封面（null）”展示，防止阻塞主线程导致的顿挫
             if (albumArt == null) {
                 updateMediaSession(song, isPlaying, null)
-                val initNotification = buildNotification(song, isPlaying, null, playPausePI, nextPI, prevPI, favoritePI, blacklistPI, contentPI, playPauseIcon)
+                val initNotification = buildNotification(
+                    song,
+                    isPlaying,
+                    null,
+                    playPausePI,
+                    nextPI,
+                    prevPI,
+                    favoritePI,
+                    blacklistPI,
+                    contentPI,
+                    playPauseIcon
+                )
                 startForeground(NOTIFICATION_ID, initNotification)
 
                 // 3. 在后台挂起加载封面
@@ -206,7 +242,18 @@ class PlaybackService : Service() {
 
             // 4. 获取到封面之后（无论成功与否，或使用上一步已取得的缓存），更新/显示带封面的通知
             updateMediaSession(song, isPlaying, albumArt)
-            val notification = buildNotification(song, isPlaying, albumArt, playPausePI, nextPI, prevPI, favoritePI, blacklistPI, contentPI, playPauseIcon)
+            val notification = buildNotification(
+                song,
+                isPlaying,
+                albumArt,
+                playPausePI,
+                nextPI,
+                prevPI,
+                favoritePI,
+                blacklistPI,
+                contentPI,
+                playPauseIcon
+            )
             startForeground(NOTIFICATION_ID, notification)
         }
     }
@@ -234,11 +281,11 @@ class PlaybackService : Service() {
         val stateBuilder = PlaybackStateCompat.Builder()
             .setActions(
                 PlaybackStateCompat.ACTION_PLAY or
-                PlaybackStateCompat.ACTION_PAUSE or
-                PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                PlaybackStateCompat.ACTION_SEEK_TO
+                        PlaybackStateCompat.ACTION_PAUSE or
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                        PlaybackStateCompat.ACTION_SEEK_TO
             )
             .addCustomAction(favoriteAction)
             .addCustomAction(blacklistAction)

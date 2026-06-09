@@ -5,25 +5,12 @@ import android.content.Context
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import cn.xuexc.ai_player.data.MusicDatabaseHelper
-import cn.xuexc.ai_player.data.Playlist
-import cn.xuexc.ai_player.data.Song
-import cn.xuexc.ai_player.data.SongScanner
-import cn.xuexc.ai_player.data.PinyinHelper
-import cn.xuexc.ai_player.data.SongItemWithLetter
-import cn.xuexc.ai_player.data.ArtistItem
-import cn.xuexc.ai_player.playback.PlaybackManager
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.flowOn
+import cn.xuexc.ai_player.data.*
 import cn.xuexc.ai_player.playback.PlayMode
+import cn.xuexc.ai_player.playback.PlaybackManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 enum class SortOrder(val displayName: String) {
@@ -54,7 +41,8 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     // Theme accent color persistence
     private val sharedPrefs = application.getSharedPreferences("ai_player_prefs", Context.MODE_PRIVATE)
 
-    private val _blockedFolders = MutableStateFlow(sharedPrefs.getStringSet("blocked_folders", emptySet()) ?: emptySet())
+    private val _blockedFolders =
+        MutableStateFlow(sharedPrefs.getStringSet("blocked_folders", emptySet()) ?: emptySet())
     val blockedFolders: StateFlow<Set<String>> = _blockedFolders
 
     fun addBlockedFolder(path: String) {
@@ -74,8 +62,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         // 静默扫描文件系统以补回先前屏蔽期间被库物理清除的历史音轨
         startScan(getApplication(), isSilent = true)
     }
-    
-    private val _themeName = MutableStateFlow(sharedPrefs.getString("theme_accent_name", "TitaniumGray") ?: "TitaniumGray")
+
+    private val _themeName =
+        MutableStateFlow(sharedPrefs.getString("theme_accent_name", "TitaniumGray") ?: "TitaniumGray")
     val themeName: StateFlow<String> = _themeName
 
     fun setThemeName(name: String) {
@@ -92,7 +81,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private val _sortOrder = MutableStateFlow(
-        SortOrder.valueOf(sharedPrefs.getString("song_sort_order", SortOrder.BY_DATE_ADDED.name) ?: SortOrder.BY_DATE_ADDED.name)
+        SortOrder.valueOf(
+            sharedPrefs.getString("song_sort_order", SortOrder.BY_DATE_ADDED.name) ?: SortOrder.BY_DATE_ADDED.name
+        )
     )
     val sortOrder: StateFlow<SortOrder> = _sortOrder
 
@@ -125,7 +116,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _allScannedSongs = MutableStateFlow<List<Song>>(emptyList())
     private val _allSongs = MutableStateFlow<List<Song>>(emptyList())
-    
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
@@ -136,18 +127,24 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             songs.filter {
                 it.title.contains(query, ignoreCase = true) ||
-                it.artist.contains(query, ignoreCase = true) ||
-                it.album.contains(query, ignoreCase = true)
+                        it.artist.contains(query, ignoreCase = true) ||
+                        it.album.contains(query, ignoreCase = true)
             }
         }
     }.flowOn(Dispatchers.Default)
-     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val detectedFolders: StateFlow<List<String>> = combine(
         _allScannedSongs,
         _blockedFolders
     ) { allSongs, blocked ->
-        val standardBlocked = blocked.map { try { java.io.File(it).absolutePath } catch (e: Exception) { it } }
+        val standardBlocked = blocked.map {
+            try {
+                java.io.File(it).absolutePath
+            } catch (e: Exception) {
+                it
+            }
+        }
         allSongs.mapNotNull { song ->
             if (!song.path.startsWith("http://") && !song.path.startsWith("https://")) {
                 val lastSlash = maxOf(song.path.lastIndexOf('/'), song.path.lastIndexOf('\\'))
@@ -162,7 +159,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
             }
         }.distinct().sorted()
     }.flowOn(Dispatchers.Default)
-     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val libraryDisplayData: StateFlow<LibraryDisplayData> = combine(
         songs,
@@ -198,7 +195,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
             LibraryDisplayData(emptyList(), emptyMap())
         }
     }.flowOn(Dispatchers.Default)
-     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryDisplayData())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryDisplayData())
 
     val artistDisplayData: StateFlow<ArtistDisplayData> = songs.map { filteredSongs ->
         val groupedByArtist = filteredSongs.groupBy { it.artist }
@@ -226,7 +223,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         }
         ArtistDisplayData(list, indexMap)
     }.flowOn(Dispatchers.Default)
-     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ArtistDisplayData())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ArtistDisplayData())
 
     // --- Playlist States ---
     private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
@@ -236,15 +233,17 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     val blacklistSongsCount = MutableStateFlow(0)
 
     private val _isSongsLoaded = MutableStateFlow(false)
-    val isSongsLoaded: StateFlow<Boolean> = combine(_isSongsLoaded, songs, _allSongs) { loaded, songsList, allSongsList ->
-        loaded && (songsList.isNotEmpty() || allSongsList.isEmpty())
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val isSongsLoaded: StateFlow<Boolean> =
+        combine(_isSongsLoaded, songs, _allSongs) { loaded, songsList, allSongsList ->
+            loaded && (songsList.isNotEmpty() || allSongsList.isEmpty())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _isPlaylistsLoaded = MutableStateFlow(false)
     val isPlaylistsLoaded: StateFlow<Boolean> = _isPlaylistsLoaded
 
     private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
     val currentPlaylistSongs: StateFlow<List<Song>> = _currentPlaylistSongs
+
     init {
         PlaybackManager.initialize(application)
         viewModelScope.launch {
@@ -255,9 +254,39 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch(Dispatchers.IO) {
             val demoSongs = listOf(
-                Song(999991, "Acoustic Breeze", "Bensound", "Bensound Free Music", "https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3", 156000, 3120000, 1, dateAdded = 1000L),
-                Song(999992, "Sunny", "Bensound", "Bensound Free Music", "https://www.bensound.com/bensound-music/bensound-sunny.mp3", 140000, 2800000, 2, dateAdded = 2000L),
-                Song(999993, "Little Idea", "Bensound", "Bensound Free Music", "https://www.bensound.com/bensound-music/bensound-littleidea.mp3", 169000, 3380000, 3, dateAdded = 3000L)
+                Song(
+                    999991,
+                    "Acoustic Breeze",
+                    "Bensound",
+                    "Bensound Free Music",
+                    "https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3",
+                    156000,
+                    3120000,
+                    1,
+                    dateAdded = 1000L
+                ),
+                Song(
+                    999992,
+                    "Sunny",
+                    "Bensound",
+                    "Bensound Free Music",
+                    "https://www.bensound.com/bensound-music/bensound-sunny.mp3",
+                    140000,
+                    2800000,
+                    2,
+                    dateAdded = 2000L
+                ),
+                Song(
+                    999993,
+                    "Little Idea",
+                    "Bensound",
+                    "Bensound Free Music",
+                    "https://www.bensound.com/bensound-music/bensound-littleidea.mp3",
+                    169000,
+                    3380000,
+                    3,
+                    dateAdded = 3000L
+                )
             )
             val existing = dbHelper.getAllSongs(includeBlacklisted = true)
             var needsSync = false
@@ -295,7 +324,13 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         val list = dbHelper.getAllSongs(includeBlacklisted = false, orderBy = orderClause)
         _allScannedSongs.value = list
         val blocked = _blockedFolders.value
-        val standardBlocked = blocked.map { try { java.io.File(it).absolutePath } catch (e: Exception) { it } }
+        val standardBlocked = blocked.map {
+            try {
+                java.io.File(it).absolutePath
+            } catch (e: Exception) {
+                it
+            }
+        }
         _allSongs.value = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
         _isSongsLoaded.value = true
     }
@@ -312,9 +347,39 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                     if (songsList.isEmpty()) {
                         // Inject 3 demo songs for easy testing in cases where the emulator/device doesn't have any physical audio files
                         songsList = listOf(
-                            Song(999991, "Acoustic Breeze", "Bensound", "Bensound Free Music", "https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3", 156000, 3120000, 1, dateAdded = 1000L),
-                            Song(999992, "Sunny", "Bensound", "Bensound Free Music", "https://www.bensound.com/bensound-music/bensound-sunny.mp3", 140000, 2800000, 2, dateAdded = 2000L),
-                            Song(999993, "Little Idea", "Bensound", "Bensound Free Music", "https://www.bensound.com/bensound-music/bensound-littleidea.mp3", 169000, 3380000, 3, dateAdded = 3000L)
+                            Song(
+                                999991,
+                                "Acoustic Breeze",
+                                "Bensound",
+                                "Bensound Free Music",
+                                "https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3",
+                                156000,
+                                3120000,
+                                1,
+                                dateAdded = 1000L
+                            ),
+                            Song(
+                                999992,
+                                "Sunny",
+                                "Bensound",
+                                "Bensound Free Music",
+                                "https://www.bensound.com/bensound-music/bensound-sunny.mp3",
+                                140000,
+                                2800000,
+                                2,
+                                dateAdded = 2000L
+                            ),
+                            Song(
+                                999993,
+                                "Little Idea",
+                                "Bensound",
+                                "Bensound Free Music",
+                                "https://www.bensound.com/bensound-music/bensound-littleidea.mp3",
+                                169000,
+                                3380000,
+                                3,
+                                dateAdded = 3000L
+                            )
                         )
                     }
                     dbHelper.syncSongs(songsList)
@@ -337,15 +402,15 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val targetFav = !song.isFavorite
             dbHelper.setFavorite(song.id, targetFav)
-            
+
             // 同步修改内存中当前歌曲的 favorite 状态以实现 UI 的即时反应
             if (PlaybackManager.currentSong.value?.id == song.id) {
                 PlaybackManager.updateCurrentSongFavorite(targetFav)
             }
-            
+
             // 同步更新播放队列及原始队列中的歌曲收藏状态
             PlaybackManager.updateSongInQueue(song.id, targetFav)
-            
+
             if (!skipListUpdate) {
                 // 仅在非播放界面（即主界面列表）点击时更新大列表，触发即时局部重组
                 _allScannedSongs.value = _allScannedSongs.value.map {
@@ -364,8 +429,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             }
-            favoriteSongsCount.value = if (targetFav) favoriteSongsCount.value + 1 else maxOf(0, favoriteSongsCount.value - 1)
-            
+            favoriteSongsCount.value =
+                if (targetFav) favoriteSongsCount.value + 1 else maxOf(0, favoriteSongsCount.value - 1)
+
             withContext(Dispatchers.Main) {
                 val msg = if (targetFav) "已添加到喜欢" else "已取消喜欢"
                 Toast.makeText(getApplication(), msg, Toast.LENGTH_SHORT).show()
@@ -462,7 +528,13 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun loadPlaylistsInternal() = withContext(Dispatchers.IO) {
         val list = dbHelper.getPlaylists()
         val blocked = _blockedFolders.value
-        val standardBlocked = blocked.map { try { java.io.File(it).absolutePath } catch (e: Exception) { it } }
+        val standardBlocked = blocked.map {
+            try {
+                java.io.File(it).absolutePath
+            } catch (e: Exception) {
+                it
+            }
+        }
 
         // Filter favorite songs count
         val favoriteSongs = dbHelper.getFavoriteSongs()
@@ -519,7 +591,13 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val list = dbHelper.getSongsInPlaylist(playlistId)
             val blocked = _blockedFolders.value
-            val standardBlocked = blocked.map { try { java.io.File(it).absolutePath } catch (e: Exception) { it } }
+            val standardBlocked = blocked.map {
+                try {
+                    java.io.File(it).absolutePath
+                } catch (e: Exception) {
+                    it
+                }
+            }
             _currentPlaylistSongs.value = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
         }
     }
@@ -528,7 +606,13 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val list = dbHelper.getFavoriteSongs()
             val blocked = _blockedFolders.value
-            val standardBlocked = blocked.map { try { java.io.File(it).absolutePath } catch (e: Exception) { it } }
+            val standardBlocked = blocked.map {
+                try {
+                    java.io.File(it).absolutePath
+                } catch (e: Exception) {
+                    it
+                }
+            }
             _currentPlaylistSongs.value = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
         }
     }
@@ -537,7 +621,13 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val list = dbHelper.getBlacklistedSongs()
             val blocked = _blockedFolders.value
-            val standardBlocked = blocked.map { try { java.io.File(it).absolutePath } catch (e: Exception) { it } }
+            val standardBlocked = blocked.map {
+                try {
+                    java.io.File(it).absolutePath
+                } catch (e: Exception) {
+                    it
+                }
+            }
             _currentPlaylistSongs.value = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
         }
     }
@@ -574,7 +664,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun exportPlaylistsJson(): String = withContext(Dispatchers.IO) {
         val jsonArray = org.json.JSONArray()
-        
+
         // 1. 导出“我喜欢的”歌单
         val favoriteSongs = dbHelper.getFavoriteSongs()
         if (favoriteSongs.isNotEmpty()) {
@@ -623,7 +713,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
             val songs = dbHelper.getSongsInPlaylist(playlist.id)
             val playlistObject = org.json.JSONObject()
             playlistObject.put("歌单名字", playlist.name)
-            
+
             val songsArray = org.json.JSONArray()
             for (song in songs) {
                 val songObject = org.json.JSONObject()
@@ -647,10 +737,10 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         var successCount = 0
         var failureCount = 0
         val failedSongsList = mutableListOf<String>()
-        
+
         try {
             val jsonArray = org.json.JSONArray(jsonContent)
-            
+
             // 1. 获取本地数据库中已有的所有歌曲
             val allLocalSongs = dbHelper.getAllSongs(includeBlacklisted = true)
             // 建立 path -> Song 映射
@@ -661,19 +751,19 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                 val key = "${song.title.trim().lowercase()}_${song.artist.trim().lowercase()}"
                 titleArtistMap[key] = song
             }
-            
+
             // 获取当前已有的自定义歌单
             val currentPlaylists = dbHelper.getPlaylists()
             val playlistNameMap = currentPlaylists.associateBy { it.name }
-            
+
             for (i in 0 until jsonArray.length()) {
                 val playlistObj = jsonArray.getJSONObject(i)
                 val playlistName = playlistObj.optString("歌单名字")
                 if (playlistName.isNullOrBlank()) continue
-                
+
                 val isFavoriteList = playlistName == "我喜欢的"
                 val isBlacklistList = playlistName == "遗忘的沙漏"
-                
+
                 var playlistId: Long? = null
                 if (!isFavoriteList && !isBlacklistList) {
                     // 自定义歌单：查找或创建
@@ -688,33 +778,35 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                         continue
                     }
                 }
-                
+
                 playlistsImported++
-                
+
                 val songsArray = playlistObj.optJSONArray("歌曲列表") ?: org.json.JSONArray()
                 for (j in 0 until songsArray.length()) {
                     val songObj = songsArray.getJSONObject(j)
                     val path = songObj.optString("path")
                     val title = songObj.optString("title")
                     val artist = songObj.optString("artist")
-                    
+
                     // 尝试精准与模糊匹配
                     var matchedSong = pathMap[path]
                     if (matchedSong == null && !title.isNullOrEmpty() && !artist.isNullOrEmpty()) {
                         val key = "${title.trim().lowercase()}_${artist.trim().lowercase()}"
                         matchedSong = titleArtistMap[key]
                     }
-                    
+
                     if (matchedSong != null) {
                         when {
                             isFavoriteList -> {
                                 dbHelper.setFavorite(matchedSong.id, true)
                                 successCount++
                             }
+
                             isBlacklistList -> {
                                 dbHelper.setBlacklisted(matchedSong.id, true)
                                 successCount++
                             }
+
                             else -> {
                                 val success = dbHelper.addSongToPlaylist(playlistId!!, matchedSong.id)
                                 if (success) {
@@ -750,11 +842,11 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             }
-            
+
             // 重新加载歌曲和歌单列表以刷新 UI
             loadSongs()
             loadPlaylists()
-            
+
             ImportResult(
                 playlistsImported = playlistsImported,
                 successCount = successCount,

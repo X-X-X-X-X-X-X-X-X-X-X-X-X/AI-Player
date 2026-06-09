@@ -7,7 +7,11 @@ object SongScanner {
     fun isPathBlocked(filePath: String, blockedFolders: Set<String>): Boolean {
         if (blockedFolders.isEmpty()) return false
         val standardBlocked = blockedFolders.map {
-            try { java.io.File(it).absolutePath } catch (e: Exception) { it }
+            try {
+                java.io.File(it).absolutePath
+            } catch (e: Exception) {
+                it
+            }
         }
         return isPathBlocked(filePath, standardBlocked)
     }
