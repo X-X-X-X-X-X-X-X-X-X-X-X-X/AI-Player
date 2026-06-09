@@ -1,5 +1,6 @@
 package cn.xuexc.ai_player.ui.components
 
+import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -44,6 +45,9 @@ import cn.xuexc.ai_player.ui.SongViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import androidx.compose.ui.unit.Dp
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -112,8 +116,6 @@ fun FullPlayerScreen(
     var isFirstLoad by remember { mutableStateOf(true) }
 
     var showPlaybackQueueDialog by remember { mutableStateOf(false) }
-    var showMoreMenu by remember { mutableStateOf(false) }
-    var showDetailsDialog by remember { mutableStateOf(false) }
     val playbackQueue by viewModel.playbackQueue.collectAsState()
 
     LaunchedEffect(song.id) {
@@ -227,450 +229,225 @@ fun FullPlayerScreen(
         )
 
         // Main content
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // 1. Top Bar
-            val topBtnBg = if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0F000000)
+        val configuration = LocalConfiguration.current
+        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+        if (isLandscape) {
             Row(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(
-                    onClick = onDismiss, modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(topBtnBg)
+                // 左侧主播放器内容：占一半宽度，高度撑满，和竖屏样式一致，但去除 HorizontalPager，并使用较小的 padding
+                Column(
+                    modifier = Modifier
+                        .weight(1.0f)
+                        .fillMaxHeight()
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "收起",
-                        tint = appColors.textColorPrimary
+                    PlayerTopBar(
+                        song = song,
+                        isPlaying = isPlaying,
+                        isDarkMode = isDarkMode,
+                        appColors = appColors,
+                        currentAccent = currentAccent,
+                        onDismiss = onDismiss,
+                        onAddToPlaylistClick = onAddToPlaylistClick,
+                        onNavigateToArtist = onNavigateToArtist,
+                        onSleepTimerClick = onSleepTimerClick
                     )
-                }
 
-                Text(
-                    text = if (isPlaying) "正在播放" else "已暂停",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = appColors.textColorPrimary.copy(alpha = 0.9f),
-                    letterSpacing = 0.5.sp
-                )
+                    val shouldRotate = isPlaying && isCoverLoaded
+                    LaunchedEffect(shouldRotate) {
+                        if (shouldRotate) {
+                            val startFrameTime = android.os.SystemClock.uptimeMillis()
+                            val startAngle = rotationAngle
+                            while (true) {
+                                withFrameMillis { frameTime ->
+                                    val elapsed = android.os.SystemClock.uptimeMillis() - startFrameTime
+                                    rotationAngle = (startAngle + elapsed * 0.024f) % 360f
+                                }
+                            }
+                        }
+                    }
 
-                // Right menu dropdown
-                Box {
-                    IconButton(
-                        onClick = { showMoreMenu = true },
-                        modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(topBtnBg)
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "更多操作",
-                            tint = appColors.textColorPrimary
+                        VinylDisc(
+                            isPlaying = isPlaying,
+                            isCoverLoaded = isCoverLoaded,
+                            bgBitmap = bgBitmap,
+                            currentAccent = currentAccent,
+                            cardScale = cardScale,
+                            rotationAngle = rotationAngle,
+                            coverAlpha = coverAlpha.value,
+                            size = 250.dp, // 设定横屏黄金尺寸 195.dp，您可以直接修改此数值
+                            onTogglePlay = {
+                                if (isPlaying) viewModel.pauseSong() else viewModel.resumeSong()
+                            }
                         )
                     }
-                    if (showMoreMenu) {
-                        androidx.compose.ui.window.Popup(
-                            onDismissRequest = { showMoreMenu = false },
-                            alignment = Alignment.TopEnd,
-                            offset = androidx.compose.ui.unit.IntOffset(
-                                0, with(androidx.compose.ui.platform.LocalDensity.current) { 44.dp.roundToPx() }),
-                            properties = androidx.compose.ui.window.PopupProperties(focusable = true)
-                        ) {
-                            Box(
-                                modifier = Modifier.width(140.dp).clip(RoundedCornerShape(4.dp))
-                                    .background(appColors.surfaceColor).border(
-                                        0.5.dp,
-                                        if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
-                                        RoundedCornerShape(4.dp)
-                                    ).padding(vertical = 4.dp)
-                            ) {
-                                Column {
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "加入到歌单", color = appColors.textColorPrimary, fontSize = 14.sp
-                                            )
-                                        },
-                                        onClick = {
-                                            showMoreMenu = false
-                                            onAddToPlaylistClick(song)
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.PlaylistAdd,
-                                                contentDescription = null,
-                                                tint = appColors.textColorPrimary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.requiredHeight(32.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                    )
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "歌曲详情", color = appColors.textColorPrimary, fontSize = 14.sp
-                                            )
-                                        },
-                                        onClick = {
-                                            showMoreMenu = false
-                                            showDetailsDialog = true
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.MusicNote,
-                                                contentDescription = null,
-                                                tint = appColors.textColorPrimary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.requiredHeight(32.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                    )
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "定时关闭", color = appColors.textColorPrimary, fontSize = 14.sp
-                                            )
-                                        },
-                                        onClick = {
-                                            showMoreMenu = false
-                                            onSleepTimerClick()
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.AccessTime,
-                                                contentDescription = null,
-                                                tint = appColors.textColorPrimary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.requiredHeight(32.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                    )
-                                    if (song.artist.isNotBlank()) {
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = "歌手：${song.artist}",
-                                                    color = appColors.textColorPrimary,
-                                                    fontSize = 14.sp,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            },
-                                            onClick = {
-                                                showMoreMenu = false
-                                                onNavigateToArtist(song.artist)
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    imageVector = Icons.Default.Person,
-                                                    contentDescription = null,
-                                                    tint = appColors.textColorPrimary,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            },
-                                            modifier = Modifier.requiredHeight(32.dp),
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                                        )
-                                    }
-                                }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    SongMetadata(
+                        song = song,
+                        isDarkMode = isDarkMode,
+                        appColors = appColors,
+                        favoriteColor = favoriteColor,
+                        onAddToBlacklist = { viewModel.addToBlacklist(context, song) },
+                        onToggleFavorite = { viewModel.toggleFavorite(song, skipListUpdate = true) }
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    PlayerProgressBar(
+                        song = song,
+                        playbackProgress = playbackProgress,
+                        isDarkMode = isDarkMode,
+                        currentAccent = currentAccent,
+                        appColors = appColors,
+                        onSeek = { viewModel.seekTo(it) }
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    PlaybackControllers(
+                        isPlaying = isPlaying,
+                        playMode = playMode,
+                        currentAccent = currentAccent,
+                        appColors = appColors,
+                        onTogglePlayMode = {
+                            viewModel.togglePlayMode()
+                            val modeStr = when (playMode) {
+                                PlayMode.ListLoop -> "单曲循环"
+                                PlayMode.SingleLoop -> "随机播放"
+                                PlayMode.Shuffle -> "列表循环"
                             }
-                        }
-                    }
+                            Toast.makeText(context, "播放模式已切至: $modeStr", Toast.LENGTH_SHORT).show()
+                        },
+                        onPlayPrevious = { viewModel.playPreviousSong(context) },
+                        onTogglePlay = { if (isPlaying) viewModel.pauseSong() else viewModel.resumeSong() },
+                        onPlayNext = { viewModel.playNextSong(context) },
+                        onShowQueue = { showPlaybackQueueDialog = true }
+                    )
+
+                    Spacer(modifier = Modifier.navigationBarsPadding().height(8.dp))
                 }
-            }
 
-            // 2. HorizontalPager for Vinyl Disc (Page 0) and Lyrics (Page 1)
-            HorizontalPager(
-                state = pagerState, modifier = Modifier.weight(1.2f).fillMaxWidth()
-            ) { page ->
-                if (page == 0) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-                    ) {
-                        val shouldRotate = isPlaying && isCoverLoaded
-                        LaunchedEffect(shouldRotate) {
-                            if (shouldRotate) {
-                                val startFrameTime = android.os.SystemClock.uptimeMillis()
-                                val startAngle = rotationAngle
-                                while (true) {
-                                    withFrameMillis { frameTime ->
-                                        val elapsed = android.os.SystemClock.uptimeMillis() - startFrameTime
-                                        rotationAngle = (startAngle + elapsed * 0.024f) % 360f
-                                    }
-                                }
-                            }
-                        }
-
-                        // Vinyl outer disc
-                        Box(
-                            modifier = Modifier.size(300.dp).graphicsLayer {
-                                scaleX = cardScale
-                                scaleY = cardScale
-                                rotationZ = rotationAngle
-                            }.clip(CircleShape).clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                if (isPlaying) {
-                                    viewModel.pauseSong()
-                                } else {
-                                    viewModel.resumeSong()
-                                }
-                            }.background(
-                                Brush.radialGradient(
-                                    colors = listOf(
-                                        Color(0xFF2C2C2E), Color(0xFF151517), Color(0xFF0C0C0E)
-                                    )
-                                )
-                            ).border(4.dp, Color(0xFF232325), CircleShape)
-                                .border(0.5.dp, Color.White.copy(alpha = 0.08f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // 同心圆声轨线条
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                val center = Offset(size.width / 2, size.height / 2)
-                                val ringCount = 8
-                                val startRadius = 102.dp.toPx()
-                                val endRadius = 142.dp.toPx()
-                                for (i in 0 until ringCount) {
-                                    val r = startRadius + (endRadius - startRadius) * (i.toFloat() / (ringCount - 1))
-                                    drawCircle(
-                                        color = Color.White.copy(alpha = 0.03f),
-                                        radius = r,
-                                        center = center,
-                                        style = Stroke(width = 1f)
-                                    )
-                                }
-                            }
-
-                            // Center album cover image
-                            Box(
-                                modifier = Modifier.size(200.dp).clip(CircleShape).background(Color(0xFF1C1C1E))
-                                    .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
-                                    .graphicsLayer { alpha = coverAlpha.value }) {
-                                if (bgBitmap != null) {
-                                    Image(
-                                        bitmap = bgBitmap!!.asImageBitmap(),
-                                        contentDescription = "Cover Image",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize().background(
-                                            Brush.linearGradient(
-                                                colors = listOf(
-                                                    currentAccent.mainColor.copy(alpha = 0.8f),
-                                                    currentAccent.mainColor.copy(alpha = 0.4f)
-                                                )
-                                            )
-                                        ), contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.MusicNote,
-                                            contentDescription = null,
-                                            tint = Color.White.copy(alpha = 0.8f),
-                                            modifier = Modifier.size(36.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
+                // 右侧歌词：占一半宽度，高度撑满，增加 statusBarsPadding / navigationBarsPadding 适配
+                Box(
+                    modifier = Modifier
+                        .weight(1.0f)
+                        .fillMaxHeight()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                        .padding(top = 10.dp, bottom = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     LyricView(
                         song = song,
                         playbackProgress = playbackProgress,
                         appColors = appColors,
                         currentAccent = currentAccent,
-                        onSeek = { position -> viewModel.seekTo(position) })
-                }
-            }
-
-            // 3. Centered Song Metadata & Symmetric Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                // Left Action: Blacklist (Forgotten Hourglass)
-                IconButton(
-                    onClick = {
-                        viewModel.addToBlacklist(context, song)
-                    },
-                    modifier = Modifier.size(40.dp).clip(CircleShape)
-                        .background(if (isDarkMode) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.HourglassEmpty,
-                        contentDescription = "遗忘的沙漏",
-                        tint = Color(0xFFE5C07B),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Centered song details
-                Column(
-                    modifier = Modifier.weight(1.0f), horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = song.title,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = appColors.textColorPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val quality = song.getQualityType()
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center
-                    ) {
-                        if (quality != QualityType.SQ) {
-                            QualityBadge(quality = quality, isDarkMode = isDarkMode)
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
-                        Text(
-                            text = song.artist,
-                            fontSize = 14.sp,
-                            color = appColors.textColorSecondary.copy(alpha = 0.85f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Right Action: Favorite
-                IconButton(
-                    onClick = { viewModel.toggleFavorite(song, skipListUpdate = true) },
-                    modifier = Modifier.size(40.dp).clip(CircleShape)
-                        .background(if (isDarkMode) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
-                ) {
-                    Icon(
-                        imageVector = if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "喜欢",
-                        tint = favoriteColor,
-                        modifier = Modifier.size(19.dp)
+                        onSeek = { position -> viewModel.seekTo(position) }
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 4. Custom Refined Progress Bar (Canvas-based)
-            var sliderPosition by remember { mutableStateOf<Float?>(null) }
-            val currentPos = sliderPosition?.toLong() ?: playbackProgress
-            val progressPercent = if (song.duration > 0) currentPos.toFloat() / song.duration.toFloat() else 0f
-            var progressBarWidth by remember { mutableStateOf(1f) }
-
+        } else {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp)
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(26.dp)
-                        .onGloballyPositioned { progressBarWidth = it.size.width.toFloat() }
-                        .pointerInput(song.duration) {
-                            detectTapGestures(
-                                onPress = { offset ->
-                                    val fraction = (offset.x / progressBarWidth).coerceIn(0f, 1f)
-                                    sliderPosition = fraction * song.duration
-                                    tryAwaitRelease()
-                                    sliderPosition?.let { viewModel.seekTo(it.toLong()) }
-                                    sliderPosition = null
-                                })
-                        }.pointerInput(song.duration) {
-                            detectDragGestures(onDragStart = { offset ->
-                                val fraction = (offset.x / progressBarWidth).coerceIn(0f, 1f)
-                                sliderPosition = fraction * song.duration
-                            }, onDrag = { change, _ ->
-                                val fraction = (change.position.x / progressBarWidth).coerceIn(0f, 1f)
-                                sliderPosition = fraction * song.duration
-                            }, onDragEnd = {
-                                sliderPosition?.let { viewModel.seekTo(it.toLong()) }
-                                sliderPosition = null
-                            }, onDragCancel = {
-                                sliderPosition = null
-                            })
-                        }, contentAlignment = Alignment.CenterStart
-                ) {
-                    val trackColor =
-                        if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.06f)
-                    val activeColor = currentAccent.mainColor
+                PlayerTopBar(
+                    song = song,
+                    isPlaying = isPlaying,
+                    isDarkMode = isDarkMode,
+                    appColors = appColors,
+                    currentAccent = currentAccent,
+                    onDismiss = onDismiss,
+                    onAddToPlaylistClick = onAddToPlaylistClick,
+                    onNavigateToArtist = onNavigateToArtist,
+                    onSleepTimerClick = onSleepTimerClick
+                )
 
-                    Canvas(modifier = Modifier.fillMaxWidth().height(4.dp)) {
-                        val width = size.width
-                        val height = size.height
-                        val cap = StrokeCap.Round
+                HorizontalPager(
+                    state = pagerState, modifier = Modifier.weight(1.2f).fillMaxWidth()
+                ) { page ->
+                    if (page == 0) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                        ) {
+                            val shouldRotate = isPlaying && isCoverLoaded
+                            LaunchedEffect(shouldRotate) {
+                                if (shouldRotate) {
+                                    val startFrameTime = android.os.SystemClock.uptimeMillis()
+                                    val startAngle = rotationAngle
+                                    while (true) {
+                                        withFrameMillis { frameTime ->
+                                            val elapsed = android.os.SystemClock.uptimeMillis() - startFrameTime
+                                            rotationAngle = (startAngle + elapsed * 0.024f) % 360f
+                                        }
+                                    }
+                                }
+                            }
 
-                        // Background track
-                        drawLine(
-                            color = trackColor,
-                            start = Offset(0f, height / 2),
-                            end = Offset(width, height / 2),
-                            strokeWidth = height,
-                            cap = cap
-                        )
-
-                        // Active progress track
-                        drawLine(
-                            color = activeColor,
-                            start = Offset(0f, height / 2),
-                            end = Offset(width * progressPercent, height / 2),
-                            strokeWidth = height,
-                            cap = cap
-                        )
+                            VinylDisc(
+                                isPlaying = isPlaying,
+                                isCoverLoaded = isCoverLoaded,
+                                bgBitmap = bgBitmap,
+                                currentAccent = currentAccent,
+                                cardScale = cardScale,
+                                rotationAngle = rotationAngle,
+                                coverAlpha = coverAlpha.value,
+                                size = 300.dp,
+                                onTogglePlay = {
+                                    if (isPlaying) viewModel.pauseSong() else viewModel.resumeSong()
+                                }
+                            )
+                        }
+                    } else {
+                        LyricView(
+                            song = song,
+                            playbackProgress = playbackProgress,
+                            appColors = appColors,
+                            currentAccent = currentAccent,
+                            onSeek = { position -> viewModel.seekTo(position) })
                     }
-
-                    // Elegant micro floating Thumb
-                    val thumbOffset = progressBarWidth * progressPercent
-                    Box(
-                        modifier = Modifier.graphicsLayer {
-                            translationX = (thumbOffset - 5.dp.toPx()).coerceAtLeast(0f)
-                        }.size(10.dp).background(Color.White, CircleShape)
-                            .border(0.5.dp, currentAccent.mainColor.copy(alpha = 0.3f), CircleShape)
-                    )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = formatDuration(currentPos),
-                        color = appColors.textColorSecondary.copy(alpha = 0.75f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = formatDuration(song.duration),
-                        color = appColors.textColorSecondary.copy(alpha = 0.75f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
+                SongMetadata(
+                    song = song,
+                    isDarkMode = isDarkMode,
+                    appColors = appColors,
+                    favoriteColor = favoriteColor,
+                    onAddToBlacklist = { viewModel.addToBlacklist(context, song) },
+                    onToggleFavorite = { viewModel.toggleFavorite(song, skipListUpdate = true) }
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // 5. Playback Controller Buttons
-            val playBtnIconColor = Color.White
+                PlayerProgressBar(
+                    song = song,
+                    playbackProgress = playbackProgress,
+                    isDarkMode = isDarkMode,
+                    currentAccent = currentAccent,
+                    appColors = appColors,
+                    onSeek = { viewModel.seekTo(it) }
+                )
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 1. Play Mode button
-                IconButton(
-                    onClick = {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                PlaybackControllers(
+                    isPlaying = isPlaying,
+                    playMode = playMode,
+                    currentAccent = currentAccent,
+                    appColors = appColors,
+                    onTogglePlayMode = {
                         viewModel.togglePlayMode()
                         val modeStr = when (playMode) {
                             PlayMode.ListLoop -> "单曲循环"
@@ -678,106 +455,18 @@ fun FullPlayerScreen(
                             PlayMode.Shuffle -> "列表循环"
                         }
                         Toast.makeText(context, "播放模式已切至: $modeStr", Toast.LENGTH_SHORT).show()
-                    }, modifier = Modifier.size(44.dp)
-                ) {
-                    val modeIcon = when (playMode) {
-                        PlayMode.ListLoop -> Icons.Default.Repeat
-                        PlayMode.SingleLoop -> Icons.Default.RepeatOne
-                        PlayMode.Shuffle -> Icons.Default.Shuffle
-                    }
-                    Icon(
-                        imageVector = modeIcon,
-                        contentDescription = "播放模式",
-                        tint = appColors.textColorPrimary.copy(alpha = 0.65f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                    },
+                    onPlayPrevious = { viewModel.playPreviousSong(context) },
+                    onTogglePlay = { if (isPlaying) viewModel.pauseSong() else viewModel.resumeSong() },
+                    onPlayNext = { viewModel.playNextSong(context) },
+                    onShowQueue = { showPlaybackQueueDialog = true }
+                )
 
-                // 2. Control Group
-                Row(
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Previous
-                    IconButton(
-                        onClick = { viewModel.playPreviousSong(context) }, modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "上一首",
-                            tint = appColors.textColorPrimary.copy(alpha = 0.9f),
-                            modifier = Modifier.size(30.dp)
-                        )
-                    }
-
-                    // Glow Play / Pause
-                    Box(
-                        contentAlignment = Alignment.Center, modifier = Modifier.size(76.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.size(56.dp).background(
-                                Brush.radialGradient(
-                                    colors = listOf(
-                                        currentAccent.mainColor.copy(alpha = 0.4f), Color.Transparent
-                                    )
-                                )
-                            ).blur(8.dp)
-                        )
-                        Box(
-                            modifier = Modifier.size(62.dp).clip(CircleShape).background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        currentAccent.mainColor, currentAccent.mainColor.copy(alpha = 0.85f)
-                                    )
-                                )
-                            ).border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape).clickable {
-                                if (isPlaying) {
-                                    viewModel.pauseSong()
-                                } else {
-                                    viewModel.resumeSong()
-                                }
-                            }, contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = "播放暂停",
-                                tint = playBtnIconColor,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
-
-                    // Next
-                    IconButton(
-                        onClick = { viewModel.playNextSong(context) }, modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "下一首",
-                            tint = appColors.textColorPrimary.copy(alpha = 0.9f),
-                            modifier = Modifier.size(30.dp)
-                        )
-                    }
-                }
-
-                // 3. Playback Queue button
-                IconButton(
-                    onClick = { showPlaybackQueueDialog = true }, modifier = Modifier.size(44.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.QueueMusic,
-                        contentDescription = "播放列表",
-                        tint = appColors.textColorPrimary.copy(alpha = 0.65f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Spacer(modifier = Modifier.navigationBarsPadding().height(24.dp))
             }
-
-            // Bottom padding for virtual navigation bar avoidance
-            Spacer(modifier = Modifier.navigationBarsPadding().height(24.dp))
         }
     }
 
-    // 7. Current Playback Queue Dialog
     if (showPlaybackQueueDialog) {
         val qItemHighlightBg = if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000)
         val queueListState = rememberLazyListState()
@@ -862,6 +551,166 @@ fun FullPlayerScreen(
             }
         }
     }
+}
+
+@Composable
+fun PlayerTopBar(
+    song: Song,
+    isPlaying: Boolean,
+    isDarkMode: Boolean,
+    appColors: AppColors,
+    currentAccent: AccentColor,
+    onDismiss: () -> Unit,
+    onAddToPlaylistClick: (Song) -> Unit,
+    onNavigateToArtist: (String) -> Unit,
+    onSleepTimerClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showDetailsDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Spacer(modifier = Modifier.size(48.dp))
+
+        Text(
+            text = if (isPlaying) "正在播放" else "已暂停",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = appColors.textColorPrimary.copy(alpha = 0.9f),
+            letterSpacing = 0.5.sp
+        )
+
+        Box {
+            IconButton(
+                onClick = { showMoreMenu = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "更多操作",
+                    tint = appColors.textColorPrimary
+                )
+            }
+            if (showMoreMenu) {
+                androidx.compose.ui.window.Popup(
+                    onDismissRequest = { showMoreMenu = false },
+                    alignment = Alignment.TopEnd,
+                    offset = androidx.compose.ui.unit.IntOffset(
+                        0, with(androidx.compose.ui.platform.LocalDensity.current) { 44.dp.roundToPx() }),
+                    properties = androidx.compose.ui.window.PopupProperties(focusable = true)
+                ) {
+                    Box(
+                        modifier = Modifier.width(140.dp).clip(RoundedCornerShape(4.dp))
+                            .background(appColors.surfaceColor).border(
+                                0.5.dp,
+                                if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
+                                RoundedCornerShape(4.dp)
+                            ).padding(vertical = 4.dp)
+                    ) {
+                        Column {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "加入到歌单", color = appColors.textColorPrimary, fontSize = 14.sp
+                                    )
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    onAddToPlaylistClick(song)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.PlaylistAdd,
+                                        contentDescription = null,
+                                        tint = appColors.textColorPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                modifier = Modifier.requiredHeight(32.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "歌曲详情", color = appColors.textColorPrimary, fontSize = 14.sp
+                                    )
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    showDetailsDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.MusicNote,
+                                        contentDescription = null,
+                                        tint = appColors.textColorPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                modifier = Modifier.requiredHeight(32.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "定时关闭", color = appColors.textColorPrimary, fontSize = 14.sp
+                                    )
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    onSleepTimerClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AccessTime,
+                                        contentDescription = null,
+                                        tint = appColors.textColorPrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                modifier = Modifier.requiredHeight(32.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            )
+                            if (song.artist.isNotBlank()) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "歌手：${song.artist}",
+                                            color = appColors.textColorPrimary,
+                                            fontSize = 14.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onNavigateToArtist(song.artist)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = appColors.textColorPrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    },
+                                    modifier = Modifier.requiredHeight(32.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     if (showDetailsDialog) {
         val sizeMb = song.size / (1024f * 1024f)
@@ -904,6 +753,385 @@ fun FullPlayerScreen(
                 DetailRow(label = "大小", value = sizeText, appColors = appColors)
                 DetailRow(label = "文件路径", value = song.path, appColors = appColors, isPath = true)
             }
+        }
+    }
+}
+
+@Composable
+fun VinylDisc(
+    isPlaying: Boolean,
+    isCoverLoaded: Boolean,
+    bgBitmap: android.graphics.Bitmap?,
+    currentAccent: AccentColor,
+    cardScale: Float,
+    rotationAngle: Float,
+    coverAlpha: Float,
+    size: Dp,
+    onTogglePlay: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val coverDp = size * 0.66f
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+                rotationZ = rotationAngle
+            }
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                onTogglePlay()
+            }
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF2C2C2E), Color(0xFF151517), Color(0xFF0C0C0E)
+                    )
+                )
+            )
+            .border(4.dp, Color(0xFF232325), CircleShape)
+            .border(0.5.dp, Color.White.copy(alpha = 0.08f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(this.size.width / 2, this.size.height / 2)
+            val ringCount = 8
+            val startRadius = size.toPx() * 0.34f
+            val endRadius = size.toPx() * 0.473f
+            for (i in 0 until ringCount) {
+                val r = startRadius + (endRadius - startRadius) * (i.toFloat() / (ringCount - 1))
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.03f),
+                    radius = r,
+                    center = center,
+                    style = Stroke(width = 1f)
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(coverDp)
+                .clip(CircleShape)
+                .background(Color(0xFF1C1C1E))
+                .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+                .graphicsLayer { alpha = coverAlpha }
+        ) {
+            if (bgBitmap != null) {
+                Image(
+                    bitmap = bgBitmap.asImageBitmap(),
+                    contentDescription = "Cover Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                currentAccent.mainColor.copy(alpha = 0.8f),
+                                currentAccent.mainColor.copy(alpha = 0.4f)
+                            )
+                        )
+                    ), contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MusicNote,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(size * 0.12f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SongMetadata(
+    song: Song,
+    isDarkMode: Boolean,
+    appColors: AppColors,
+    favoriteColor: Color,
+    onAddToBlacklist: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        IconButton(
+            onClick = onAddToBlacklist,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+                .background(if (isDarkMode) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
+        ) {
+            Icon(
+                imageVector = Icons.Default.HourglassEmpty,
+                contentDescription = "遗忘的沙漏",
+                tint = Color(0xFFE5C07B),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(
+            modifier = Modifier.weight(1.0f), horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = song.title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = appColors.textColorPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            val quality = song.getQualityType()
+            Row(
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center
+            ) {
+                if (quality != QualityType.SQ) {
+                    QualityBadge(quality = quality, isDarkMode = isDarkMode)
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = song.artist,
+                    fontSize = 14.sp,
+                    color = appColors.textColorSecondary.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        IconButton(
+            onClick = onToggleFavorite,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+                .background(if (isDarkMode) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
+        ) {
+            Icon(
+                imageVector = if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                contentDescription = "喜欢",
+                tint = favoriteColor,
+                modifier = Modifier.size(19.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun PlayerProgressBar(
+    song: Song,
+    playbackProgress: Long,
+    isDarkMode: Boolean,
+    currentAccent: AccentColor,
+    appColors: AppColors,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var sliderPosition by remember { mutableStateOf<Float?>(null) }
+    val currentPos = sliderPosition?.toLong() ?: playbackProgress
+    val progressPercent = if (song.duration > 0) currentPos.toFloat() / song.duration.toFloat() else 0f
+    var progressBarWidth by remember { mutableStateOf(1f) }
+
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(26.dp)
+                .onGloballyPositioned { progressBarWidth = it.size.width.toFloat() }
+                .pointerInput(song.duration) {
+                    detectTapGestures(
+                        onPress = { offset ->
+                            val fraction = (offset.x / progressBarWidth).coerceIn(0f, 1f)
+                            sliderPosition = fraction * song.duration
+                            tryAwaitRelease()
+                            sliderPosition?.let { onSeek(it.toLong()) }
+                            sliderPosition = null
+                        })
+                }.pointerInput(song.duration) {
+                    detectDragGestures(onDragStart = { offset ->
+                        val fraction = (offset.x / progressBarWidth).coerceIn(0f, 1f)
+                        sliderPosition = fraction * song.duration
+                    }, onDrag = { change, _ ->
+                        val fraction = (change.position.x / progressBarWidth).coerceIn(0f, 1f)
+                        sliderPosition = fraction * song.duration
+                    }, onDragEnd = {
+                        sliderPosition?.let { onSeek(it.toLong()) }
+                        sliderPosition = null
+                    }, onDragCancel = {
+                        sliderPosition = null
+                    })
+                }, contentAlignment = Alignment.CenterStart
+        ) {
+            val trackColor =
+                if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.06f)
+            val activeColor = currentAccent.mainColor
+
+            Canvas(modifier = Modifier.fillMaxWidth().height(4.dp)) {
+                val width = size.width
+                val height = size.height
+                val cap = StrokeCap.Round
+
+                drawLine(
+                    color = trackColor,
+                    start = Offset(0f, height / 2),
+                    end = Offset(width, height / 2),
+                    strokeWidth = height,
+                    cap = cap
+                )
+
+                drawLine(
+                    color = activeColor,
+                    start = Offset(0f, height / 2),
+                    end = Offset(width * progressPercent, height / 2),
+                    strokeWidth = height,
+                    cap = cap
+                )
+            }
+
+            val thumbOffset = progressBarWidth * progressPercent
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    translationX = (thumbOffset - 5.dp.toPx()).coerceAtLeast(0f)
+                }.size(10.dp).background(Color.White, CircleShape)
+                    .border(0.5.dp, currentAccent.mainColor.copy(alpha = 0.3f), CircleShape)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = formatDuration(currentPos),
+                color = appColors.textColorSecondary.copy(alpha = 0.75f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = formatDuration(song.duration),
+                color = appColors.textColorSecondary.copy(alpha = 0.75f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+fun PlaybackControllers(
+    isPlaying: Boolean,
+    playMode: PlayMode,
+    currentAccent: AccentColor,
+    appColors: AppColors,
+    onTogglePlayMode: () -> Unit,
+    onPlayPrevious: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onPlayNext: () -> Unit,
+    onShowQueue: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val playBtnIconColor = Color.White
+
+    Row(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = onTogglePlayMode, modifier = Modifier.size(44.dp)
+        ) {
+            val modeIcon = when (playMode) {
+                PlayMode.ListLoop -> Icons.Default.Repeat
+                PlayMode.SingleLoop -> Icons.Default.RepeatOne
+                PlayMode.Shuffle -> Icons.Default.Shuffle
+            }
+            Icon(
+                imageVector = modeIcon,
+                contentDescription = "播放模式",
+                tint = appColors.textColorPrimary.copy(alpha = 0.65f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            IconButton(
+                onClick = onPlayPrevious, modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SkipPrevious,
+                    contentDescription = "上一首",
+                    tint = appColors.textColorPrimary.copy(alpha = 0.9f),
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+
+            Box(
+                contentAlignment = Alignment.Center, modifier = Modifier.size(76.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(56.dp).background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                currentAccent.mainColor.copy(alpha = 0.4f), Color.Transparent
+                            )
+                        )
+                    ).blur(8.dp)
+                )
+                Box(
+                    modifier = Modifier.size(62.dp).clip(CircleShape).background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                currentAccent.mainColor, currentAccent.mainColor.copy(alpha = 0.85f)
+                            )
+                        )
+                    ).border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape).clickable {
+                        onTogglePlay()
+                    }, contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "播放暂停",
+                        tint = playBtnIconColor,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onPlayNext, modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SkipNext,
+                    contentDescription = "下一首",
+                    tint = appColors.textColorPrimary.copy(alpha = 0.9f),
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onShowQueue, modifier = Modifier.size(44.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.QueueMusic,
+                contentDescription = "播放列表",
+                tint = appColors.textColorPrimary.copy(alpha = 0.65f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

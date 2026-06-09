@@ -34,7 +34,7 @@ fun CommonItemCard(
     val isPressed by interactionSource.collectIsPressedAsState()
     val isDarkMode = appColors.surfaceColor == Color(0xFF161619)
     val pressedBgColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
-    
+
     val cardBg = containerColor ?: if (isPressed) pressedBgColor else appColors.cardBackground
 
     Card(

@@ -58,7 +58,6 @@ import cn.xuexc.ai_player.ui.ScanStatus
 import cn.xuexc.ai_player.ui.SongViewModel
 import cn.xuexc.ai_player.ui.SortOrder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -215,7 +214,6 @@ fun MainScreen(viewModel: SongViewModel) {
             }
         }
     }
-
 
 
     var showFullPlayer by remember { mutableStateOf(false) }
@@ -671,7 +669,8 @@ fun MainScreen(viewModel: SongViewModel) {
                             ) {
                                 // 随机播放控制栏
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                        .padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -811,7 +810,8 @@ fun MainScreen(viewModel: SongViewModel) {
                             ) {
                                 // 随机播放控制栏
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                        .padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -1129,7 +1129,12 @@ fun MainScreen(viewModel: SongViewModel) {
                                                     // 随机播放控制栏
                                                     Row(
                                                         modifier = Modifier.fillMaxWidth()
-                                                            .padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                                                            .padding(
+                                                                start = 8.dp,
+                                                                end = 16.dp,
+                                                                top = 2.dp,
+                                                                bottom = 2.dp
+                                                            ),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                         horizontalArrangement = Arrangement.SpaceBetween
                                                     ) {
@@ -1607,7 +1612,8 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                         } else {
                                                                             Box(
                                                                                 modifier = Modifier.size(42.dp)
-                                                                                    .clip(RoundedCornerShape(12.dp)).background(
+                                                                                    .clip(RoundedCornerShape(12.dp))
+                                                                                    .background(
                                                                                         currentAccent.mainColor.copy(
                                                                                             alpha = 0.15f
                                                                                         )
