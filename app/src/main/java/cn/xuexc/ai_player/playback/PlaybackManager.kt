@@ -276,7 +276,7 @@ object PlaybackManager {
         _playbackProgress.value = 0L
         _isPlaying.value = false
         saveState()
-        triggerServiceUpdate()
+        context.stopService(Intent(context, PlaybackService::class.java))
     }
 
     fun playSong(context: Context, song: Song, forceRestart: Boolean = false, startPositionMs: Long = 0L) {
@@ -310,16 +310,21 @@ object PlaybackManager {
                     if (startPositionMs > 0L) {
                         seekTo(startPositionMs)
                     }
-                    start()
-                    _isPlaying.value = true
-                    startProgressTracker()
+                    if (_isPlaying.value) {
+                        start()
+                        startProgressTracker()
+                    }
                     triggerServiceUpdate()
                 }
                 setOnCompletionListener {
                     _isPlaying.value = false
                     _playbackProgress.value = 0L
                     stopProgressTracker()
-                    if (isTimerExpired) {
+                    
+                    val isTimerActive = _sleepTimerRemaining.value > 0
+                    val isCloseToExpiration = isTimerActive && _sleepTimerRemaining.value <= 10000L
+                    
+                    if (isTimerExpired || isCloseToExpiration) {
                         appContext?.let { ctx ->
                             prepareNextWithoutPlaying(ctx)
                         }
@@ -349,15 +354,19 @@ object PlaybackManager {
     }
 
     fun pause() {
+        _isPlaying.value = false
+        stopProgressTracker()
         mediaPlayer?.let {
-            if (it.isPlaying) {
-                it.pause()
-                _isPlaying.value = false
-                stopProgressTracker()
-                triggerServiceUpdate()
-                saveState()
+            try {
+                if (it.isPlaying) {
+                    it.pause()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
+        triggerServiceUpdate()
+        saveState()
     }
 
     fun resume() {
@@ -507,6 +516,9 @@ object PlaybackManager {
                 }
             } else {
                 pause()
+                appContext?.let { ctx ->
+                    ctx.stopService(Intent(ctx, PlaybackService::class.java))
+                }
                 resetSleepTimer()
             }
         }
