@@ -2713,7 +2713,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                         )
 
                                         Row(
-                                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                            modifier = Modifier.fillMaxSize().padding(start = 26.dp, end = 16.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             // Small Cover Art
@@ -2721,7 +2721,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 song = song,
                                                 isCurrent = false,
                                                 isPlaying = false,
-                                                modifier = Modifier.size(40.dp)
+                                                modifier = Modifier.size(42.dp)
                                             )
 
                                             Spacer(modifier = Modifier.width(12.dp))
