@@ -1380,70 +1380,75 @@ fun MainScreen(viewModel: SongViewModel) {
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
                                             contentPadding = PaddingValues(bottom = 100.dp)
                                         ) {
-                                            // 1. Fixed Favorites Playlist Card
+                                            // 1. Fixed Playlist Cards (Favorites & Blacklist) in a single row
                                             item {
-                                                CommonItemCard(
-                                                    cover = {
-                                                        Box(
-                                                            modifier = Modifier.size(42.dp)
-                                                                .clip(RoundedCornerShape(12.dp))
-                                                                .background(
-                                                                    if (isDarkMode) Color.White.copy(alpha = 0.1f)
-                                                                    else Color(0x0F000000)
-                                                                ),
-                                                            contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Default.Favorite,
-                                                                contentDescription = "我喜欢的音乐",
-                                                                tint = Color(0xFFE06C75),
-                                                                modifier = Modifier.size(21.dp)
-                                                            )
-                                                        }
-                                                    },
-                                                    title = "我喜欢的音乐",
-                                                    subtitleText = "$favoriteSongsCount 首歌曲",
-                                                    appColors = appColors,
-                                                    onClick = {
-                                                        activePlaylistId = -1L
-                                                        activePlaylistName = "我喜欢的音乐"
-                                                        viewModel.loadFavoriteSongs()
-                                                    },
-                                                    modifier = Modifier.padding(top = 4.dp)
-                                                )
-                                            }
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(top = 4.dp),
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    CommonItemCard(
+                                                        cover = {
+                                                            Box(
+                                                                modifier = Modifier.size(42.dp)
+                                                                    .clip(RoundedCornerShape(12.dp))
+                                                                    .background(
+                                                                        if (isDarkMode) Color.White.copy(alpha = 0.1f)
+                                                                        else Color(0x0F000000)
+                                                                    ),
+                                                                contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.Favorite,
+                                                                    contentDescription = "我喜欢的音乐",
+                                                                    tint = Color(0xFFE06C75),
+                                                                    modifier = Modifier.size(21.dp)
+                                                                )
+                                                            }
+                                                        },
+                                                        title = "我喜欢的音乐",
+                                                        subtitleText = "$favoriteSongsCount 首歌曲",
+                                                        appColors = appColors,
+                                                        onClick = {
+                                                            activePlaylistId = -1L
+                                                            activePlaylistName = "我喜欢的音乐"
+                                                            viewModel.loadFavoriteSongs()
+                                                        },
+                                                        modifier = Modifier.weight(1f)
+                                                    )
 
-                                            // 2. Fixed Blacklist Playlist Card
-                                            item {
-                                                CommonItemCard(
-                                                    cover = {
-                                                        Box(
-                                                            modifier = Modifier.size(42.dp)
-                                                                .clip(RoundedCornerShape(12.dp)).background(
-                                                                    if (isDarkMode) Color.White.copy(
-                                                                        alpha = 0.1f
-                                                                    ) else Color(0x0F000000)
-                                                                ), contentAlignment = Alignment.Center
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Default.HourglassEmpty,
-                                                                contentDescription = "遗忘的沙漏",
-                                                                tint = if (isDarkMode) Color(0xFFE5C07B).copy(
-                                                                    alpha = 0.8f
-                                                                ) else Color(0xFFE5C07B),
-                                                                modifier = Modifier.size(21.dp)
-                                                            )
-                                                        }
-                                                    },
-                                                    title = "遗忘的沙漏",
-                                                    subtitleText = "$blacklistSongsCount 首歌曲",
-                                                    appColors = appColors,
-                                                    onClick = {
-                                                        activePlaylistId = -2L
-                                                        activePlaylistName = "遗忘的沙漏"
-                                                        viewModel.loadBlacklistSongs()
-                                                    }
-                                                )
+                                                    CommonItemCard(
+                                                        cover = {
+                                                            Box(
+                                                                modifier = Modifier.size(42.dp)
+                                                                    .clip(RoundedCornerShape(12.dp)).background(
+                                                                        if (isDarkMode) Color.White.copy(
+                                                                            alpha = 0.1f
+                                                                        ) else Color(0x0F000000)
+                                                                    ), contentAlignment = Alignment.Center
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.HourglassEmpty,
+                                                                    contentDescription = "遗忘的沙漏",
+                                                                    tint = if (isDarkMode) Color(0xFFE5C07B).copy(
+                                                                        alpha = 0.8f
+                                                                    ) else Color(0xFFE5C07B),
+                                                                    modifier = Modifier.size(21.dp)
+                                                                )
+                                                            }
+                                                        },
+                                                        title = "遗忘的沙漏",
+                                                        subtitleText = "$blacklistSongsCount 首歌曲",
+                                                        appColors = appColors,
+                                                        onClick = {
+                                                            activePlaylistId = -2L
+                                                            activePlaylistName = "遗忘的沙漏"
+                                                            viewModel.loadBlacklistSongs()
+                                                        },
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                }
                                             }
 
                                             // 3. Custom Playlists Header
