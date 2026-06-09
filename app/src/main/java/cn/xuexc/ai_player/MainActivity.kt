@@ -217,7 +217,7 @@ enum class AccentColor(
     val id: String, val label: String, val mainColor: Color, val gradientColors: List<Color>
 ) {
     TitaniumGray(
-        "TitaniumGray", "钛金灰", Color(0xFF8E8E93), listOf(Color(0xFF555555), Color(0xFF8A8A8A))
+        "TitaniumGray", "钛金灰", Color(0xFF9AA5B1), listOf(Color(0xFF486581), Color(0xFFBAC7D5))
     ),
     DeepBlue(
         "DeepBlue", "极光蓝", Color(0xFF2F80ED), listOf(Color(0xFF2F80ED), Color(0xFF56CCF2))
@@ -225,24 +225,11 @@ enum class AccentColor(
     EmeraldGreen(
         "EmeraldGreen", "翡翠绿", Color(0xFF27AE60), listOf(Color(0xFF27AE60), Color(0xFF6FCF97))
     ),
-    SunsetOrange(
-        "SunsetOrange", "夕阳橙", Color(0xFFFF9800), listOf(Color(0xFFFF9800), Color(0xFFFFB74D))
+    FlameRed(
+        "FlameRed", "赤焰红", Color(0xFFFF2D55), listOf(Color(0xFFFF2D55), Color(0xFFFF5E7E))
     ),
-    VibrantPurple("VibrantPurple", "经典紫", Color(0xFF9C27B0), listOf(Color(0xFF9C27B0), Color(0xFFE040FB))),
     SakuraPink(
         "SakuraPink", "樱花粉", Color(0xFFFF8DA1), listOf(Color(0xFFFF8DA1), Color(0xFFFFC5D3))
-    ),
-    ChampagneGold(
-        "ChampagneGold", "奢华金", Color(0xFFDFBA73), listOf(Color(0xFFC5A059), Color(0xFFE5D0A1))
-    ),
-    CyberpunkCyan(
-        "CyberpunkCyan", "赛博青", Color(0xFF00E5FF), listOf(Color(0xFF00B0FF), Color(0xFF00E5FF))
-    ),
-    MorandiPurple(
-        "MorandiPurple", "雅致紫", Color(0xFFA78BFA), listOf(Color(0xFFA78BFA), Color(0xFFDDD6FE))
-    ),
-    FlameRed(
-        "FlameRed", "炽焰红", Color(0xFFFF2D55), listOf(Color(0xFFFF2D55), Color(0xFFFF5E7E))
     )
 }
 
@@ -260,6 +247,11 @@ data class AppColors(
 )
 
 fun getAppColors(accent: AccentColor, isDark: Boolean): AppColors {
+    val mainColor = if (accent == AccentColor.TitaniumGray) {
+        if (isDark) Color(0xFFBAC7D5) else Color(0xFF4A5568)
+    } else {
+        accent.mainColor
+    }
     return if (isDark) {
         AppColors(
             mainBackground = SolidColor(Color(0xFF0C0C0E)),
@@ -268,7 +260,7 @@ fun getAppColors(accent: AccentColor, isDark: Boolean): AppColors {
             textColorPrimary = Color(0xFFF5F5F7),
             textColorSecondary = Color(0xFF8E8E93),
             navBarBackground = Color(0xFF121214),
-            navBarItemActive = accent.mainColor,
+            navBarItemActive = mainColor,
             navBarItemInactive = Color(0x66FFFFFF),
             textfieldContainer = Color(0x0DFFFFFF),
             textfieldBorder = Color.Transparent
@@ -281,7 +273,7 @@ fun getAppColors(accent: AccentColor, isDark: Boolean): AppColors {
             textColorPrimary = Color(0xFF1C1C1E),
             textColorSecondary = Color(0xFF8E8E93),
             navBarBackground = Color(0xFFF1F1F3),
-            navBarItemActive = accent.mainColor,
+            navBarItemActive = mainColor,
             navBarItemInactive = Color(0x66000000),
             textfieldContainer = Color(0x06000000),
             textfieldBorder = Color.Transparent
@@ -4192,7 +4184,14 @@ fun SongItemCard(
     val isDarkMode = appColors.surfaceColor == Color(0xFF161619)
     val pressedBgColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
     val cardBg = when {
-        isCurrent -> appColors.navBarItemActive.copy(alpha = 0.12f)
+        isCurrent -> {
+            val isTitanium = appColors.navBarItemActive == Color(0xFFBAC7D5) || 
+                             appColors.navBarItemActive == Color(0xFF4A5568) ||
+                             appColors.navBarItemActive == Color(0xFF9AA5B1) ||
+                             appColors.navBarItemActive == Color(0xFF8E8E93)
+            val alpha = if (isTitanium) 0.20f else 0.12f
+            appColors.navBarItemActive.copy(alpha = alpha)
+        }
         isPressed -> pressedBgColor
         else -> appColors.cardBackground
     }
