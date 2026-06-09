@@ -88,6 +88,9 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -230,6 +233,86 @@ val DialogModifier = Modifier
     .widthIn(max = DialogMaxWidth)
     .fillMaxWidth()
     .padding(horizontal = DialogHorizontalPadding)
+
+@Composable
+fun AppDialog(
+    onDismissRequest: () -> Unit,
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color,
+    iconBgColor: Color = iconColor.copy(alpha = 0.12f),
+    titleColor: Color = Color.Unspecified,
+    appColors: AppColors,
+    actionArea: @Composable (androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = DialogModifier.border(
+                width = 0.5.dp,
+                color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
+                    alpha = 0.08f
+                ),
+                shape = DialogShape
+            ),
+            shape = DialogShape,
+            colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(iconBgColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = iconColor,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        
+                        Text(
+                            text = title,
+                            color = if (titleColor != Color.Unspecified) titleColor else appColors.navBarItemActive,
+                            fontSize = DialogTitleFontSize,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    
+                    if (actionArea != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            actionArea()
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
+                
+                content()
+            }
+        }
+    }
+}
 
 enum class AccentColor(
     val id: String, val label: String, val mainColor: Color, val gradientColors: List<Color>
@@ -2914,111 +2997,80 @@ fun MainScreen(viewModel: SongViewModel) {
 
     // 0.0 Sort Order Selection Dialog
     if (showSortOrderDialog) {
-        val dialogBg = appColors.surfaceColor
         val itemBg = if (isDarkMode) Color(0x0CFFFFFF) else Color(0x06000000)
         val currentSortOrder by viewModel.sortOrder.collectAsState()
 
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showSortOrderDialog = false }) {
-            androidx.compose.material3.Surface(
-                shape = DialogShape,
-                color = dialogBg,
-                modifier = DialogModifier
+        AppDialog(
+            onDismissRequest = { showSortOrderDialog = false },
+            title = "选择排序方式",
+            icon = Icons.Default.Sort,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
             ) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                        .background(if (isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
+                        .clickable { viewModel.setSortAscending(true) }.padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
+                    Text(
+                        text = "正序",
+                        color = if (isSortAscending) currentAccent.mainColor else appColors.textColorPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Box(
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                        .background(if (!isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
+                        .clickable { viewModel.setSortAscending(false) }.padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "倒序",
+                        color = if (!isSortAscending) currentAccent.mainColor else appColors.textColorPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                SortOrder.values().forEach { order ->
+                    val isSelected = currentSortOrder == order
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
+                            .clickable {
+                                viewModel.setSortOrder(order)
+                            }.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "选择排序方式",
-                            color = currentAccent.mainColor,
-                            fontSize = DialogTitleFontSize,
-                            fontWeight = FontWeight.Bold
+                            text = order.displayName,
+                            color = if (isSelected) currentAccent.mainColor else appColors.textColorPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         )
-
-                        Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
-                        ) {
-                            Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
-                                    .clickable { viewModel.setSortAscending(true) }.padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "正序",
-                                    color = if (isSortAscending) currentAccent.mainColor else appColors.textColorPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                    .background(if (!isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
-                                    .clickable { viewModel.setSortAscending(false) }.padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "倒序",
-                                    color = if (!isSortAscending) currentAccent.mainColor else appColors.textColorPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Selected",
+                                tint = currentAccent.mainColor,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            SortOrder.values().forEach { order ->
-                                val isSelected = currentSortOrder == order
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                        .background(if (isSelected) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
-                                        .clickable {
-                                            viewModel.setSortOrder(order)
-                                        }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = order.displayName,
-                                        color = if (isSelected) currentAccent.mainColor else appColors.textColorPrimary,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            tint = currentAccent.mainColor,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    IconButton(
-                        onClick = { showSortOrderDialog = false },
-                        modifier = Modifier.align(Alignment.TopEnd).size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "关闭",
-                            tint = appColors.textColorSecondary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
-                        )
                     }
                 }
             }
@@ -3027,182 +3079,159 @@ fun MainScreen(viewModel: SongViewModel) {
 
     // 0. Blocked Folders Management Dialog
     if (showBlockedFoldersDialog) {
-        val dialogBg = appColors.surfaceColor
         val itemBg = if (isDarkMode) Color(0x0CFFFFFF) else Color(0x06000000)
 
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showBlockedFoldersDialog = false }) {
-            androidx.compose.material3.Surface(
-                shape = DialogShape,
-                color = dialogBg,
-                modifier = DialogModifier
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+        AppDialog(
+            onDismissRequest = { showBlockedFoldersDialog = false },
+            title = "屏蔽设置",
+            icon = Icons.Default.Block,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors,
+            actionArea = {
+                IconButton(
+                    onClick = { showBlockedFoldersDialog = false },
+                    modifier = Modifier.size(24.dp)
                 ) {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
-                    ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "关闭",
+                        tint = appColors.textColorSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        ) {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
+            ) {
+                // 2. Section: 已屏蔽的文件夹
+                item {
+                    Text(
+                        text = "已屏蔽的文件夹 (${blockedFolders.size})",
+                        color = currentAccent.mainColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
 
-                        // 2. Section: 已屏蔽的文件夹
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth()
-                                    .padding(end = 32.dp) // 留出空间给右上角关闭按钮
-                            ) {
+                if (blockedFolders.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .background(itemBg).padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "暂无已屏蔽的文件夹",
+                                color = appColors.textColorSecondary.copy(alpha = 0.5f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                } else {
+                    items(blockedFolders.toList()) { folderPath ->
+                        val folderName = remember(folderPath) {
+                            val file = java.io.File(folderPath)
+                            file.name.ifEmpty { folderPath }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                .background(itemBg).padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1.0f)) {
                                 Text(
-                                    text = "已屏蔽的文件夹 (${blockedFolders.size})",
-                                    color = currentAccent.mainColor,
-                                    fontSize = DialogTitleFontSize,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.align(Alignment.CenterStart)
+                                    text = folderName,
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = folderPath, color = appColors.textColorSecondary, fontSize = 10.sp
                                 )
                             }
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.height(DialogTitleToContentSpace - DialogItemSpacing))
-                        }
-
-                        if (blockedFolders.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                        .background(itemBg).padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "暂无已屏蔽的文件夹",
-                                        color = appColors.textColorSecondary.copy(alpha = 0.5f),
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        } else {
-                            items(blockedFolders.toList()) { folderPath ->
-                                val folderName = remember(folderPath) {
-                                    val file = java.io.File(folderPath)
-                                    file.name.ifEmpty { folderPath }
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                        .background(itemBg).padding(horizontal = 10.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1.0f)) {
-                                        Text(
-                                            text = folderName,
-                                            color = appColors.textColorPrimary,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = folderPath, color = appColors.textColorSecondary, fontSize = 10.sp
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { viewModel.removeBlockedFolder(folderPath) },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "取消屏蔽",
-                                            tint = Color(0xFFE06C75),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.height(10.dp))
-                        }
-
-                        // 3. Section: 检测到的音乐文件夹
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth()
+                            IconButton(
+                                onClick = { viewModel.removeBlockedFolder(folderPath) },
+                                modifier = Modifier.size(28.dp)
                             ) {
-                                Text(
-                                    text = "检测到的音乐文件夹 (${detectedFolders.size})",
-                                    color = currentAccent.mainColor,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.align(Alignment.CenterStart)
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "取消屏蔽",
+                                    tint = Color(0xFFE06C75),
+                                    modifier = Modifier.size(16.dp)
                                 )
-                            }
-                        }
-
-                        item {
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-
-                        if (detectedFolders.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                        .background(itemBg).padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "未检测到本地音乐文件夹",
-                                        color = appColors.textColorSecondary.copy(alpha = 0.5f),
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        } else {
-                            items(detectedFolders) { folderPath ->
-                                val folderName = remember(folderPath) {
-                                    val file = java.io.File(folderPath)
-                                    file.name.ifEmpty { folderPath }
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                        .background(itemBg).padding(horizontal = 10.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1.0f)) {
-                                        Text(
-                                            text = folderName,
-                                            color = appColors.textColorPrimary,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = folderPath, color = appColors.textColorSecondary, fontSize = 10.sp
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { viewModel.addBlockedFolder(folderPath) },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = "屏蔽该文件夹",
-                                            tint = currentAccent.mainColor,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
                             }
                         }
                     }
+                }
 
-                    IconButton(
-                        onClick = { showBlockedFoldersDialog = false },
-                        modifier = Modifier.align(Alignment.TopEnd).size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "关闭",
-                            tint = appColors.textColorSecondary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
-                        )
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
+                // 3. Section: 检测到的音乐文件夹
+                item {
+                    Text(
+                        text = "检测到的音乐文件夹 (${detectedFolders.size})",
+                        color = currentAccent.mainColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+
+                if (detectedFolders.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .background(itemBg).padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "未检测到本地音乐文件夹",
+                                color = appColors.textColorSecondary.copy(alpha = 0.5f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                } else {
+                    items(detectedFolders) { folderPath ->
+                        val folderName = remember(folderPath) {
+                            val file = java.io.File(folderPath)
+                            file.name.ifEmpty { folderPath }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                .background(itemBg).padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1.0f)) {
+                                Text(
+                                    text = folderName,
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = folderPath, color = appColors.textColorSecondary, fontSize = 10.sp
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.addBlockedFolder(folderPath) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "屏蔽该文件夹",
+                                    tint = currentAccent.mainColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -3211,128 +3240,90 @@ fun MainScreen(viewModel: SongViewModel) {
 
     // 1. Create Playlist Dialog
     if (showCreatePlaylistDialog) {
-        val dialogBg = appColors.surfaceColor
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showCreatePlaylistDialog = false }) {
-            androidx.compose.material3.Surface(
-                shape = DialogShape,
-                color = dialogBg,
-                tonalElevation = 6.dp,
-                modifier = DialogModifier.border(
-                    width = 1.dp,
-                    color = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f),
-                    shape = DialogShape
-                )
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
-                ) {
-                    // Header Area with Icon
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp))
-                                .background(currentAccent.mainColor.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center
+        AppDialog(
+            onDismissRequest = { showCreatePlaylistDialog = false },
+            title = "创建新歌单",
+            icon = Icons.Default.PlaylistAdd,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors
+        ) {
+            // Input TextField
+            OutlinedTextField(
+                value = newPlaylistName, onValueChange = { newPlaylistName = it }, placeholder = {
+                    Text(
+                        "输入歌单名称...",
+                        color = appColors.textColorSecondary.copy(alpha = 0.5f),
+                        fontSize = 13.sp
+                    )
+                }, singleLine = true, trailingIcon = {
+                    if (newPlaylistName.isNotEmpty()) {
+                        IconButton(
+                            onClick = { newPlaylistName = "" }, modifier = Modifier.size(24.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.QueueMusic,
-                                contentDescription = null,
-                                tint = currentAccent.mainColor,
-                                modifier = Modifier.size(16.dp)
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "清空",
+                                tint = appColors.textColorSecondary.copy(alpha = 0.6f),
+                                modifier = Modifier.size(14.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "创建新歌单",
-                            color = appColors.textColorPrimary,
-                            fontSize = DialogTitleFontSize,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
+                }, colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = if (isDarkMode) Color(0xFF222225) else Color(0xFFF3F3F5),
+                    unfocusedContainerColor = if (isDarkMode) Color(0xFF1B1B1E) else Color(0xFFF9F9FA),
+                    focusedTextColor = appColors.textColorPrimary,
+                    unfocusedTextColor = appColors.textColorPrimary,
+                    focusedBorderColor = currentAccent.mainColor,
+                    unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(
+                        alpha = 0.06f
+                    ),
+                    cursorColor = currentAccent.mainColor
+                ), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
+            )
 
-                    Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
+            Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
 
-                    // Input TextField
-                    OutlinedTextField(
-                        value = newPlaylistName, onValueChange = { newPlaylistName = it }, placeholder = {
-                            Text(
-                                "输入歌单名称...",
-                                color = appColors.textColorSecondary.copy(alpha = 0.5f),
-                                fontSize = 13.sp
-                            )
-                        }, singleLine = true, trailingIcon = {
-                            if (newPlaylistName.isNotEmpty()) {
-                                IconButton(
-                                    onClick = { newPlaylistName = "" }, modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "清空",
-                                        tint = appColors.textColorSecondary.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        }, colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = if (isDarkMode) Color(0xFF222225) else Color(0xFFF3F3F5),
-                            unfocusedContainerColor = if (isDarkMode) Color(0xFF1B1B1E) else Color(0xFFF9F9FA),
-                            focusedTextColor = appColors.textColorPrimary,
-                            unfocusedTextColor = appColors.textColorPrimary,
-                            focusedBorderColor = currentAccent.mainColor,
-                            unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(
-                                alpha = 0.06f
-                            ),
-                            cursorColor = currentAccent.mainColor
-                        ), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
-                    )
+            // Action Buttons (Row)
+            val isNameValid = newPlaylistName.isNotBlank()
+            Row(
+                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
+            ) {
+                // Cancel Button
+                Button(
+                    onClick = {
+                        showCreatePlaylistDialog = false
+                        newPlaylistName = ""
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                        contentColor = appColors.textColorSecondary
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                }
 
-                    Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
-
-                    // Action Buttons (Row)
-                    val isNameValid = newPlaylistName.isNotBlank()
-                    Row(
-                        modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
-                    ) {
-                        // Cancel Button
-                        Button(
-                            onClick = {
-                                showCreatePlaylistDialog = false
-                                newPlaylistName = ""
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
-                                contentColor = appColors.textColorSecondary
-                            ),
-                            shape = DialogButtonShape,
-                            modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        }
-
-                        // Create Button
-                        Button(
-                            enabled = isNameValid,
-                            onClick = {
-                                viewModel.createPlaylist(newPlaylistName.trim())
-                                newPlaylistName = ""
-                                showCreatePlaylistDialog = false
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = currentAccent.mainColor,
-                                contentColor = Color.White,
-                                disabledContainerColor = if (isDarkMode) Color(0xFF2E2E33) else Color(0xFFE5E5E9),
-                                disabledContentColor = appColors.textColorSecondary.copy(alpha = 0.4f)
-                            ),
-                            shape = DialogButtonShape,
-                            modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("创建", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                // Create Button
+                Button(
+                    enabled = isNameValid,
+                    onClick = {
+                        viewModel.createPlaylist(newPlaylistName.trim())
+                        newPlaylistName = ""
+                        showCreatePlaylistDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = currentAccent.mainColor,
+                        contentColor = Color.White,
+                        disabledContainerColor = if (isDarkMode) Color(0xFF2E2E33) else Color(0xFFE5E5E9),
+                        disabledContentColor = appColors.textColorSecondary.copy(alpha = 0.4f)
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("创建", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -3340,67 +3331,58 @@ fun MainScreen(viewModel: SongViewModel) {
 
     // 1.1 Delete Playlist Confirm Dialog
     if (playlistToDelete != null) {
-        val dialogBg = appColors.surfaceColor
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { playlistToDelete = null }) {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+        AppDialog(
+            onDismissRequest = { playlistToDelete = null },
+            title = "删除歌单",
+            icon = Icons.Default.Delete,
+            iconColor = Color(0xFFE06C75),
+            appColors = appColors
+        ) {
+            Text(
+                text = "确认要删除歌单「${playlistToDelete!!.name}」吗？\n删除后歌单内的歌曲记录将丢失，该操作无法撤销。",
+                color = appColors.textColorPrimary,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp)
+                // Cancel Button
+                Button(
+                    onClick = { playlistToDelete = null },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                        contentColor = appColors.textColorSecondary
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "删除歌单",
-                            color = currentAccent.mainColor,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 2.dp)
-                        )
+                    Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                }
 
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "确认要删除歌单「${playlistToDelete!!.name}」吗？\n删除后歌单内的歌曲记录将丢失，该操作无法撤销。",
-                            color = appColors.textColorPrimary,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = { playlistToDelete = null }) {
-                                Text("取消", color = appColors.textColorSecondary, fontSize = 13.sp)
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            TextButton(
-                                onClick = {
-                                    val id = playlistToDelete!!.id
-                                    viewModel.deletePlaylist(id)
-                                    playlistToDelete = null
-                                    Toast.makeText(context, "歌单已删除", Toast.LENGTH_SHORT).show()
-                                }) {
-                                Text(
-                                    text = "确认删除",
-                                    color = Color(0xFFE06C75),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            }
-                        }
-                    }
+                // Delete Button
+                Button(
+                    onClick = {
+                        val id = playlistToDelete!!.id
+                        viewModel.deletePlaylist(id)
+                        playlistToDelete = null
+                        Toast.makeText(context, "歌单已删除", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE06C75),
+                        contentColor = Color.White
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("确认删除", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -3409,268 +3391,183 @@ fun MainScreen(viewModel: SongViewModel) {
     // 1.15 Import Playlist Result Dialog
     if (importResult != null) {
         val result = importResult!!
-        val dialogBg = appColors.surfaceColor
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { importResult = null }) {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = dialogBg,
-                tonalElevation = 6.dp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).border(
-                    width = 1.dp,
-                    color = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f),
-                    shape = RoundedCornerShape(20.dp)
-                )
+        val hasFailure = result.failureCount > 0
+
+        AppDialog(
+            onDismissRequest = { importResult = null },
+            title = "导入歌单结果",
+            icon = if (hasFailure) Icons.Default.Warning else Icons.Default.Check,
+            iconColor = if (hasFailure) Color(0xFFD97706) else currentAccent.mainColor,
+            appColors = appColors
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp)
+                Text(
+                    text = "已导入歌单/分组: ${result.playlistsImported} 个",
+                    color = appColors.textColorPrimary,
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = "成功关联本地文件: ${result.successCount} 首",
+                    color = currentAccent.mainColor,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "未找到本地物理文件: ${result.failureCount} 首",
+                    color = if (hasFailure) Color(0xFFE06C75) else appColors.textColorSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = if (hasFailure) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+
+            if (hasFailure && result.failedSongs.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "未找到物理文件的歌曲列表:",
+                    color = appColors.textColorSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Box(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp).clip(RoundedCornerShape(8.dp))
+                        .background(if (isDarkMode) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f))
+                        .border(
+                            0.5.dp,
+                            if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
+                            RoundedCornerShape(8.dp)
+                        ).padding(8.dp)
                 ) {
-                    // Header Area with Icon
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Box(
-                            modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)).background(
-                                if (result.failureCount > 0) Color(0xFFD97706).copy(alpha = 0.12f)
-                                else currentAccent.mainColor.copy(alpha = 0.12f)
-                            ), contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (result.failureCount > 0) Icons.Default.Warning
-                                else Icons.Default.Check,
-                                contentDescription = null,
-                                tint = if (result.failureCount > 0) Color(0xFFD97706)
-                                else currentAccent.mainColor,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "导入歌单结果",
-                            color = appColors.textColorPrimary,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Stats Section
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "已导入歌单/分组: ${result.playlistsImported} 个",
-                            color = appColors.textColorPrimary,
-                            fontSize = 13.sp
-                        )
-                        Text(
-                            text = "成功关联本地文件: ${result.successCount} 首",
-                            color = currentAccent.mainColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "未找到本地物理文件: ${result.failureCount} 首",
-                            color = if (result.failureCount > 0) Color(0xFFE06C75) else appColors.textColorSecondary,
-                            fontSize = 13.sp,
-                            fontWeight = if (result.failureCount > 0) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-
-                    // Failed list section if any failures
-                    if (result.failureCount > 0 && result.failedSongs.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "未找到物理文件的歌曲列表:",
-                            color = appColors.textColorSecondary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Box(
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp).clip(RoundedCornerShape(8.dp))
-                                .background(if (isDarkMode) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f))
-                                .border(
-                                    0.5.dp,
-                                    if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
-                                    RoundedCornerShape(8.dp)
-                                ).padding(8.dp)
-                        ) {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)
+                        items(result.failedSongs) { songText ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                items(result.failedSongs) { songText ->
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.size(4.dp).clip(CircleShape)
-                                                .background(Color(0xFFE06C75))
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = songText,
-                                            color = appColors.textColorPrimary,
-                                            fontSize = 12.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
+                                Box(
+                                    modifier = Modifier.size(4.dp).clip(CircleShape)
+                                        .background(Color(0xFFE06C75))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = songText,
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Single Confirm Button
-                    Button(
-                        onClick = { importResult = null },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = currentAccent.mainColor, contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().height(36.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("我知道了", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
+
+            Button(
+                onClick = { importResult = null },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = currentAccent.mainColor, contentColor = Color.White
+                ),
+                shape = DialogButtonShape,
+                modifier = Modifier.fillMaxWidth().height(DialogButtonHeight),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("我知道了", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 
     // 1.16 Import Playlist Error Dialog
     if (importError != null) {
-        val dialogBg = appColors.surfaceColor
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { importError = null }) {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = dialogBg,
-                tonalElevation = 6.dp,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).border(
-                    width = 1.dp,
-                    color = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f),
-                    shape = RoundedCornerShape(20.dp)
-                )
+        AppDialog(
+            onDismissRequest = { importError = null },
+            title = "导入歌单失败",
+            icon = Icons.Default.Warning,
+            iconColor = Color(0xFFE06C75),
+            appColors = appColors
+        ) {
+            Text(
+                text = importError!!, color = appColors.textColorPrimary, fontSize = 13.sp, lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
+
+            Button(
+                onClick = { importError = null },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE06C75), contentColor = Color.White
+                ),
+                shape = DialogButtonShape,
+                modifier = Modifier.fillMaxWidth().height(DialogButtonHeight),
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFFE06C75).copy(alpha = 0.12f)), contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = Color(0xFFE06C75),
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "导入歌单失败",
-                            color = appColors.textColorPrimary,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = importError!!, color = appColors.textColorPrimary, fontSize = 13.sp, lineHeight = 18.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Button(
-                        onClick = { importError = null },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE06C75), contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().height(36.dp),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("我知道了", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+                Text("我知道了", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 
     // 1.3 Delete Song From Local Database Confirm Dialog
     if (songToDelete != null) {
-        val dialogBg = appColors.surfaceColor
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { songToDelete = null }) {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+        AppDialog(
+            onDismissRequest = { songToDelete = null },
+            title = "删除歌曲",
+            icon = Icons.Default.Delete,
+            iconColor = Color(0xFFE06C75),
+            titleColor = Color(0xFFE06C75),
+            appColors = appColors
+        ) {
+            Text(
+                text = "确定要删除歌曲「${songToDelete!!.title}」吗？",
+                color = appColors.textColorPrimary,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp)
+                // Cancel Button
+                Button(
+                    onClick = { songToDelete = null },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                        contentColor = appColors.textColorSecondary
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "删除歌曲",
-                            color = Color(0xFFE06C75),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 2.dp)
-                        )
+                    Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                }
 
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "确定要删除歌曲「${songToDelete!!.title}」吗？",
-                            color = appColors.textColorPrimary,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = { songToDelete = null }) {
-                                Text("取消", color = appColors.textColorSecondary, fontSize = 13.sp)
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            TextButton(
-                                onClick = {
-                                    val song = songToDelete!!
-                                    viewModel.deleteSong(context, song.id)
-                                    songToDelete = null
-                                    Toast.makeText(context, "已删除歌曲记录", Toast.LENGTH_SHORT).show()
-                                }) {
-                                Text(
-                                    text = "确认删除",
-                                    color = Color(0xFFE06C75),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            }
-                        }
-                    }
+                // Delete Button
+                Button(
+                    onClick = {
+                        val song = songToDelete!!
+                        viewModel.deleteSong(context, song.id)
+                        songToDelete = null
+                        Toast.makeText(context, "已删除歌曲记录", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE06C75),
+                        contentColor = Color.White
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("确认删除", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -3678,68 +3575,59 @@ fun MainScreen(viewModel: SongViewModel) {
 
     // 1.2 Remove Song From Playlist Confirm Dialog
     if (songToRemoveFromPlaylist != null) {
-        val dialogBg = appColors.surfaceColor
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { songToRemoveFromPlaylist = null }) {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+        AppDialog(
+            onDismissRequest = { songToRemoveFromPlaylist = null },
+            title = "从歌单移除",
+            icon = Icons.Default.Delete,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors
+        ) {
+            Text(
+                text = "确认要将歌曲「${songToRemoveFromPlaylist!!.second.title}」从当前歌单中移出吗？",
+                color = appColors.textColorPrimary,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(12.dp)
+                // Cancel Button
+                Button(
+                    onClick = { songToRemoveFromPlaylist = null },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                        contentColor = appColors.textColorSecondary
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "从歌单移除",
-                            color = currentAccent.mainColor,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 2.dp)
-                        )
+                    Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                }
 
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "确认要将歌曲「${songToRemoveFromPlaylist!!.second.title}」从当前歌单中移出吗？",
-                            color = appColors.textColorPrimary,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = { songToRemoveFromPlaylist = null }) {
-                                Text("取消", color = appColors.textColorSecondary, fontSize = 13.sp)
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            TextButton(
-                                onClick = {
-                                    val playlistId = songToRemoveFromPlaylist!!.first
-                                    val songId = songToRemoveFromPlaylist!!.second.id
-                                    viewModel.removeSongFromPlaylist(playlistId, songId)
-                                    songToRemoveFromPlaylist = null
-                                    Toast.makeText(context, "已从歌单移除", Toast.LENGTH_SHORT).show()
-                                }) {
-                                Text(
-                                    text = "确认移除",
-                                    color = Color(0xFFE06C75),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            }
-                        }
-                    }
+                // Remove Button
+                Button(
+                    onClick = {
+                        val playlistId = songToRemoveFromPlaylist!!.first
+                        val songId = songToRemoveFromPlaylist!!.second.id
+                        viewModel.removeSongFromPlaylist(playlistId, songId)
+                        songToRemoveFromPlaylist = null
+                        Toast.makeText(context, "已从歌单移除", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE06C75),
+                        contentColor = Color.White
+                    ),
+                    shape = DialogButtonShape,
+                    modifier = Modifier.weight(1f).height(DialogButtonHeight),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("确认移除", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -3747,102 +3635,82 @@ fun MainScreen(viewModel: SongViewModel) {
 
     // 2. Add Song To Playlist Dialog
     if (showAddToPlaylistDialog && selectedSongForAddToPlaylist != null) {
-        val dialogBg = appColors.surfaceColor
         val itemBg = if (isDarkMode) Color(0x0AFFFFFF) else Color(0x0A000000)
 
-        androidx.compose.ui.window.Dialog(
+        AppDialog(
             onDismissRequest = {
                 showAddToPlaylistDialog = false
                 selectedSongForAddToPlaylist = null
-            }) {
-            androidx.compose.material3.Surface(
-                shape = DialogShape,
-                color = dialogBg,
-                modifier = DialogModifier
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+            },
+            title = "加入到歌单",
+            icon = Icons.Default.PlaylistAdd,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors,
+            actionArea = {
+                IconButton(
+                    onClick = {
+                        showAddToPlaylistDialog = false
+                        selectedSongForAddToPlaylist = null
+                    }, modifier = Modifier.size(24.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "加入到歌单",
-                            color = currentAccent.mainColor,
-                            fontSize = DialogTitleFontSize,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-
-                        if (playlists.isEmpty()) {
-                            Text(
-                                text = "暂无自定义歌单。\n请先前往“我的歌单”创建新歌单。",
-                                color = appColors.textColorSecondary,
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
-                                modifier = Modifier.padding(vertical = 8.dp)
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "关闭",
+                        tint = appColors.textColorSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        ) {
+            if (playlists.isEmpty()) {
+                Text(
+                    text = "暂无自定义歌单。\n请先前往“我的歌单”创建新歌单。",
+                    color = appColors.textColorSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
+                    modifier = Modifier.heightIn(max = 220.dp)
+                ) {
+                    items(playlists) { playlist ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                .background(itemBg).clickable {
+                                    viewModel.addSongToPlaylist(
+                                        playlist.id, selectedSongForAddToPlaylist!!.id
+                                    )
+                                    Toast.makeText(
+                                        context, "已成功加入: ${playlist.name}", Toast.LENGTH_SHORT
+                                    ).show()
+                                    showAddToPlaylistDialog = false
+                                    selectedSongForAddToPlaylist = null
+                                }.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            PlaylistCover(
+                                firstSongId = playlist.firstSongId,
+                                currentAccent = currentAccent,
+                                modifier = Modifier.size(32.dp)
                             )
-                        } else {
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                                modifier = Modifier.heightIn(max = 220.dp)
-                            ) {
-                                items(playlists) { playlist ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                            .background(itemBg).clickable {
-                                                viewModel.addSongToPlaylist(
-                                                    playlist.id, selectedSongForAddToPlaylist!!.id
-                                                )
-                                                Toast.makeText(
-                                                    context, "已成功加入: ${playlist.name}", Toast.LENGTH_SHORT
-                                                ).show()
-                                                showAddToPlaylistDialog = false
-                                                selectedSongForAddToPlaylist = null
-                                            }.padding(horizontal = 10.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // 使用歌单第一歌曲的封面作为图标
-                                        PlaylistCover(
-                                            firstSongId = playlist.firstSongId,
-                                            currentAccent = currentAccent,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column(modifier = Modifier.weight(1.0f)) {
-                                            Text(
-                                                text = playlist.name,
-                                                color = appColors.textColorPrimary,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                            Spacer(modifier = Modifier.height(1.dp))
-                                            Text(
-                                                text = "${playlist.songCount} 首歌曲",
-                                                color = appColors.textColorSecondary,
-                                                fontSize = 10.sp
-                                            )
-                                        }
-                                    }
-                                }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1.0f)) {
+                                Text(
+                                    text = playlist.name,
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(1.dp))
+                                Text(
+                                    text = "${playlist.songCount} 首歌曲",
+                                    color = appColors.textColorSecondary,
+                                    fontSize = 10.sp
+                                )
                             }
                         }
-                    }
-
-                    // 右上角极简关闭 X 按钮，与其他弹窗保持一致，无底部冗余“取消”按钮
-                    IconButton(
-                        onClick = {
-                            showAddToPlaylistDialog = false
-                            selectedSongForAddToPlaylist = null
-                        }, modifier = Modifier.align(Alignment.TopEnd).size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "关闭",
-                            tint = appColors.textColorSecondary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
-                        )
                     }
                 }
             }
@@ -3851,134 +3719,115 @@ fun MainScreen(viewModel: SongViewModel) {
 
     // 3. Theme Selection Dialog
     if (showThemeDialog) {
-        val dialogBg = appColors.surfaceColor
-
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showThemeDialog = false }) {
-            androidx.compose.material3.Surface(
-                shape = DialogShape,
-                color = dialogBg,
-                modifier = DialogModifier
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+        AppDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = "选择主题颜色",
+            icon = Icons.Default.Palette,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors,
+            actionArea = {
+                IconButton(
+                    onClick = { showThemeDialog = false }, modifier = Modifier.size(24.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "关闭",
+                        tint = appColors.textColorSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
+                ) {
+                    Box(
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                            .background(if (!isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f) else appColors.cardBackground)
+                            .border(
+                                1.5.dp,
+                                if (!isDarkMode) currentAccent.mainColor else Color.Transparent,
+                                RoundedCornerShape(12.dp)
+                            ).clickable { viewModel.setDarkMode(false) }.padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "选择主题颜色",
-                            color = currentAccent.mainColor,
-                            fontSize = DialogTitleFontSize,
+                            text = "日间模式",
+                            color = if (!isDarkMode) currentAccent.mainColor else appColors.textColorSecondary,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
-
-                        Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-
-                        // Dark/Light Mode Selector Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
-                        ) {
-                            // Light Mode
-                            Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                    .background(if (!isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f) else appColors.cardBackground)
-                                    .border(
-                                        1.5.dp,
-                                        if (!isDarkMode) currentAccent.mainColor else Color.Transparent,
-                                        RoundedCornerShape(12.dp)
-                                    ).clickable { viewModel.setDarkMode(false) }.padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "日间模式",
-                                    color = if (!isDarkMode) currentAccent.mainColor else appColors.textColorSecondary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            // Dark Mode
-                            Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                    .background(if (isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f) else appColors.cardBackground)
-                                    .border(
-                                        1.5.dp,
-                                        if (isDarkMode) currentAccent.mainColor else Color.Transparent,
-                                        RoundedCornerShape(12.dp)
-                                    ).clickable { viewModel.setDarkMode(true) }.padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "夜间模式",
-                                    color = if (isDarkMode) currentAccent.mainColor else appColors.textColorSecondary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            AccentColor.values().forEach { accent ->
-                                val isSelected = accent.id == themeName
-                                val accentItemBg = if (isSelected) {
-                                    accent.mainColor.copy(alpha = 0.12f)
-                                } else {
-                                    appColors.cardBackground
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                        .background(accentItemBg).border(
-                                            1.5.dp,
-                                            if (isSelected) accent.mainColor else Color.Transparent,
-                                            RoundedCornerShape(12.dp)
-                                        ).clickable {
-                                            viewModel.setThemeName(accent.id)
-                                        }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        // Flat color circle
-                                        Box(
-                                            modifier = Modifier.size(24.dp).clip(CircleShape).background(accent.mainColor)
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = accent.label,
-                                            color = appColors.textColorPrimary,
-                                            fontSize = 14.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    }
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            tint = accent.mainColor,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     }
 
-                    IconButton(
-                        onClick = { showThemeDialog = false }, modifier = Modifier.align(Alignment.TopEnd).size(28.dp)
+                    Box(
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                            .background(if (isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f) else appColors.cardBackground)
+                            .border(
+                                1.5.dp,
+                                if (isDarkMode) currentAccent.mainColor else Color.Transparent,
+                                RoundedCornerShape(12.dp)
+                            ).clickable { viewModel.setDarkMode(true) }.padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "关闭",
-                            tint = appColors.textColorSecondary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
+                        Text(
+                            text = "夜间模式",
+                            color = if (isDarkMode) currentAccent.mainColor else appColors.textColorSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AccentColor.values().forEach { accent ->
+                        val isSelected = accent.id == themeName
+                        val accentItemBg = if (isSelected) {
+                            accent.mainColor.copy(alpha = 0.12f)
+                        } else {
+                            appColors.cardBackground
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                .background(accentItemBg).border(
+                                    1.5.dp,
+                                    if (isSelected) accent.mainColor else Color.Transparent,
+                                    RoundedCornerShape(12.dp)
+                                ).clickable {
+                                    viewModel.setThemeName(accent.id)
+                                }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier.size(24.dp).clip(CircleShape).background(accent.mainColor)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = accent.label,
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = accent.mainColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -3998,140 +3847,129 @@ fun MainScreen(viewModel: SongViewModel) {
     // 检查更新弹窗
     if (showUpdateDialog && latestVersionInfo != null) {
         val info = latestVersionInfo!!
-        val dialogBg = appColors.surfaceColor
 
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showUpdateDialog = false }
+        AppDialog(
+            onDismissRequest = { showUpdateDialog = false },
+            title = "发现新版本",
+            icon = Icons.Default.CloudDownload,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors,
+            actionArea = {
+                IconButton(
+                    onClick = { showUpdateDialog = false }, modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "关闭",
+                        tint = appColors.textColorSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         ) {
-            androidx.compose.material3.Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = dialogBg,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "当前版本: v$currentVersionName",
+                        color = appColors.textColorSecondary,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "•",
+                        color = appColors.textColorSecondary,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "最新版本: ${info.tagName}",
+                        color = currentAccent.mainColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = "更新内容：",
+                    color = appColors.textColorPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
                 Box(
-                    modifier = Modifier.fillMaxWidth().padding(18.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 180.dp)
+                        .background(
+                            if (isDarkMode) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(10.dp)
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            text = "发现新版本 ${info.tagName}",
-                            color = currentAccent.mainColor,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 2.dp)
+                            text = info.body.ifBlank { "无更新日志说明。" },
+                            color = appColors.textColorPrimary.copy(alpha = 0.9f),
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp
                         )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "当前版本: v$currentVersionName",
-                                color = appColors.textColorSecondary,
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                text = "•",
-                                color = appColors.textColorSecondary,
-                                fontSize = 12.sp
-                            )
-                            Text(
-                                text = "最新版本: ${info.tagName}",
-                                color = currentAccent.mainColor,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Text(
-                            text = "更新内容：",
-                            color = appColors.textColorPrimary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 200.dp)
-                                .background(
-                                    if (isDarkMode) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .padding(10.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .verticalScroll(rememberScrollState())
-                            ) {
-                                Text(
-                                    text = info.body.ifBlank { "无更新日志说明。" },
-                                    color = appColors.textColorPrimary.copy(alpha = 0.9f),
-                                    fontSize = 12.sp,
-                                    lineHeight = 18.sp
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = { showUpdateDialog = false }
-                            ) {
-                                Text(
-                                    text = "以后再说",
-                                    color = appColors.textColorSecondary,
-                                    fontSize = 14.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    showUpdateDialog = false
-                                    try {
-                                        val intent = android.content.Intent(
-                                            android.content.Intent.ACTION_VIEW,
-                                            android.net.Uri.parse(info.htmlUrl)
-                                        )
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "无法打开浏览器", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = currentAccent.mainColor,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = "立即更新",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
                     }
+                }
 
-                    IconButton(
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = DialogContentToButtonsSpace),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
                         onClick = { showUpdateDialog = false },
-                        modifier = Modifier.align(Alignment.TopEnd).size(28.dp)
+                        modifier = Modifier.height(DialogButtonHeight),
+                        shape = DialogButtonShape
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "关闭",
-                            tint = appColors.textColorSecondary.copy(alpha = 0.7f),
-                            modifier = Modifier.size(18.dp)
+                        Text(
+                            text = "以后再说",
+                            color = appColors.textColorSecondary,
+                            fontSize = 13.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(DialogButtonSpacing))
+                    Button(
+                        onClick = {
+                            showUpdateDialog = false
+                            try {
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(info.htmlUrl)
+                                )
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = currentAccent.mainColor,
+                            contentColor = Color.White
+                        ),
+                        shape = DialogButtonShape,
+                        modifier = Modifier.height(DialogButtonHeight),
+                        contentPadding = PaddingValues(horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = "立即更新",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -4486,64 +4324,42 @@ fun SongItemCard(
         val sizeMb = song.size / (1024f * 1024f)
         val sizeText = String.format(Locale.getDefault(), "%.2f MB", sizeMb)
 
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showDetailsDialog = false }) {
-            Card(
-                modifier = DialogModifier.border(
-                    width = 0.5.dp,
-                    color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
-                        alpha = 0.08f
-                    ),
-                    shape = DialogShape
-                ),
-                shape = DialogShape,
-                colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+        AppDialog(
+            onDismissRequest = { showDetailsDialog = false },
+            title = "歌曲详情",
+            icon = Icons.Default.Info,
+            iconColor = appColors.navBarItemActive,
+            appColors = appColors,
+            actionArea = {
+                IconButton(
+                    onClick = { showDetailsDialog = false }, modifier = Modifier.size(24.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "歌曲详情",
-                            fontSize = DialogTitleFontSize,
-                            fontWeight = FontWeight.Bold,
-                            color = appColors.navBarItemActive
-                        )
-                        IconButton(
-                            onClick = { showDetailsDialog = false }, modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "关闭",
-                                tint = appColors.textColorSecondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
-                    ) {
-                        DetailRow(label = "歌名", value = song.title, appColors = appColors)
-                        DetailRow(
-                            label = "歌手",
-                            value = if (song.artist.isBlank()) "未知歌手" else song.artist,
-                            appColors = appColors
-                        )
-                        DetailRow(
-                            label = "专辑",
-                            value = if (song.album.isBlank()) "未知专辑" else song.album,
-                            appColors = appColors
-                        )
-                        DetailRow(label = "时长", value = formatDuration(song.duration), appColors = appColors)
-                        DetailRow(label = "大小", value = sizeText, appColors = appColors)
-                        DetailRow(label = "文件路径", value = song.path, appColors = appColors, isPath = true)
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "关闭",
+                        tint = appColors.textColorSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
+            }
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
+            ) {
+                DetailRow(label = "歌名", value = song.title, appColors = appColors)
+                DetailRow(
+                    label = "歌手",
+                    value = if (song.artist.isBlank()) "未知歌手" else song.artist,
+                    appColors = appColors
+                )
+                DetailRow(
+                    label = "专辑",
+                    value = if (song.album.isBlank()) "未知专辑" else song.album,
+                    appColors = appColors
+                )
+                DetailRow(label = "时长", value = formatDuration(song.duration), appColors = appColors)
+                DetailRow(label = "大小", value = sizeText, appColors = appColors)
+                DetailRow(label = "文件路径", value = song.path, appColors = appColors, isPath = true)
             }
         }
     }
@@ -5926,96 +5742,72 @@ fun FullPlayerScreen(
             }
         }
 
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showPlaybackQueueDialog = false }) {
-            Card(
-                modifier = DialogModifier.border(
-                    width = 0.5.dp,
-                    color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
-                        alpha = 0.08f
-                    ),
-                    shape = DialogShape
-                ),
-                shape = DialogShape,
-                colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+        AppDialog(
+            onDismissRequest = { showPlaybackQueueDialog = false },
+            title = "当前播放列表",
+            icon = Icons.Default.QueueMusic,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors,
+            actionArea = {
+                Text(
+                    text = "${playbackQueue.size} 首",
+                    color = appColors.textColorSecondary.copy(alpha = 0.65f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+        ) {
+            if (playbackQueue.isEmpty()) {
+                Text(
+                    text = "播放列表为空", color = appColors.textColorSecondary, fontSize = 13.sp
+                )
+            } else {
+                LazyColumn(
+                    state = queueListState,
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "当前播放列表",
-                            color = currentAccent.mainColor,
-                            fontSize = DialogTitleFontSize,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${playbackQueue.size} 首",
-                            color = appColors.textColorSecondary.copy(alpha = 0.65f),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-
-                    if (playbackQueue.isEmpty()) {
-                        Text(
-                            text = "播放列表为空", color = appColors.textColorSecondary, fontSize = 13.sp
-                        )
-                    } else {
-                        LazyColumn(
-                            state = queueListState,
-                            verticalArrangement = Arrangement.spacedBy(3.dp),
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)
+                    items(playbackQueue) { qSong ->
+                        val isCurrent = qSong.id == song.id
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                viewModel.playSong(context, qSong)
+                            }.clip(RoundedCornerShape(8.dp))
+                                .background(if (isCurrent) qItemHighlightBg else Color.Transparent)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            items(playbackQueue) { qSong ->
-                                val isCurrent = qSong.id == song.id
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable {
-                                        viewModel.playSong(context, qSong)
-                                    }.clip(RoundedCornerShape(8.dp))
-                                        .background(if (isCurrent) qItemHighlightBg else Color.Transparent)
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1.0f)) {
-                                        Text(
-                                            text = qSong.title,
-                                            color = if (isCurrent) currentAccent.mainColor else appColors.textColorPrimary,
-                                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                            fontSize = 13.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = qSong.artist,
-                                            color = appColors.textColorSecondary,
-                                            fontSize = 10.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                            Column(modifier = Modifier.weight(1.0f)) {
+                                Text(
+                                    text = qSong.title,
+                                    color = if (isCurrent) currentAccent.mainColor else appColors.textColorPrimary,
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = qSong.artist,
+                                    color = appColors.textColorSecondary,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
 
-                                    IconButton(
-                                        onClick = {
-                                            viewModel.removeFromPlaybackQueue(qSong.id, context)
-                                            Toast.makeText(context, "已从播放列表移出", Toast.LENGTH_SHORT).show()
-                                        }, modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Clear,
-                                            contentDescription = "移出播放列表",
-                                            tint = appColors.textColorSecondary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
+                            IconButton(
+                                onClick = {
+                                    viewModel.removeFromPlaybackQueue(qSong.id, context)
+                                    Toast.makeText(context, "已从播放列表移出", Toast.LENGTH_SHORT).show()
+                                }, modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "移出播放列表",
+                                    tint = appColors.textColorSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                         }
                     }
@@ -6024,69 +5816,46 @@ fun FullPlayerScreen(
         }
     }
 
-
     if (showDetailsDialog) {
         val sizeMb = song.size / (1024f * 1024f)
         val sizeText = String.format(Locale.getDefault(), "%.2f MB", sizeMb)
 
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showDetailsDialog = false }) {
-            Card(
-                modifier = DialogModifier.border(
-                    width = 0.5.dp,
-                    color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
-                        alpha = 0.08f
-                    ),
-                    shape = DialogShape
-                ),
-                shape = DialogShape,
-                colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
+        AppDialog(
+            onDismissRequest = { showDetailsDialog = false },
+            title = "歌曲详情",
+            icon = Icons.Default.Info,
+            iconColor = currentAccent.mainColor,
+            appColors = appColors,
+            actionArea = {
+                IconButton(
+                    onClick = { showDetailsDialog = false }, modifier = Modifier.size(24.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "歌曲详情",
-                            fontSize = DialogTitleFontSize,
-                            fontWeight = FontWeight.Bold,
-                            color = appColors.navBarItemActive
-                        )
-                        IconButton(
-                            onClick = { showDetailsDialog = false }, modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "关闭",
-                                tint = appColors.textColorSecondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
-                    ) {
-                        DetailRow(label = "歌名", value = song.title, appColors = appColors)
-                        DetailRow(
-                            label = "歌手",
-                            value = if (song.artist.isBlank()) "未知歌手" else song.artist,
-                            appColors = appColors
-                        )
-                        DetailRow(
-                            label = "专辑",
-                            value = if (song.album.isBlank()) "未知专辑" else song.album,
-                            appColors = appColors
-                        )
-                        DetailRow(label = "时长", value = formatDuration(song.duration), appColors = appColors)
-                        DetailRow(label = "大小", value = sizeText, appColors = appColors)
-                        DetailRow(label = "文件路径", value = song.path, appColors = appColors, isPath = true)
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "关闭",
+                        tint = appColors.textColorSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
+            }
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
+            ) {
+                DetailRow(label = "歌名", value = song.title, appColors = appColors)
+                DetailRow(
+                    label = "歌手",
+                    value = if (song.artist.isBlank()) "未知歌手" else song.artist,
+                    appColors = appColors
+                )
+                DetailRow(
+                    label = "专辑",
+                    value = if (song.album.isBlank()) "未知专辑" else song.album,
+                    appColors = appColors
+                )
+                DetailRow(label = "时长", value = formatDuration(song.duration), appColors = appColors)
+                DetailRow(label = "大小", value = sizeText, appColors = appColors)
+                DetailRow(label = "文件路径", value = song.path, appColors = appColors, isPath = true)
             }
         }
     }
@@ -6144,205 +5913,179 @@ fun SleepTimerDialog(
     var localPlayComplete by remember { mutableStateOf(playComplete) }
     var customMinutes by remember { mutableStateOf(30f) }
 
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = onDismissRequest
-    ) {
-        Card(
-            modifier = DialogModifier.border(
-                width = 0.5.dp,
-                color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
-                    alpha = 0.08f
-                ),
-                shape = DialogShape
-            ),
-            shape = DialogShape,
-            colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding),
-                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
+    AppDialog(
+        onDismissRequest = onDismissRequest,
+        title = "定时关闭",
+        icon = Icons.Default.AccessTime,
+        iconColor = currentAccent.mainColor,
+        appColors = appColors,
+        actionArea = {
+            IconButton(
+                onClick = onDismissRequest, modifier = Modifier.size(24.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "定时关闭",
-                        color = currentAccent.mainColor,
-                        fontSize = DialogTitleFontSize,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(
-                        onClick = onDismissRequest, modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Clear,
-                            contentDescription = "关闭",
-                            tint = appColors.textColorSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(DialogTitleToContentSpace))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (remainingMs > 0L) currentAccent.mainColor.copy(alpha = 0.1f)
-                            else if (isDarkMode) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.02f)
-                        )
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    androidx.compose.animation.Crossfade(
-                        targetState = remainingMs > 0L,
-                        label = "sleep_timer_state_crossfade"
-                    ) { isRunning ->
-                        if (isRunning) {
-                            val minutes = remainingMs / 1000 / 60
-                            val seconds = (remainingMs / 1000) % 60
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "倒计时中：${minutes}分${seconds}秒",
-                                    color = appColors.textColorPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "取消定时",
-                                    color = currentAccent.mainColor,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.clickable {
-                                        viewModel.cancelSleepTimer()
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            "定时关闭已取消",
-                                            android.widget.Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                )
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "定时关闭未开启",
-                                    color = appColors.textColorSecondary,
-                                    fontSize = 13.sp
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.AccessTime,
-                                    contentDescription = null,
-                                    tint = appColors.textColorSecondary.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(0.5.dp)
-                        .background(if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "关闭",
+                    tint = appColors.textColorSecondary,
+                    modifier = Modifier.size(16.dp)
                 )
-
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+            }
+        }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (remainingMs > 0L) currentAccent.mainColor.copy(alpha = 0.1f)
+                    else if (isDarkMode) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.02f)
+                )
+                .padding(horizontal = 12.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            androidx.compose.animation.Crossfade(
+                targetState = remainingMs > 0L,
+                label = "sleep_timer_state_crossfade"
+            ) { isRunning ->
+                if (isRunning) {
+                    val minutes = remainingMs / 1000 / 60
+                    val seconds = (remainingMs / 1000) % 60
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "自定义定时时间",
-                            color = appColors.textColorSecondary,
-                            fontSize = 11.sp
-                        )
-                        Text(
-                            text = "${customMinutes.toInt()} 分钟",
-                            color = currentAccent.mainColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    androidx.compose.material3.Slider(
-                        value = customMinutes,
-                        onValueChange = { customMinutes = it },
-                        valueRange = 1f..120f,
-                        colors = androidx.compose.material3.SliderDefaults.colors(
-                            thumbColor = currentAccent.mainColor,
-                            activeTrackColor = currentAccent.mainColor,
-                            inactiveTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
-                                alpha = 0.05f
-                            )
-                        )
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { localPlayComplete = !localPlayComplete }
-                            .padding(horizontal = 4.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "播放完整首再关闭",
+                            text = "倒计时中：${minutes}分${seconds}秒",
                             color = appColors.textColorPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
                         )
-                        androidx.compose.material3.Switch(
-                            checked = localPlayComplete,
-                            onCheckedChange = { localPlayComplete = it },
-                            colors = androidx.compose.material3.SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = currentAccent.mainColor,
-                                uncheckedThumbColor = appColors.textColorSecondary,
-                                uncheckedTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
-                                    alpha = 0.05f
-                                )
-                            ),
-                            modifier = Modifier.graphicsLayer {
-                                scaleX = 0.85f
-                                scaleY = 0.85f
-                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
+                        Text(
+                            text = "取消定时",
+                            color = currentAccent.mainColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                viewModel.cancelSleepTimer()
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "定时关闭已取消",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
                             }
                         )
                     }
-                    androidx.compose.material3.Button(
-                        onClick = {
-                            viewModel.startSleepTimer(customMinutes.toLong() * 60 * 1000L, localPlayComplete)
-                            onDismissRequest()
-                            android.widget.Toast.makeText(
-                                context,
-                                "已设置 ${customMinutes.toInt()} 分钟后关闭",
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = currentAccent.mainColor),
-                        shape = DialogButtonShape,
-                        modifier = Modifier.fillMaxWidth().height(DialogButtonHeight),
-                        contentPadding = PaddingValues(0.dp)
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("开启自定义定时", color = Color.White, fontSize = 13.sp)
+                        Text(
+                            text = "定时关闭未开启",
+                            color = appColors.textColorSecondary,
+                            fontSize = 13.sp
+                        )
+                        Icon(
+                            imageVector = Icons.Default.AccessTime,
+                            contentDescription = null,
+                            tint = appColors.textColorSecondary.copy(alpha = 0.5f),
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
+            }
+        }
+
+        Box(
+            modifier = Modifier.fillMaxWidth().height(0.5.dp)
+                .background(if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "自定义定时时间",
+                    color = appColors.textColorSecondary,
+                    fontSize = 11.sp
+                )
+                Text(
+                    text = "${customMinutes.toInt()} 分钟",
+                    color = currentAccent.mainColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            androidx.compose.material3.Slider(
+                value = customMinutes,
+                onValueChange = { customMinutes = it },
+                valueRange = 1f..120f,
+                colors = androidx.compose.material3.SliderDefaults.colors(
+                    thumbColor = currentAccent.mainColor,
+                    activeTrackColor = currentAccent.mainColor,
+                    inactiveTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
+                        alpha = 0.05f
+                    )
+                )
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { localPlayComplete = !localPlayComplete }
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "播放完整首再关闭",
+                    color = appColors.textColorPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                androidx.compose.material3.Switch(
+                    checked = localPlayComplete,
+                    onCheckedChange = { localPlayComplete = it },
+                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = currentAccent.mainColor,
+                        uncheckedThumbColor = appColors.textColorSecondary,
+                        uncheckedTrackColor = if (isDarkMode) Color.White.copy(alpha = 0.1f) else Color.Black.copy(
+                            alpha = 0.05f
+                        )
+                    ),
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = 0.85f
+                        scaleY = 0.85f
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f)
+                    }
+                )
+            }
+            androidx.compose.material3.Button(
+                onClick = {
+                    viewModel.startSleepTimer(customMinutes.toLong() * 60 * 1000L, localPlayComplete)
+                    onDismissRequest()
+                    android.widget.Toast.makeText(
+                        context,
+                        "已设置 ${customMinutes.toInt()} 分钟后关闭",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = currentAccent.mainColor),
+                shape = DialogButtonShape,
+                modifier = Modifier.fillMaxWidth().height(DialogButtonHeight),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("开启自定义定时", color = Color.White, fontSize = 13.sp)
             }
         }
     }
