@@ -342,6 +342,115 @@ fun Song.getCachedCover(): android.graphics.Bitmap? {
     return coverCache.get(CacheKey(this.id, 400)) ?: coverCache.get(CacheKey(this.id, 150))
 }
 
+/** 辅助方法：获取预模糊处理过的背景封面缓存 */
+fun Song.getCachedBlurredCover(): android.graphics.Bitmap? {
+    return coverCache.get(CacheKey(this.id, -1))
+}
+
+/** 快速双通道 BoxBlur 模糊算法，专为超小尺寸优化，执行效率极高 */
+private fun blurBitmap(sentBitmap: android.graphics.Bitmap, radius: Int): android.graphics.Bitmap {
+    val bitmap =
+        sentBitmap.copy(sentBitmap.config ?: android.graphics.Bitmap.Config.ARGB_8888, true)
+    val w = bitmap.width
+    val h = bitmap.height
+    val pix = IntArray(w * h)
+    bitmap.getPixels(pix, 0, w, 0, 0, w, h)
+
+    val temp = IntArray(w * h)
+    // 水平方向 BoxBlur
+    for (y in 0 until h) {
+        for (x in 0 until w) {
+            var r = 0
+            var g = 0
+            var b = 0
+            var count = 0
+            for (dx in -radius..radius) {
+                val nx = x + dx
+                if (nx in 0 until w) {
+                    val p = pix[y * w + nx]
+                    r += (p shr 16) and 0xff
+                    g += (p shr 8) and 0xff
+                    b += p and 0xff
+                    count++
+                }
+            }
+            temp[y * w + x] =
+                ((r / count) shl 16) or ((g / count) shl 8) or (b / count) or (0xff shl 24)
+        }
+    }
+
+    // 垂直方向 BoxBlur
+    for (x in 0 until w) {
+        for (y in 0 until h) {
+            var r = 0
+            var g = 0
+            var b = 0
+            var count = 0
+            for (dy in -radius..radius) {
+                val ny = y + dy
+                if (ny in 0 until h) {
+                    val p = temp[ny * w + x]
+                    r += (p shr 16) and 0xff
+                    g += (p shr 8) and 0xff
+                    b += p and 0xff
+                    count++
+                }
+            }
+            pix[y * w + x] =
+                ((r / count) shl 16) or ((g / count) shl 8) or (b / count) or (0xff shl 24)
+        }
+    }
+
+    bitmap.setPixels(pix, 0, w, 0, 0, w, h)
+    return bitmap
+}
+
+/** 挂起加载预模糊的背景封面图，处理 Lru 内存缓存和磁盘缓存 */
+suspend fun Song.loadBlurredCover(
+    context: android.content.Context,
+    sourceBitmap: android.graphics.Bitmap,
+): android.graphics.Bitmap? {
+    val key = CacheKey(this.id, -1)
+    val cached = coverCache.get(key)
+    if (cached != null) return cached
+
+    val cacheFile =
+        java.io.File(context.cacheDir, "covers").let {
+            if (!it.exists()) it.mkdirs()
+            java.io.File(it, "${this.id}_blurred.jpg")
+        }
+    if (cacheFile.exists()) {
+        try {
+            val bitmap = android.graphics.BitmapFactory.decodeFile(cacheFile.absolutePath)
+            if (bitmap != null) {
+                coverCache.put(key, bitmap)
+                return bitmap
+            }
+        } catch (e: Exception) {
+            try {
+                cacheFile.delete()
+            } catch (ex: Exception) {}
+        }
+    }
+
+    return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+        try {
+            // 缩放到 40x40 极大降低模糊运算负担，并利用双线性拉伸取得极佳的柔和模糊背景
+            val scaled = android.graphics.Bitmap.createScaledBitmap(sourceBitmap, 40, 40, true)
+            val blurred = blurBitmap(blurBitmap(scaled, 4), 4)
+            coverCache.put(key, blurred)
+            try {
+                java.io.FileOutputStream(cacheFile).use { out ->
+                    blurred.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                }
+            } catch (e: Exception) {}
+            blurred
+        } catch (e: Exception) {
+            null
+        }
+    }
+}
+
 enum class QualityType {
     HiRes,
     HQ,

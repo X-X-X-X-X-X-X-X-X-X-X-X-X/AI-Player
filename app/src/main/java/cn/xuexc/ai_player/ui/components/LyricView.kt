@@ -409,10 +409,11 @@ fun loadLyricsForSong(songPath: String): List<LyricLine> {
 @Composable
 fun LyricView(
     song: Song,
-    playbackProgress: Long,
+    playbackProgress: () -> Long,
     appColors: AppColors,
     currentAccent: AccentColor,
     onSeek: (Long) -> Unit,
+    isPageActive: Boolean = true,
 ) {
     var lyrics by remember(song.id) { mutableStateOf<List<LyricLine>>(emptyList()) }
     var hasLoaded by remember(song.id) { mutableStateOf(false) }
@@ -446,13 +447,29 @@ fun LyricView(
             }
         }
     } else {
-        val activeIndex =
-            remember(lyrics, playbackProgress, clickedActiveIndex) {
-                if (clickedActiveIndex != null) {
-                    clickedActiveIndex!!
-                } else {
-                    val idx = lyrics.indexOfLast { it.timeMs <= playbackProgress }
-                    if (idx == -1) 0 else idx
+        // 利用 derivedStateOf 配合 lambda 获取最新值，以二分查找 (O(log N)) 替代线性遍历以取得极致的计算性能
+        val activeIndex by
+            remember(lyrics, clickedActiveIndex) {
+                derivedStateOf {
+                    if (clickedActiveIndex != null) {
+                        clickedActiveIndex!!
+                    } else {
+                        val progress = playbackProgress()
+                        var low = 0
+                        var high = lyrics.lastIndex
+                        var idx = -1
+                        while (low <= high) {
+                            val mid = (low + high) ushr 1
+                            val midVal = lyrics[mid].timeMs
+                            if (midVal <= progress) {
+                                idx = mid
+                                low = mid + 1
+                            } else {
+                                high = mid - 1
+                            }
+                        }
+                        if (idx == -1) 0 else idx
+                    }
                 }
             }
 
@@ -466,16 +483,37 @@ fun LyricView(
             }
         }
 
-        LaunchedEffect(activeIndex, isClickSeeking) {
-            if (
-                lyrics.isNotEmpty() &&
-                    !lyricListState.isScrollInProgress &&
-                    !isClickSeeking &&
-                    !isAutoFollowPaused
-            ) {
-                lyricListState.animateScrollToItem(activeIndex)
+        LaunchedEffect(activeIndex, isClickSeeking, isPageActive) {
+            if (lyrics.isNotEmpty() && !isClickSeeking && !isAutoFollowPaused && isPageActive) {
+                if (!lyricListState.isScrollInProgress) {
+                    lyricListState.animateScrollToItem(activeIndex)
+                }
             }
         }
+
+        // 统一缓存 Item 点击事件的回调，确保在歌曲播放期间其 lambda 引用唯一不变，彻底解锁 LazyColumn 滚动时的 100% Item 跳过机制
+        val onItemClick =
+            remember(lyrics, song.id) {
+                { index: Int ->
+                    clickedActiveIndex = index
+                    isClickSeeking = true
+                    isAutoFollowPaused = false
+                    val line = lyrics.getOrNull(index)
+                    if (line != null) {
+                        onSeek(line.timeMs)
+                    }
+                    seekJob?.cancel()
+                    seekJob =
+                        coroutineScope.launch {
+                            try {
+                                lyricListState.animateScrollToItem(index)
+                                delay(1000)
+                                isClickSeeking = false
+                                clickedActiveIndex = null
+                            } catch (e: kotlinx.coroutines.CancellationException) {}
+                        }
+                }
+            }
 
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp).padding(bottom = 24.dp)
@@ -492,63 +530,13 @@ fun LyricView(
             ) {
                 itemsIndexed(lyrics) { index, line ->
                     val isActive = index == activeIndex
-                    val textColor by
-                        animateColorAsState(
-                            targetValue =
-                                if (isActive) {
-                                    currentAccent.mainColor
-                                } else {
-                                    appColors.textColorPrimary.copy(alpha = 0.5f)
-                                },
-                            animationSpec = tween(durationMillis = 350),
-                            label = "lyric_color",
-                        )
-                    val scale by
-                        animateFloatAsState(
-                            targetValue = if (isActive) 1.15f else 1.0f,
-                            animationSpec = tween(durationMillis = 350),
-                            label = "lyric_scale",
-                        )
-                    val scaleAlphaValue by
-                        animateFloatAsState(
-                            targetValue = if (isActive) 1.0f else 0.4f,
-                            animationSpec = tween(durationMillis = 350),
-                            label = "lyric_alpha",
-                        )
-
-                    Text(
+                    LyricItem(
                         text = line.text,
-                        color = textColor,
-                        fontSize = 16.sp,
-                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                        textAlign = TextAlign.Center,
-                        modifier =
-                            Modifier.fillMaxWidth(0.8f)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                    alpha = scaleAlphaValue
-                                }
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                ) {
-                                    clickedActiveIndex = index
-                                    isClickSeeking = true
-                                    isAutoFollowPaused = false
-                                    onSeek(line.timeMs)
-                                    seekJob?.cancel()
-                                    seekJob =
-                                        coroutineScope.launch {
-                                            try {
-                                                lyricListState.animateScrollToItem(index)
-                                                delay(1000)
-                                                isClickSeeking = false
-                                                clickedActiveIndex = null
-                                            } catch (e: kotlinx.coroutines.CancellationException) {}
-                                        }
-                                }
-                                .padding(vertical = 4.dp),
+                        isActive = isActive,
+                        currentAccent = currentAccent,
+                        appColors = appColors,
+                        index = index,
+                        onClick = onItemClick,
                     )
                 }
             }
@@ -599,4 +587,62 @@ fun LyricView(
             }
         }
     }
+}
+
+/** 歌词列表 Item Composable，利用 Compose 的智能 skip 重组策略，将频繁重组降为 0 */
+@Composable
+private fun LyricItem(
+    text: String,
+    isActive: Boolean,
+    currentAccent: AccentColor,
+    appColors: AppColors,
+    index: Int,
+    onClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val textColor by
+        animateColorAsState(
+            targetValue =
+                if (isActive) {
+                    currentAccent.mainColor
+                } else {
+                    appColors.textColorPrimary.copy(alpha = 0.5f)
+                },
+            animationSpec = tween(durationMillis = 350),
+            label = "lyric_color",
+        )
+    val scale by
+        animateFloatAsState(
+            targetValue = if (isActive) 1.15f else 1.0f,
+            animationSpec = tween(durationMillis = 350),
+            label = "lyric_scale",
+        )
+    val scaleAlphaValue by
+        animateFloatAsState(
+            targetValue = if (isActive) 1.0f else 0.4f,
+            animationSpec = tween(durationMillis = 350),
+            label = "lyric_alpha",
+        )
+
+    Text(
+        text = text,
+        color = textColor,
+        fontSize = 16.sp,
+        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+        textAlign = TextAlign.Center,
+        modifier =
+            modifier
+                .fillMaxWidth(0.8f)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = scaleAlphaValue
+                }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = { onClick(index) },
+                )
+                .padding(vertical = 4.dp),
+    )
 }

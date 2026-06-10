@@ -4262,8 +4262,7 @@ fun MainScreen(viewModel: SongViewModel) {
         }
     }
 
-    val isPlayerVisible =
-        (showFullPlayer || playerOffsetY.value < screenHeight) && currentSong != null
+    val isPlayerVisible = currentSong != null
 
     if (isPlayerVisible) {
         Box(
@@ -4296,6 +4295,7 @@ fun MainScreen(viewModel: SongViewModel) {
                     },
                     dragModifier = playerDragModifier,
                     onSleepTimerClick = { showSleepTimerDialog = true },
+                    isFullyHidden = { playerOffsetY.value >= screenHeight },
                 )
             }
         }

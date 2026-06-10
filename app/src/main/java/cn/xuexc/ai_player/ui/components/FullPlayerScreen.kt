@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -63,9 +64,11 @@ fun FullPlayerScreen(
     onNavigateToArtist: (String) -> Unit,
     dragModifier: Modifier,
     onSleepTimerClick: () -> Unit,
+    isFullyHidden: () -> Boolean = { false },
 ) {
     val context = LocalContext.current
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
+    val progressProvider = remember(viewModel) { { viewModel.playbackProgress.value } }
 
     // 动态炫光背景的无限循环动画（通过 graphicsLayer 更新，不触发 recomposition，极低功耗）
     val infiniteTransition = rememberInfiniteTransition(label = "ambientGlow")
@@ -114,6 +117,9 @@ fun FullPlayerScreen(
             label = "translationY",
         )
     var bgBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover()) }
+    var bgBitmapBlur by remember {
+        mutableStateOf<android.graphics.Bitmap?>(song.getCachedBlurredCover())
+    }
     var isCoverLoaded by remember { mutableStateOf(false) }
     var rotationAngle by remember { mutableStateOf(0f) }
     // 封面透明度 Animatable：控制唱片中心封面与背景模糊图的淡出/淡入效果
@@ -132,8 +138,10 @@ fun FullPlayerScreen(
             rotationAngle = 0f
             withContext(Dispatchers.IO) {
                 val loaded = song.loadCover(context, 400)
+                val blurred = loaded?.let { song.loadBlurredCover(context, it) }
                 withContext(Dispatchers.Main) {
                     bgBitmap = loaded
+                    bgBitmapBlur = blurred
                     withFrameMillis {}
                     withFrameMillis {}
                     isCoverLoaded = true
@@ -148,7 +156,9 @@ fun FullPlayerScreen(
             rotationAngle = 0f
             // 3. 加载下一首封面
             val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
+            val blurred = loaded?.let { song.loadBlurredCover(context, it) }
             bgBitmap = loaded
+            bgBitmapBlur = blurred
             withFrameMillis {}
             withFrameMillis {}
             isCoverLoaded = true
@@ -189,16 +199,21 @@ fun FullPlayerScreen(
         modifier =
             Modifier.fillMaxSize()
                 .clipToBounds()
+                .drawWithContent {
+                    if (!isFullyHidden()) {
+                        drawContent()
+                    }
+                }
                 .background(appColors.mainBackground)
                 .then(dragModifier)
     ) {
-        // 1. Ambient blur cover image（放大并提高不透明度与模糊度，制作高保真炫光背景）
-        if (bgBitmap != null) {
+        // 1. Ambient blur cover image（使用预模糊的低分辨率图片，免除 Modifier.blur 开销）
+        if (bgBitmapBlur != null) {
             Image(
-                bitmap = bgBitmap!!.asImageBitmap(),
+                bitmap = bgBitmapBlur!!.asImageBitmap(),
                 contentDescription = null,
                 modifier =
-                    Modifier.fillMaxSize().blur(90.dp).graphicsLayer {
+                    Modifier.fillMaxSize().graphicsLayer {
                         scaleX = glowScale
                         scaleY = glowScale
                         rotationZ = glowRotation
@@ -290,7 +305,7 @@ fun FullPlayerScreen(
                             bgBitmap = bgBitmap,
                             currentAccent = currentAccent,
                             cardScale = cardScale,
-                            rotationAngle = rotationAngle,
+                            rotationAngle = { rotationAngle },
                             coverAlpha = coverAlpha.value,
                             size = 250.dp, // 设定横屏黄金尺寸 195.dp，您可以直接修改此数值
                             onTogglePlay = {
@@ -306,7 +321,14 @@ fun FullPlayerScreen(
                         isDarkMode = isDarkMode,
                         appColors = appColors,
                         favoriteColor = favoriteColor,
-                        onAddToBlacklist = { viewModel.addToBlacklist(context, song) },
+                        onAddToBlacklist = {
+                            if (song.isBlacklisted) {
+                                viewModel.removeFromBlacklist(song)
+                                Toast.makeText(context, "已从遗忘的沙漏恢复", Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.addToBlacklist(context, song)
+                            }
+                        },
                         onToggleFavorite = { viewModel.toggleFavorite(song, skipListUpdate = true) },
                     )
 
@@ -361,7 +383,7 @@ fun FullPlayerScreen(
                 ) {
                     LyricView(
                         song = song,
-                        playbackProgress = playbackProgress,
+                        playbackProgress = progressProvider,
                         appColors = appColors,
                         currentAccent = currentAccent,
                         onSeek = { position -> viewModel.seekTo(position) },
@@ -417,7 +439,7 @@ fun FullPlayerScreen(
                                 bgBitmap = bgBitmap,
                                 currentAccent = currentAccent,
                                 cardScale = cardScale,
-                                rotationAngle = rotationAngle,
+                                rotationAngle = { rotationAngle },
                                 coverAlpha = coverAlpha.value,
                                 size = 300.dp,
                                 onTogglePlay = {
@@ -428,10 +450,11 @@ fun FullPlayerScreen(
                     } else {
                         LyricView(
                             song = song,
-                            playbackProgress = playbackProgress,
+                            playbackProgress = progressProvider,
                             appColors = appColors,
                             currentAccent = currentAccent,
                             onSeek = { position -> viewModel.seekTo(position) },
+                            isPageActive = pagerState.currentPage == 1,
                         )
                     }
                 }
@@ -441,7 +464,14 @@ fun FullPlayerScreen(
                     isDarkMode = isDarkMode,
                     appColors = appColors,
                     favoriteColor = favoriteColor,
-                    onAddToBlacklist = { viewModel.addToBlacklist(context, song) },
+                    onAddToBlacklist = {
+                        if (song.isBlacklisted) {
+                            viewModel.removeFromBlacklist(song)
+                            Toast.makeText(context, "已从遗忘的沙漏恢复", Toast.LENGTH_SHORT).show()
+                        } else {
+                            viewModel.addToBlacklist(context, song)
+                        }
+                    },
                     onToggleFavorite = { viewModel.toggleFavorite(song, skipListUpdate = true) },
                 )
 
@@ -810,7 +840,7 @@ fun VinylDisc(
     bgBitmap: android.graphics.Bitmap?,
     currentAccent: AccentColor,
     cardScale: Float,
-    rotationAngle: Float,
+    rotationAngle: () -> Float,
     coverAlpha: Float,
     size: Dp,
     onTogglePlay: () -> Unit,
@@ -825,7 +855,7 @@ fun VinylDisc(
                 .graphicsLayer {
                     scaleX = cardScale
                     scaleY = cardScale
-                    rotationZ = rotationAngle
+                    rotationZ = rotationAngle()
                 }
                 .clip(CircleShape)
                 .clickable(
@@ -916,22 +946,26 @@ fun SongMetadata(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        IconButton(
-            onClick = onAddToBlacklist,
-            modifier =
-                Modifier.size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isDarkMode) Color.White.copy(alpha = 0.06f)
-                        else Color.Black.copy(alpha = 0.04f)
-                    ),
-        ) {
-            Icon(
-                imageVector = Icons.Default.HourglassEmpty,
-                contentDescription = "遗忘的沙漏",
-                tint = Color(0xFFE5C07B),
-                modifier = Modifier.size(18.dp),
-            )
+        if (song.isBlacklisted) {
+            Spacer(modifier = Modifier.size(40.dp))
+        } else {
+            IconButton(
+                onClick = onAddToBlacklist,
+                modifier =
+                    Modifier.size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isDarkMode) Color.White.copy(alpha = 0.06f)
+                            else Color.Black.copy(alpha = 0.04f)
+                        ),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.HourglassEmpty,
+                    contentDescription = "遗忘的沙漏",
+                    tint = Color(0xFFE5C07B),
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -970,23 +1004,28 @@ fun SongMetadata(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        IconButton(
-            onClick = onToggleFavorite,
-            modifier =
-                Modifier.size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (isDarkMode) Color.White.copy(alpha = 0.06f)
-                        else Color.Black.copy(alpha = 0.04f)
-                    ),
-        ) {
-            Icon(
-                imageVector =
-                    if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                contentDescription = "喜欢",
-                tint = favoriteColor,
-                modifier = Modifier.size(19.dp),
-            )
+        if (song.isBlacklisted) {
+            Spacer(modifier = Modifier.size(40.dp))
+        } else {
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier =
+                    Modifier.size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isDarkMode) Color.White.copy(alpha = 0.06f)
+                            else Color.Black.copy(alpha = 0.04f)
+                        ),
+            ) {
+                Icon(
+                    imageVector =
+                        if (song.isFavorite) Icons.Default.Favorite
+                        else Icons.Default.FavoriteBorder,
+                    contentDescription = "喜欢",
+                    tint = favoriteColor,
+                    modifier = Modifier.size(19.dp),
+                )
+            }
         }
     }
 }
