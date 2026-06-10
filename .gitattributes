@@ -1,0 +1,2 @@
+# 强制 pre-commit 脚本在所有平台上拉取和检出时都保持 Unix (LF) 换行符，避免 Windows 执行时因 CRLF 报 bash \r 语法错误
+scripts/pre-commit text eol=lf
