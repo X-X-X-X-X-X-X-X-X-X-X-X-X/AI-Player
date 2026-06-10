@@ -29,7 +29,7 @@ allprojects {
 
 // 注册复制 Git Hooks 的任务
 tasks.register<Copy>("registerGitHooks") {
-  description = "Copies the git hooks from scripts to the .git folder"
+  description = "Copies the git hooks from scripts to .git/hooks and .husky folders"
   group = "git hooks"
   from(file("scripts/pre-commit"))
   into(file(".git/hooks"))
@@ -46,6 +46,27 @@ tasks.register<Copy>("registerGitHooks") {
     other {
       read = true
       execute = true
+    }
+  }
+  doLast {
+    copy {
+      from(file("scripts/pre-commit"))
+      into(file(".husky"))
+      filePermissions {
+        user {
+          read = true
+          write = true
+          execute = true
+        }
+        group {
+          read = true
+          execute = true
+        }
+        other {
+          read = true
+          execute = true
+        }
+      }
     }
   }
 }
