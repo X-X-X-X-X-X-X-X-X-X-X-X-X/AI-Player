@@ -48,3 +48,5 @@ release
 gradle-wrapper.jar
 
 .agents
+
+plan.md
