@@ -31,47 +31,45 @@ fun CommonItemCard(
     modifier: Modifier = Modifier,
     containerColor: Color? = null,
     actionArea: @Composable (() -> Unit)? = null,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isDarkMode = appColors.surfaceColor == Color(0xFF161619)
-    val pressedBgColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
+    val pressedBgColor =
+        if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
 
     val cardBg = containerColor ?: if (isPressed) pressedBgColor else appColors.cardBackground
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg)
+        colors = CardDefaults.cardColors(containerColor = cardBg),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             cover()
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Column(
-                modifier = Modifier.weight(1.0f)
-            ) {
+            Column(modifier = Modifier.weight(1.0f)) {
                 Text(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = appColors.textColorPrimary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(modifier = Modifier.height(1.dp))
                 subtitle()
@@ -94,7 +92,7 @@ fun CommonItemCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color? = null,
-    actionArea: @Composable (() -> Unit)? = null
+    actionArea: @Composable (() -> Unit)? = null,
 ) {
     CommonItemCard(
         cover = cover,
@@ -105,13 +103,13 @@ fun CommonItemCard(
                 fontSize = 11.sp,
                 color = appColors.textColorSecondary,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         },
         appColors = appColors,
         onClick = onClick,
         modifier = modifier,
         containerColor = containerColor,
-        actionArea = actionArea
+        actionArea = actionArea,
     )
 }

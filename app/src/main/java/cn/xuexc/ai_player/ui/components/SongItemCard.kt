@@ -31,22 +31,34 @@ import java.util.*
 
 @Composable
 fun QualityBadge(quality: QualityType, isDarkMode: Boolean) {
-    val (text, color) = when (quality) {
-        QualityType.HiRes -> Pair("Hi-Res", Color(0xFFD97706)) // Gold / Amber
-        QualityType.HQ -> Pair("HQ", Color(0xFF0D9488)) // Teal
-        else -> return
-    }
+    val (text, color) =
+        when (quality) {
+            QualityType.HiRes -> Pair("Hi-Res", Color(0xFFD97706)) // Gold / Amber
+            QualityType.HQ -> Pair("HQ", Color(0xFF0D9488)) // Teal
+            else -> return
+        }
 
     val finalBgColor = if (isDarkMode) color.copy(alpha = 0.15f) else color.copy(alpha = 0.08f)
     val finalTextColor = if (isDarkMode) color.copy(alpha = 0.9f) else color
 
     Box(
-        modifier = Modifier.clip(RoundedCornerShape(3.dp)).background(finalBgColor).border(
-            width = 0.5.dp, color = finalTextColor.copy(alpha = 0.4f), shape = RoundedCornerShape(3.dp)
-        ).padding(horizontal = 4.dp, vertical = 0.5.dp), contentAlignment = Alignment.Center
+        modifier =
+            Modifier.clip(RoundedCornerShape(3.dp))
+                .background(finalBgColor)
+                .border(
+                    width = 0.5.dp,
+                    color = finalTextColor.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(3.dp),
+                )
+                .padding(horizontal = 4.dp, vertical = 0.5.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = text, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = finalTextColor, lineHeight = 10.sp
+            text = text,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            color = finalTextColor,
+            lineHeight = 10.sp,
         )
     }
 }
@@ -67,68 +79,75 @@ fun SongItemCard(
     inSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onSelectionChange: ((Boolean) -> Unit)? = null,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
 ) {
-    val favoriteColor by animateColorAsState(
-        targetValue = if (song.isFavorite) Color(0xFFE06C75) else appColors.textColorSecondary.copy(alpha = 0.5f),
-        label = "fav_color"
-    )
+    val favoriteColor by
+        animateColorAsState(
+            targetValue =
+                if (song.isFavorite) Color(0xFFE06C75)
+                else appColors.textColorSecondary.copy(alpha = 0.5f),
+            label = "fav_color",
+        )
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isDarkMode = appColors.surfaceColor == Color(0xFF161619)
-    val pressedBgColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
-    val cardBg = when {
-        isCurrent -> {
-            val isTitanium = appColors.navBarItemActive == Color(0xFFBAC7D5) ||
-                    appColors.navBarItemActive == Color(0xFF4A5568) ||
-                    appColors.navBarItemActive == Color(0xFF9AA5B1) ||
-                    appColors.navBarItemActive == Color(0xFF8E8E93)
-            val alpha = if (isTitanium) 0.20f else 0.12f
-            appColors.navBarItemActive.copy(alpha = alpha)
-        }
+    val pressedBgColor =
+        if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f)
+    val cardBg =
+        when {
+            isCurrent -> {
+                val isTitanium =
+                    appColors.navBarItemActive == Color(0xFFBAC7D5) ||
+                        appColors.navBarItemActive == Color(0xFF4A5568) ||
+                        appColors.navBarItemActive == Color(0xFF9AA5B1) ||
+                        appColors.navBarItemActive == Color(0xFF8E8E93)
+                val alpha = if (isTitanium) 0.20f else 0.12f
+                appColors.navBarItemActive.copy(alpha = alpha)
+            }
 
-        isPressed -> pressedBgColor
-        else -> appColors.cardBackground
-    }
+            isPressed -> pressedBgColor
+            else -> appColors.cardBackground
+        }
 
     var showMenu by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         AnimatedVisibility(
             visible = inSelectionMode,
             enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
-            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut()
+            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
         ) {
             Box(
-                modifier = Modifier
-                    .padding(end = 10.dp)
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 1.5.dp,
-                        color = if (isSelected) appColors.navBarItemActive else appColors.textColorSecondary.copy(alpha = 0.4f),
-                        shape = CircleShape
-                    )
-                    .background(if (isSelected) appColors.navBarItemActive else Color.Transparent)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        onSelectionChange?.invoke(!isSelected)
-                    },
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier.padding(end = 10.dp)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .border(
+                            width = 1.5.dp,
+                            color =
+                                if (isSelected) appColors.navBarItemActive
+                                else appColors.textColorSecondary.copy(alpha = 0.4f),
+                            shape = CircleShape,
+                        )
+                        .background(
+                            if (isSelected) appColors.navBarItemActive else Color.Transparent
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            onSelectionChange?.invoke(!isSelected)
+                        },
+                contentAlignment = Alignment.Center,
             ) {
                 if (isSelected) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
                         tint = appColors.surfaceColor,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(14.dp),
                     )
                 }
             }
@@ -137,16 +156,21 @@ fun SongItemCard(
         CommonItemCard(
             modifier = Modifier.weight(1.0f),
             cover = {
-                // Album Art or LiveVisualizer (slightly downscaled to 42.dp for denser presentation)
+                // Album Art or LiveVisualizer (slightly downscaled to 42.dp for denser
+                // presentation)
                 SongCover(
-                    song = song, isCurrent = isCurrent, isPlaying = isPlaying, modifier = Modifier.size(42.dp)
+                    song = song,
+                    isCurrent = isCurrent,
+                    isPlaying = isPlaying,
+                    modifier = Modifier.size(42.dp),
                 )
             },
             title = song.title,
             subtitle = {
                 val quality = song.getQualityType()
                 Row(
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     if (quality != QualityType.SQ) {
                         QualityBadge(quality = quality, isDarkMode = isDarkMode)
@@ -156,7 +180,7 @@ fun SongItemCard(
                         fontSize = 11.sp,
                         color = appColors.textColorSecondary,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             },
@@ -177,12 +201,17 @@ fun SongItemCard(
             actionArea = {
                 if (!inSelectionMode) {
                     Box {
-                        Box(modifier = Modifier.clip(CircleShape).clickable { showMenu = true }.padding(6.dp)) {
+                        Box(
+                            modifier =
+                                Modifier.clip(CircleShape)
+                                    .clickable { showMenu = true }
+                                    .padding(6.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "操作菜单",
                                 tint = appColors.textColorSecondary,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
                             )
                         }
 
@@ -190,19 +219,29 @@ fun SongItemCard(
                             androidx.compose.ui.window.Popup(
                                 onDismissRequest = { showMenu = false },
                                 alignment = Alignment.TopEnd,
-                                offset = androidx.compose.ui.unit.IntOffset(
-                                    0, with(androidx.compose.ui.platform.LocalDensity.current) { 32.dp.roundToPx() }),
-                                properties = androidx.compose.ui.window.PopupProperties(focusable = true)
+                                offset =
+                                    androidx.compose.ui.unit.IntOffset(
+                                        0,
+                                        with(androidx.compose.ui.platform.LocalDensity.current) {
+                                            32.dp.roundToPx()
+                                        },
+                                    ),
+                                properties =
+                                    androidx.compose.ui.window.PopupProperties(focusable = true),
                             ) {
                                 Box(
-                                    modifier = Modifier.width(180.dp).clip(RoundedCornerShape(4.dp))
-                                        .background(appColors.surfaceColor).border(
-                                            0.5.dp,
-                                            if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
-                                                alpha = 0.08f
-                                            ),
-                                            RoundedCornerShape(4.dp)
-                                        ).padding(vertical = 4.dp)
+                                    modifier =
+                                        Modifier.width(180.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(appColors.surfaceColor)
+                                            .border(
+                                                0.5.dp,
+                                                if (appColors.surfaceColor == Color(0xFF161619))
+                                                    Color.White.copy(alpha = 0.12f)
+                                                else Color.Black.copy(alpha = 0.08f),
+                                                RoundedCornerShape(4.dp),
+                                            )
+                                            .padding(vertical = 4.dp)
                                 ) {
                                     Column {
                                         // 1. Favorite
@@ -210,17 +249,23 @@ fun SongItemCard(
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
-                                                        text = if (song.isFavorite) "取消喜欢" else "设为喜欢",
+                                                        text =
+                                                            if (song.isFavorite) "取消喜欢" else "设为喜欢",
                                                         color = appColors.textColorPrimary,
-                                                        fontSize = 14.sp
+                                                        fontSize = 14.sp,
                                                     )
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        imageVector = if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                                        imageVector =
+                                                            if (song.isFavorite)
+                                                                Icons.Default.Favorite
+                                                            else Icons.Default.FavoriteBorder,
                                                         contentDescription = null,
-                                                        tint = if (song.isFavorite) Color(0xFFE06C75) else appColors.textColorSecondary,
-                                                        modifier = Modifier.size(18.dp)
+                                                        tint =
+                                                            if (song.isFavorite) Color(0xFFE06C75)
+                                                            else appColors.textColorSecondary,
+                                                        modifier = Modifier.size(18.dp),
                                                     )
                                                 },
                                                 onClick = {
@@ -228,24 +273,30 @@ fun SongItemCard(
                                                     showMenu = false
                                                 },
                                                 modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                                contentPadding =
+                                                    PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 0.dp,
+                                                    ),
                                             )
                                         }
 
-                                        // 2. Custom action (e.g. Add to Playlist, remove from playlist, restore)
+                                        // 2. Custom action (e.g. Add to Playlist, remove from
+                                        // playlist, restore)
                                         if (customActionIcon != null && onCustomAction != null) {
-                                            val label = when (customActionIcon) {
-                                                Icons.Default.Add -> "加入到歌单"
-                                                Icons.Default.Clear -> "从歌单移除"
-                                                Icons.Default.Refresh -> "从遗忘的沙漏恢复"
-                                                else -> "其他操作"
-                                            }
+                                            val label =
+                                                when (customActionIcon) {
+                                                    Icons.Default.Add -> "加入到歌单"
+                                                    Icons.Default.Clear -> "从歌单移除"
+                                                    Icons.Default.Refresh -> "从遗忘的沙漏恢复"
+                                                    else -> "其他操作"
+                                                }
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
                                                         text = label,
                                                         color = appColors.textColorPrimary,
-                                                        fontSize = 14.sp
+                                                        fontSize = 14.sp,
                                                     )
                                                 },
                                                 leadingIcon = {
@@ -253,7 +304,7 @@ fun SongItemCard(
                                                         imageVector = customActionIcon,
                                                         contentDescription = null,
                                                         tint = appColors.textColorSecondary,
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(18.dp),
                                                     )
                                                 },
                                                 onClick = {
@@ -261,7 +312,11 @@ fun SongItemCard(
                                                     showMenu = false
                                                 },
                                                 modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                                contentPadding =
+                                                    PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 0.dp,
+                                                    ),
                                             )
                                         }
 
@@ -272,7 +327,7 @@ fun SongItemCard(
                                                     Text(
                                                         text = "移至遗忘的沙漏",
                                                         color = Color(0xFFE5C07B),
-                                                        fontSize = 14.sp
+                                                        fontSize = 14.sp,
                                                     )
                                                 },
                                                 leadingIcon = {
@@ -280,7 +335,7 @@ fun SongItemCard(
                                                         imageVector = Icons.Default.HourglassEmpty,
                                                         contentDescription = null,
                                                         tint = Color(0xFFE5C07B),
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(18.dp),
                                                     )
                                                 },
                                                 onClick = {
@@ -288,12 +343,18 @@ fun SongItemCard(
                                                     showMenu = false
                                                 },
                                                 modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                                contentPadding =
+                                                    PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 0.dp,
+                                                    ),
                                             )
                                         }
 
                                         // 3.5. Navigate to Artist
-                                        if (onNavigateToArtist != null && song.artist.isNotBlank()) {
+                                        if (
+                                            onNavigateToArtist != null && song.artist.isNotBlank()
+                                        ) {
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
@@ -301,7 +362,7 @@ fun SongItemCard(
                                                         color = appColors.textColorPrimary,
                                                         fontSize = 14.sp,
                                                         maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
+                                                        overflow = TextOverflow.Ellipsis,
                                                     )
                                                 },
                                                 leadingIcon = {
@@ -309,7 +370,7 @@ fun SongItemCard(
                                                         imageVector = Icons.Default.Person,
                                                         contentDescription = null,
                                                         tint = appColors.textColorSecondary,
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(18.dp),
                                                     )
                                                 },
                                                 onClick = {
@@ -317,7 +378,11 @@ fun SongItemCard(
                                                     showMenu = false
                                                 },
                                                 modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                                contentPadding =
+                                                    PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 0.dp,
+                                                    ),
                                             )
                                         }
 
@@ -327,7 +392,7 @@ fun SongItemCard(
                                                 Text(
                                                     text = "歌曲详情",
                                                     color = appColors.textColorPrimary,
-                                                    fontSize = 14.sp
+                                                    fontSize = 14.sp,
                                                 )
                                             },
                                             leadingIcon = {
@@ -335,7 +400,7 @@ fun SongItemCard(
                                                     imageVector = Icons.Default.MusicNote,
                                                     contentDescription = null,
                                                     tint = appColors.textColorSecondary,
-                                                    modifier = Modifier.size(18.dp)
+                                                    modifier = Modifier.size(18.dp),
                                                 )
                                             },
                                             onClick = {
@@ -343,7 +408,8 @@ fun SongItemCard(
                                                 showMenu = false
                                             },
                                             modifier = Modifier.requiredHeight(32.dp),
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                            contentPadding =
+                                                PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                         )
 
                                         // 5. Delete Song (from local database only)
@@ -353,7 +419,7 @@ fun SongItemCard(
                                                     Text(
                                                         text = "删除歌曲",
                                                         color = Color(0xFFE06C75),
-                                                        fontSize = 14.sp
+                                                        fontSize = 14.sp,
                                                     )
                                                 },
                                                 leadingIcon = {
@@ -361,7 +427,7 @@ fun SongItemCard(
                                                         imageVector = Icons.Default.Delete,
                                                         contentDescription = null,
                                                         tint = Color(0xFFE06C75),
-                                                        modifier = Modifier.size(18.dp)
+                                                        modifier = Modifier.size(18.dp),
                                                     )
                                                 },
                                                 onClick = {
@@ -369,17 +435,20 @@ fun SongItemCard(
                                                     showMenu = false
                                                 },
                                                 modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                                contentPadding =
+                                                    PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 0.dp,
+                                                    ),
                                             )
                                         }
-
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
+            },
         )
     }
 
@@ -395,32 +464,38 @@ fun SongItemCard(
             appColors = appColors,
             actionArea = {
                 IconButton(
-                    onClick = { showDetailsDialog = false }, modifier = Modifier.size(24.dp)
+                    onClick = { showDetailsDialog = false },
+                    modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "关闭",
                         tint = appColors.textColorSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                 }
-            }
+            },
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
             ) {
                 DetailRow(label = "歌名", value = song.title, appColors = appColors)
                 DetailRow(
                     label = "歌手",
                     value = if (song.artist.isBlank()) "未知歌手" else song.artist,
-                    appColors = appColors
+                    appColors = appColors,
                 )
                 DetailRow(
                     label = "专辑",
                     value = if (song.album.isBlank()) "未知专辑" else song.album,
-                    appColors = appColors
+                    appColors = appColors,
                 )
-                DetailRow(label = "时长", value = formatDuration(song.duration), appColors = appColors)
+                DetailRow(
+                    label = "时长",
+                    value = formatDuration(song.duration),
+                    appColors = appColors,
+                )
                 DetailRow(label = "大小", value = sizeText, appColors = appColors)
                 DetailRow(label = "文件路径", value = song.path, appColors = appColors, isPath = true)
             }
@@ -439,6 +514,9 @@ fun formatSize(sizeBytes: Long): String {
     val units = arrayOf("B", "KB", "MB", "GB")
     val digitGroups = (Math.log10(sizeBytes.toDouble()) / Math.log10(1024.0)).toInt()
     return String.format(
-        Locale.getDefault(), "%.1f %s", sizeBytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups]
+        Locale.getDefault(),
+        "%.1f %s",
+        sizeBytes / Math.pow(1024.0, digitGroups.toDouble()),
+        units[digitGroups],
     )
 }

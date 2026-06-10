@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 enum class PlayMode {
-    ListLoop, SingleLoop, Shuffle
+    ListLoop,
+    SingleLoop,
+    Shuffle,
 }
 
 object PlaybackManager {
@@ -37,7 +39,8 @@ object PlaybackManager {
     private var progressJob: Job? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
-    val databaseUpdateEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val databaseUpdateEvent =
+        kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private val _sleepTimerRemaining = MutableStateFlow(0L)
     val sleepTimerRemaining: StateFlow<Long> = _sleepTimerRemaining
@@ -88,11 +91,12 @@ object PlaybackManager {
         val sp = ctx.getSharedPreferences("playback_state_prefs", Context.MODE_PRIVATE)
 
         val modeStr = sp.getString("play_mode", PlayMode.ListLoop.name)
-        _playMode.value = try {
-            PlayMode.valueOf(modeStr ?: PlayMode.ListLoop.name)
-        } catch (e: Exception) {
-            PlayMode.ListLoop
-        }
+        _playMode.value =
+            try {
+                PlayMode.valueOf(modeStr ?: PlayMode.ListLoop.name)
+            } catch (e: Exception) {
+                PlayMode.ListLoop
+            }
 
         coroutineScope.launch(Dispatchers.IO) {
             val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(ctx)
@@ -103,9 +107,13 @@ object PlaybackManager {
             val originalIdsStr = sp.getString("original_queue_ids", "") ?: ""
 
             val queueIds =
-                if (queueIdsStr.isNotBlank()) queueIdsStr.split(",").mapNotNull { it.toLongOrNull() } else emptyList()
-            val originalIds = if (originalIdsStr.isNotBlank()) originalIdsStr.split(",")
-                .mapNotNull { it.toLongOrNull() } else emptyList()
+                if (queueIdsStr.isNotBlank())
+                    queueIdsStr.split(",").mapNotNull { it.toLongOrNull() }
+                else emptyList()
+            val originalIds =
+                if (originalIdsStr.isNotBlank())
+                    originalIdsStr.split(",").mapNotNull { it.toLongOrNull() }
+                else emptyList()
 
             val restoredQueue = queueIds.mapNotNull { songMap[it] }
             val restoredOriginalQueue = originalIds.mapNotNull { songMap[it] }
@@ -134,20 +142,22 @@ object PlaybackManager {
 
         val rest = baseQueue.filter { it.id != activeCurrent.id }
 
-        val orderedRest = when (_playMode.value) {
-            PlayMode.Shuffle -> {
-                rest.shuffled()
-            }
+        val orderedRest =
+            when (_playMode.value) {
+                PlayMode.Shuffle -> {
+                    rest.shuffled()
+                }
 
-            else -> {
-                val indexInBase = baseQueue.indexOfFirst { it.id == activeCurrent.id }
-                if (indexInBase != -1) {
-                    baseQueue.subList(indexInBase + 1, baseQueue.size) + baseQueue.subList(0, indexInBase)
-                } else {
-                    rest
+                else -> {
+                    val indexInBase = baseQueue.indexOfFirst { it.id == activeCurrent.id }
+                    if (indexInBase != -1) {
+                        baseQueue.subList(indexInBase + 1, baseQueue.size) +
+                            baseQueue.subList(0, indexInBase)
+                    } else {
+                        rest
+                    }
                 }
             }
-        }
 
         _playbackQueue.value = listOf(activeCurrent) + orderedRest
     }
@@ -189,12 +199,12 @@ object PlaybackManager {
     }
 
     fun updateSongInQueue(songId: Long, isFavorite: Boolean) {
-        originalQueue = originalQueue.map {
-            if (it.id == songId) it.copy(isFavorite = isFavorite) else it
-        }
-        _playbackQueue.value = _playbackQueue.value.map {
-            if (it.id == songId) it.copy(isFavorite = isFavorite) else it
-        }
+        originalQueue =
+            originalQueue.map { if (it.id == songId) it.copy(isFavorite = isFavorite) else it }
+        _playbackQueue.value =
+            _playbackQueue.value.map {
+                if (it.id == songId) it.copy(isFavorite = isFavorite) else it
+            }
         saveState()
     }
 
@@ -204,11 +214,12 @@ object PlaybackManager {
     }
 
     fun togglePlayMode() {
-        _playMode.value = when (_playMode.value) {
-            PlayMode.ListLoop -> PlayMode.SingleLoop
-            PlayMode.SingleLoop -> PlayMode.Shuffle
-            PlayMode.Shuffle -> PlayMode.ListLoop
-        }
+        _playMode.value =
+            when (_playMode.value) {
+                PlayMode.ListLoop -> PlayMode.SingleLoop
+                PlayMode.SingleLoop -> PlayMode.Shuffle
+                PlayMode.Shuffle -> PlayMode.ListLoop
+            }
         reorderQueue(_currentSong.value)
         saveState()
     }
@@ -220,23 +231,25 @@ object PlaybackManager {
             return
         }
         val current = _currentSong.value
-        val nextSong = when (_playMode.value) {
-            PlayMode.SingleLoop -> {
-                if (isUserInitiated) {
+        val nextSong =
+            when (_playMode.value) {
+                PlayMode.SingleLoop -> {
+                    if (isUserInitiated) {
+                        val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
+                        val nextIndex =
+                            if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
+                        queue[nextIndex]
+                    } else {
+                        current ?: queue[0]
+                    }
+                }
+
+                else -> {
                     val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
                     val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
                     queue[nextIndex]
-                } else {
-                    current ?: queue[0]
                 }
             }
-
-            else -> {
-                val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
-                val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
-                queue[nextIndex]
-            }
-        }
         playSong(context, nextSong, forceRestart = true)
     }
 
@@ -248,7 +261,9 @@ object PlaybackManager {
         }
         val current = _currentSong.value
         val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
-        val prevIndex = if (currentIndex != -1) (currentIndex - 1 + queue.size) % queue.size else queue.lastIndex
+        val prevIndex =
+            if (currentIndex != -1) (currentIndex - 1 + queue.size) % queue.size
+            else queue.lastIndex
         val prevSong = queue[prevIndex]
         playSong(context, prevSong, forceRestart = true)
     }
@@ -260,19 +275,20 @@ object PlaybackManager {
             return
         }
         val current = _currentSong.value
-        val nextSong = when (_playMode.value) {
-            PlayMode.SingleLoop -> {
-                val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
-                val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
-                queue[nextIndex]
-            }
+        val nextSong =
+            when (_playMode.value) {
+                PlayMode.SingleLoop -> {
+                    val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
+                    val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
+                    queue[nextIndex]
+                }
 
-            else -> {
-                val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
-                val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
-                queue[nextIndex]
+                else -> {
+                    val currentIndex = queue.indexOfFirst { it.id == (current?.id ?: -1) }
+                    val nextIndex = if (currentIndex != -1) (currentIndex + 1) % queue.size else 0
+                    queue[nextIndex]
+                }
             }
-        }
         stop(isSwitching = true)
         _currentSong.value = nextSong
         _playbackProgress.value = 0L
@@ -281,7 +297,12 @@ object PlaybackManager {
         context.stopService(Intent(context, PlaybackService::class.java))
     }
 
-    fun playSong(context: Context, song: Song, forceRestart: Boolean = false, startPositionMs: Long = 0L) {
+    fun playSong(
+        context: Context,
+        song: Song,
+        forceRestart: Boolean = false,
+        startPositionMs: Long = 0L,
+    ) {
         appContext = context.applicationContext
         if (isTimerExpired) {
             resetSleepTimer()
@@ -302,60 +323,61 @@ object PlaybackManager {
 
         try {
             _isPlaying.value = true
-            mediaPlayer = MediaPlayer().apply {
-                if (song.path.startsWith("http")) {
-                    setDataSource(song.path)
-                } else {
-                    setDataSource(context, Uri.parse(song.path))
-                }
-                setOnPreparedListener {
-                    if (startPositionMs > 0L) {
-                        seekTo(startPositionMs)
-                    }
-                    if (_isPlaying.value) {
-                        start()
-                        startProgressTracker()
-                    }
-                    triggerServiceUpdate()
-                }
-                setOnCompletionListener {
-                    _isPlaying.value = false
-                    _playbackProgress.value = 0L
-                    stopProgressTracker()
-
-                    val isTimerActive = _sleepTimerRemaining.value > 0
-                    val isCloseToExpiration = isTimerActive && _sleepTimerRemaining.value <= 10000L
-
-                    if (isTimerExpired || isCloseToExpiration) {
-                        appContext?.let { ctx ->
-                            prepareNextWithoutPlaying(ctx)
-                        }
-                        resetSleepTimer()
+            mediaPlayer =
+                MediaPlayer().apply {
+                    if (song.path.startsWith("http")) {
+                        setDataSource(song.path)
                     } else {
-                        appContext?.let { ctx ->
-                            playNext(ctx, isUserInitiated = false)
+                        setDataSource(context, Uri.parse(song.path))
+                    }
+                    setOnPreparedListener {
+                        if (startPositionMs > 0L) {
+                            seekTo(startPositionMs)
+                        }
+                        if (_isPlaying.value) {
+                            start()
+                            startProgressTracker()
+                        }
+                        triggerServiceUpdate()
+                    }
+                    setOnCompletionListener {
+                        _isPlaying.value = false
+                        _playbackProgress.value = 0L
+                        stopProgressTracker()
+
+                        val isTimerActive = _sleepTimerRemaining.value > 0
+                        val isCloseToExpiration =
+                            isTimerActive && _sleepTimerRemaining.value <= 10000L
+
+                        if (isTimerExpired || isCloseToExpiration) {
+                            appContext?.let { ctx -> prepareNextWithoutPlaying(ctx) }
+                            resetSleepTimer()
+                        } else {
+                            appContext?.let { ctx -> playNext(ctx, isUserInitiated = false) }
                         }
                     }
+                    setOnErrorListener { _, _, _ ->
+                        _isPlaying.value = false
+                        stopProgressTracker()
+                        android.widget.Toast.makeText(
+                                context,
+                                "播放失败: 本地无此音频文件",
+                                android.widget.Toast.LENGTH_SHORT,
+                            )
+                            .show()
+                        true
+                    }
+                    setOnSeekCompleteListener { isSeeking = false }
+                    prepareAsync()
                 }
-                setOnErrorListener { _, _, _ ->
-                    _isPlaying.value = false
-                    stopProgressTracker()
-                    android.widget.Toast.makeText(
-                        context,
-                        "播放失败: 本地无此音频文件",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
-                    true
-                }
-                setOnSeekCompleteListener {
-                    isSeeking = false
-                }
-                prepareAsync()
-            }
         } catch (e: Exception) {
             e.printStackTrace()
             _isPlaying.value = false
-            android.widget.Toast.makeText(context, "播放失败: 本地无此音频文件", android.widget.Toast.LENGTH_SHORT)
+            android.widget.Toast.makeText(
+                    context,
+                    "播放失败: 本地无此音频文件",
+                    android.widget.Toast.LENGTH_SHORT,
+                )
                 .show()
         }
     }
@@ -421,9 +443,10 @@ object PlaybackManager {
 
     private fun triggerServiceUpdate() {
         appContext?.let { ctx ->
-            val intent = Intent(ctx, PlaybackService::class.java).apply {
-                action = PlaybackService.ACTION_UPDATE
-            }
+            val intent =
+                Intent(ctx, PlaybackService::class.java).apply {
+                    action = PlaybackService.ACTION_UPDATE
+                }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 ctx.startForegroundService(intent)
             } else {
@@ -455,7 +478,8 @@ object PlaybackManager {
             launch(Dispatchers.Main) {
                 databaseUpdateEvent.tryEmit(Unit)
                 val msg = if (targetFav) "已添加到喜欢" else "已取消喜欢"
-                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }
@@ -472,31 +496,30 @@ object PlaybackManager {
         coroutineScope.launch(Dispatchers.IO) {
             val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
             dbHelper.setBlacklisted(song.id, true)
-            launch(Dispatchers.Main) {
-                databaseUpdateEvent.tryEmit(Unit)
-            }
+            launch(Dispatchers.Main) { databaseUpdateEvent.tryEmit(Unit) }
         }
     }
 
     private fun startProgressTracker() {
         progressJob?.cancel()
-        progressJob = coroutineScope.launch {
-            var saveCounter = 0
-            while (true) {
-                mediaPlayer?.let {
-                    if (it.isPlaying && !isSeeking) {
-                        val pos = it.currentPosition.toLong()
-                        _playbackProgress.value = pos
-                        saveCounter++
-                        if (saveCounter >= 25) { // 5秒保存一次 (25 * 200ms)
-                            saveCounter = 0
-                            saveProgressOnly(pos)
+        progressJob =
+            coroutineScope.launch {
+                var saveCounter = 0
+                while (true) {
+                    mediaPlayer?.let {
+                        if (it.isPlaying && !isSeeking) {
+                            val pos = it.currentPosition.toLong()
+                            _playbackProgress.value = pos
+                            saveCounter++
+                            if (saveCounter >= 25) { // 5秒保存一次 (25 * 200ms)
+                                saveCounter = 0
+                                saveProgressOnly(pos)
+                            }
                         }
                     }
+                    delay(200)
                 }
-                delay(200)
             }
-        }
     }
 
     private fun stopProgressTracker() {
@@ -510,25 +533,26 @@ object PlaybackManager {
         _sleepTimerPlayComplete.value = playComplete
         _sleepTimerRemaining.value = durationMs
 
-        sleepTimerJob = coroutineScope.launch {
-            while (_sleepTimerRemaining.value > 0) {
-                delay(1000)
-                val nextVal = _sleepTimerRemaining.value - 1000
-                _sleepTimerRemaining.value = maxOf(0L, nextVal)
-            }
-            if (playComplete) {
-                isTimerExpired = true
-                if (!_isPlaying.value) {
+        sleepTimerJob =
+            coroutineScope.launch {
+                while (_sleepTimerRemaining.value > 0) {
+                    delay(1000)
+                    val nextVal = _sleepTimerRemaining.value - 1000
+                    _sleepTimerRemaining.value = maxOf(0L, nextVal)
+                }
+                if (playComplete) {
+                    isTimerExpired = true
+                    if (!_isPlaying.value) {
+                        resetSleepTimer()
+                    }
+                } else {
+                    pause()
+                    appContext?.let { ctx ->
+                        ctx.stopService(Intent(ctx, PlaybackService::class.java))
+                    }
                     resetSleepTimer()
                 }
-            } else {
-                pause()
-                appContext?.let { ctx ->
-                    ctx.stopService(Intent(ctx, PlaybackService::class.java))
-                }
-                resetSleepTimer()
             }
-        }
     }
 
     fun cancelSleepTimer() {

@@ -5,8 +5,8 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
-
+class MusicDatabaseHelper(context: Context) :
+    SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
     companion object {
         private const val DATABASE_NAME = "music_player.db"
         private const val DATABASE_VERSION = 4
@@ -39,7 +39,8 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
     }
 
     override fun onCreate(db: SQLiteDatabase) {
-        val createSongsTable = """
+        val createSongsTable =
+            """
             CREATE TABLE $TABLE_SONGS (
                 $COLUMN_ID INTEGER PRIMARY KEY,
                 $COLUMN_TITLE TEXT,
@@ -55,18 +56,22 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                 $COLUMN_FAVORITED_AT INTEGER DEFAULT 0,
                 $COLUMN_BLACKLISTED_AT INTEGER DEFAULT 0
             )
-        """.trimIndent()
+            """
+                .trimIndent()
         db.execSQL(createSongsTable)
 
-        val createPlaylistsTable = """
+        val createPlaylistsTable =
+            """
             CREATE TABLE $TABLE_PLAYLISTS (
                 $COLUMN_PLAYLIST_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 $COLUMN_PLAYLIST_NAME TEXT UNIQUE
             )
-        """.trimIndent()
+            """
+                .trimIndent()
         db.execSQL(createPlaylistsTable)
 
-        val createPlaylistSongsTable = """
+        val createPlaylistSongsTable =
+            """
             CREATE TABLE $TABLE_PLAYLIST_SONGS (
                 $COLUMN_PS_PLAYLIST_ID INTEGER,
                 $COLUMN_PS_SONG_ID INTEGER,
@@ -75,21 +80,25 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                 FOREIGN KEY ($COLUMN_PS_PLAYLIST_ID) REFERENCES $TABLE_PLAYLISTS ($COLUMN_PLAYLIST_ID) ON DELETE CASCADE,
                 FOREIGN KEY ($COLUMN_PS_SONG_ID) REFERENCES $TABLE_SONGS ($COLUMN_ID) ON DELETE CASCADE
             )
-        """.trimIndent()
+            """
+                .trimIndent()
         db.execSQL(createPlaylistSongsTable)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
-            val createPlaylistsTable = """
+            val createPlaylistsTable =
+                """
                 CREATE TABLE $TABLE_PLAYLISTS (
                     $COLUMN_PLAYLIST_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     $COLUMN_PLAYLIST_NAME TEXT UNIQUE
                 )
-            """.trimIndent()
+                """
+                    .trimIndent()
             db.execSQL(createPlaylistsTable)
 
-            val createPlaylistSongsTable = """
+            val createPlaylistSongsTable =
+                """
                 CREATE TABLE $TABLE_PLAYLIST_SONGS (
                     $COLUMN_PS_PLAYLIST_ID INTEGER,
                     $COLUMN_PS_SONG_ID INTEGER,
@@ -98,7 +107,8 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                     FOREIGN KEY ($COLUMN_PS_PLAYLIST_ID) REFERENCES $TABLE_PLAYLISTS ($COLUMN_PLAYLIST_ID) ON DELETE CASCADE,
                     FOREIGN KEY ($COLUMN_PS_SONG_ID) REFERENCES $TABLE_SONGS ($COLUMN_ID) ON DELETE CASCADE
                 )
-            """.trimIndent()
+                """
+                    .trimIndent()
             db.execSQL(createPlaylistSongsTable)
         }
         if (oldVersion < 3) {
@@ -106,8 +116,12 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         }
         if (oldVersion < 4) {
             db.execSQL("ALTER TABLE $TABLE_SONGS ADD COLUMN $COLUMN_FAVORITED_AT INTEGER DEFAULT 0")
-            db.execSQL("ALTER TABLE $TABLE_SONGS ADD COLUMN $COLUMN_BLACKLISTED_AT INTEGER DEFAULT 0")
-            db.execSQL("ALTER TABLE $TABLE_PLAYLIST_SONGS ADD COLUMN $COLUMN_PS_ADDED_AT INTEGER DEFAULT 0")
+            db.execSQL(
+                "ALTER TABLE $TABLE_SONGS ADD COLUMN $COLUMN_BLACKLISTED_AT INTEGER DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE $TABLE_PLAYLIST_SONGS ADD COLUMN $COLUMN_PS_ADDED_AT INTEGER DEFAULT 0"
+            )
         }
     }
 
@@ -121,17 +135,18 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
             // 1. Insert or update scanned songs
             for (song in scannedSongs) {
-                val cv = ContentValues().apply {
-                    put(COLUMN_ID, song.id)
-                    put(COLUMN_TITLE, song.title)
-                    put(COLUMN_ARTIST, song.artist)
-                    put(COLUMN_ALBUM, song.album)
-                    put(COLUMN_PATH, song.path)
-                    put(COLUMN_DURATION, song.duration)
-                    put(COLUMN_SIZE, song.size)
-                    put(COLUMN_ALBUM_ID, song.albumId)
-                    put(COLUMN_DATE_ADDED, song.dateAdded)
-                }
+                val cv =
+                    ContentValues().apply {
+                        put(COLUMN_ID, song.id)
+                        put(COLUMN_TITLE, song.title)
+                        put(COLUMN_ARTIST, song.artist)
+                        put(COLUMN_ALBUM, song.album)
+                        put(COLUMN_PATH, song.path)
+                        put(COLUMN_DURATION, song.duration)
+                        put(COLUMN_SIZE, song.size)
+                        put(COLUMN_ALBUM_ID, song.albumId)
+                        put(COLUMN_DATE_ADDED, song.dateAdded)
+                    }
 
                 if (existingMap.containsKey(song.id)) {
                     // Update but preserve flags (which are not in ContentValues)
@@ -157,26 +172,21 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         }
     }
 
-    fun getAllSongs(includeBlacklisted: Boolean = false, orderBy: String = "$COLUMN_TITLE ASC"): List<Song> {
+    fun getAllSongs(
+        includeBlacklisted: Boolean = false,
+        orderBy: String = "$COLUMN_TITLE ASC",
+    ): List<Song> {
         return getAllSongsInternal(readableDatabase, includeBlacklisted, orderBy)
     }
 
     private fun getAllSongsInternal(
         db: SQLiteDatabase,
         includeBlacklisted: Boolean,
-        orderBy: String = "$COLUMN_TITLE ASC"
+        orderBy: String = "$COLUMN_TITLE ASC",
     ): List<Song> {
         val songsList = mutableListOf<Song>()
         val selection = if (includeBlacklisted) null else "$COLUMN_IS_BLACKLISTED = 0"
-        val cursor = db.query(
-            TABLE_SONGS,
-            null,
-            selection,
-            null,
-            null,
-            null,
-            orderBy
-        )
+        val cursor = db.query(TABLE_SONGS, null, selection, null, null, null, orderBy)
 
         cursor.use {
             val idCol = cursor.getColumnIndexOrThrow(COLUMN_ID)
@@ -204,7 +214,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                         albumId = cursor.getLong(albumIdCol),
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
-                        dateAdded = cursor.getLong(dateAddedCol)
+                        dateAdded = cursor.getLong(dateAddedCol),
                     )
                 )
             }
@@ -215,15 +225,16 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
     fun getFavoriteSongs(): List<Song> {
         val db = readableDatabase
         val songsList = mutableListOf<Song>()
-        val cursor = db.query(
-            TABLE_SONGS,
-            null,
-            "$COLUMN_IS_FAVORITE = 1 AND $COLUMN_IS_BLACKLISTED = 0",
-            null,
-            null,
-            null,
-            "$COLUMN_FAVORITED_AT DESC, $COLUMN_ID DESC"
-        )
+        val cursor =
+            db.query(
+                TABLE_SONGS,
+                null,
+                "$COLUMN_IS_FAVORITE = 1 AND $COLUMN_IS_BLACKLISTED = 0",
+                null,
+                null,
+                null,
+                "$COLUMN_FAVORITED_AT DESC, $COLUMN_ID DESC",
+            )
 
         cursor.use {
             val idCol = cursor.getColumnIndexOrThrow(COLUMN_ID)
@@ -251,7 +262,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                         albumId = cursor.getLong(albumIdCol),
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
-                        dateAdded = cursor.getLong(dateAddedCol)
+                        dateAdded = cursor.getLong(dateAddedCol),
                     )
                 )
             }
@@ -261,10 +272,11 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
     fun getFavoriteSongsCount(): Int {
         val db = readableDatabase
-        val cursor = db.rawQuery(
-            "SELECT COUNT(*) FROM $TABLE_SONGS WHERE $COLUMN_IS_FAVORITE = 1 AND $COLUMN_IS_BLACKLISTED = 0",
-            null
-        )
+        val cursor =
+            db.rawQuery(
+                "SELECT COUNT(*) FROM $TABLE_SONGS WHERE $COLUMN_IS_FAVORITE = 1 AND $COLUMN_IS_BLACKLISTED = 0",
+                null,
+            )
         cursor.use {
             if (cursor.moveToFirst()) {
                 return cursor.getInt(0)
@@ -276,15 +288,16 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
     fun getBlacklistedSongs(): List<Song> {
         val db = readableDatabase
         val songsList = mutableListOf<Song>()
-        val cursor = db.query(
-            TABLE_SONGS,
-            null,
-            "$COLUMN_IS_BLACKLISTED = 1",
-            null,
-            null,
-            null,
-            "$COLUMN_BLACKLISTED_AT DESC, $COLUMN_ID DESC"
-        )
+        val cursor =
+            db.query(
+                TABLE_SONGS,
+                null,
+                "$COLUMN_IS_BLACKLISTED = 1",
+                null,
+                null,
+                null,
+                "$COLUMN_BLACKLISTED_AT DESC, $COLUMN_ID DESC",
+            )
 
         cursor.use {
             val idCol = cursor.getColumnIndexOrThrow(COLUMN_ID)
@@ -312,7 +325,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                         albumId = cursor.getLong(albumIdCol),
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
-                        dateAdded = cursor.getLong(dateAddedCol)
+                        dateAdded = cursor.getLong(dateAddedCol),
                     )
                 )
             }
@@ -322,23 +335,25 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
     fun setFavorite(songId: Long, isFavorite: Boolean) {
         val db = writableDatabase
-        val cv = ContentValues().apply {
-            put(COLUMN_IS_FAVORITE, if (isFavorite) 1 else 0)
-            if (isFavorite) {
-                put(COLUMN_FAVORITED_AT, System.currentTimeMillis() / 1000)
+        val cv =
+            ContentValues().apply {
+                put(COLUMN_IS_FAVORITE, if (isFavorite) 1 else 0)
+                if (isFavorite) {
+                    put(COLUMN_FAVORITED_AT, System.currentTimeMillis() / 1000)
+                }
             }
-        }
         db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(songId.toString()))
     }
 
     fun setBlacklisted(songId: Long, isBlacklisted: Boolean) {
         val db = writableDatabase
-        val cv = ContentValues().apply {
-            put(COLUMN_IS_BLACKLISTED, if (isBlacklisted) 1 else 0)
-            if (isBlacklisted) {
-                put(COLUMN_BLACKLISTED_AT, System.currentTimeMillis() / 1000)
+        val cv =
+            ContentValues().apply {
+                put(COLUMN_IS_BLACKLISTED, if (isBlacklisted) 1 else 0)
+                if (isBlacklisted) {
+                    put(COLUMN_BLACKLISTED_AT, System.currentTimeMillis() / 1000)
+                }
             }
-        }
         db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(songId.toString()))
     }
 
@@ -346,23 +361,22 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
     fun createPlaylist(name: String): Long {
         val db = writableDatabase
-        val cv = ContentValues().apply {
-            put(COLUMN_PLAYLIST_NAME, name)
-        }
+        val cv = ContentValues().apply { put(COLUMN_PLAYLIST_NAME, name) }
         return db.insertWithOnConflict(TABLE_PLAYLISTS, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
     }
 
     fun getPlaylistIdByName(name: String): Long? {
         val db = readableDatabase
-        val cursor = db.query(
-            TABLE_PLAYLISTS,
-            arrayOf(COLUMN_PLAYLIST_ID),
-            "$COLUMN_PLAYLIST_NAME = ?",
-            arrayOf(name),
-            null,
-            null,
-            null
-        )
+        val cursor =
+            db.query(
+                TABLE_PLAYLISTS,
+                arrayOf(COLUMN_PLAYLIST_ID),
+                "$COLUMN_PLAYLIST_NAME = ?",
+                arrayOf(name),
+                null,
+                null,
+                null,
+            )
         cursor.use {
             if (cursor.moveToFirst()) {
                 return cursor.getLong(0)
@@ -373,19 +387,20 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
     fun insertSong(song: Song): Long {
         val db = writableDatabase
-        val cv = ContentValues().apply {
-            put(COLUMN_ID, song.id)
-            put(COLUMN_TITLE, song.title)
-            put(COLUMN_ARTIST, song.artist)
-            put(COLUMN_ALBUM, song.album)
-            put(COLUMN_PATH, song.path)
-            put(COLUMN_DURATION, song.duration)
-            put(COLUMN_SIZE, song.size)
-            put(COLUMN_ALBUM_ID, song.albumId)
-            put(COLUMN_IS_FAVORITE, if (song.isFavorite) 1 else 0)
-            put(COLUMN_IS_BLACKLISTED, if (song.isBlacklisted) 1 else 0)
-            put(COLUMN_DATE_ADDED, System.currentTimeMillis() / 1000)
-        }
+        val cv =
+            ContentValues().apply {
+                put(COLUMN_ID, song.id)
+                put(COLUMN_TITLE, song.title)
+                put(COLUMN_ARTIST, song.artist)
+                put(COLUMN_ALBUM, song.album)
+                put(COLUMN_PATH, song.path)
+                put(COLUMN_DURATION, song.duration)
+                put(COLUMN_SIZE, song.size)
+                put(COLUMN_ALBUM_ID, song.albumId)
+                put(COLUMN_IS_FAVORITE, if (song.isFavorite) 1 else 0)
+                put(COLUMN_IS_BLACKLISTED, if (song.isBlacklisted) 1 else 0)
+                put(COLUMN_DATE_ADDED, System.currentTimeMillis() / 1000)
+            }
         return db.insertWithOnConflict(TABLE_SONGS, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
     }
 
@@ -398,13 +413,18 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
     fun deletePlaylist(playlistId: Long) {
         val db = writableDatabase
         db.delete(TABLE_PLAYLISTS, "$COLUMN_PLAYLIST_ID = ?", arrayOf(playlistId.toString()))
-        db.delete(TABLE_PLAYLIST_SONGS, "$COLUMN_PS_PLAYLIST_ID = ?", arrayOf(playlistId.toString()))
+        db.delete(
+            TABLE_PLAYLIST_SONGS,
+            "$COLUMN_PS_PLAYLIST_ID = ?",
+            arrayOf(playlistId.toString()),
+        )
     }
 
     fun getPlaylists(): List<Playlist> {
         val db = readableDatabase
         val playlists = mutableListOf<Playlist>()
-        val query = """
+        val query =
+            """
             SELECT p.$COLUMN_PLAYLIST_ID, p.$COLUMN_PLAYLIST_NAME, COUNT(s.$COLUMN_ID) as count,
                    (SELECT ps2.$COLUMN_PS_SONG_ID 
                     FROM $TABLE_PLAYLIST_SONGS ps2 
@@ -416,7 +436,8 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
             LEFT JOIN $TABLE_SONGS s ON ps.$COLUMN_PS_SONG_ID = s.$COLUMN_ID AND s.$COLUMN_IS_BLACKLISTED = 0
             GROUP BY p.$COLUMN_PLAYLIST_ID
             ORDER BY p.$COLUMN_PLAYLIST_NAME ASC
-        """.trimIndent()
+            """
+                .trimIndent()
 
         val cursor = db.rawQuery(query, null)
         cursor.use {
@@ -427,13 +448,15 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
             while (cursor.moveToNext()) {
                 val firstSongId =
-                    if (firstSongIdCol != -1 && !cursor.isNull(firstSongIdCol)) cursor.getLong(firstSongIdCol) else null
+                    if (firstSongIdCol != -1 && !cursor.isNull(firstSongIdCol))
+                        cursor.getLong(firstSongIdCol)
+                    else null
                 playlists.add(
                     Playlist(
                         id = cursor.getLong(idCol),
                         name = cursor.getString(nameCol) ?: "",
                         songCount = cursor.getInt(countCol),
-                        firstSongId = firstSongId
+                        firstSongId = firstSongId,
                     )
                 )
             }
@@ -443,12 +466,14 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
 
     fun addSongToPlaylist(playlistId: Long, songId: Long): Boolean {
         val db = writableDatabase
-        val cv = ContentValues().apply {
-            put(COLUMN_PS_PLAYLIST_ID, playlistId)
-            put(COLUMN_PS_SONG_ID, songId)
-            put(COLUMN_PS_ADDED_AT, System.currentTimeMillis() / 1000)
-        }
-        val result = db.insertWithOnConflict(TABLE_PLAYLIST_SONGS, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
+        val cv =
+            ContentValues().apply {
+                put(COLUMN_PS_PLAYLIST_ID, playlistId)
+                put(COLUMN_PS_SONG_ID, songId)
+                put(COLUMN_PS_ADDED_AT, System.currentTimeMillis() / 1000)
+            }
+        val result =
+            db.insertWithOnConflict(TABLE_PLAYLIST_SONGS, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
         return result != -1L
     }
 
@@ -457,20 +482,22 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         db.delete(
             TABLE_PLAYLIST_SONGS,
             "$COLUMN_PS_PLAYLIST_ID = ? AND $COLUMN_PS_SONG_ID = ?",
-            arrayOf(playlistId.toString(), songId.toString())
+            arrayOf(playlistId.toString(), songId.toString()),
         )
     }
 
     fun getSongsInPlaylist(playlistId: Long): List<Song> {
         val db = readableDatabase
         val songsList = mutableListOf<Song>()
-        val query = """
+        val query =
+            """
             SELECT s.* 
             FROM $TABLE_SONGS s 
             INNER JOIN $TABLE_PLAYLIST_SONGS ps ON s.$COLUMN_ID = ps.$COLUMN_PS_SONG_ID 
             WHERE ps.$COLUMN_PS_PLAYLIST_ID = ? AND s.$COLUMN_IS_BLACKLISTED = 0
             ORDER BY ps.$COLUMN_PS_ADDED_AT DESC, s.$COLUMN_ID DESC
-        """.trimIndent()
+            """
+                .trimIndent()
 
         val cursor = db.rawQuery(query, arrayOf(playlistId.toString()))
         cursor.use {
@@ -499,7 +526,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                         albumId = cursor.getLong(albumIdCol),
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
-                        dateAdded = cursor.getLong(dateAddedCol)
+                        dateAdded = cursor.getLong(dateAddedCol),
                     )
                 )
             }
@@ -511,12 +538,13 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         val db = writableDatabase
         db.beginTransaction()
         try {
-            val cv = ContentValues().apply {
-                put(COLUMN_IS_FAVORITE, if (isFavorite) 1 else 0)
-                if (isFavorite) {
-                    put(COLUMN_FAVORITED_AT, System.currentTimeMillis() / 1000)
+            val cv =
+                ContentValues().apply {
+                    put(COLUMN_IS_FAVORITE, if (isFavorite) 1 else 0)
+                    if (isFavorite) {
+                        put(COLUMN_FAVORITED_AT, System.currentTimeMillis() / 1000)
+                    }
                 }
-            }
             for (id in songIds) {
                 db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(id.toString()))
             }
@@ -530,12 +558,13 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         val db = writableDatabase
         db.beginTransaction()
         try {
-            val cv = ContentValues().apply {
-                put(COLUMN_IS_BLACKLISTED, if (isBlacklisted) 1 else 0)
-                if (isBlacklisted) {
-                    put(COLUMN_BLACKLISTED_AT, System.currentTimeMillis() / 1000)
+            val cv =
+                ContentValues().apply {
+                    put(COLUMN_IS_BLACKLISTED, if (isBlacklisted) 1 else 0)
+                    if (isBlacklisted) {
+                        put(COLUMN_BLACKLISTED_AT, System.currentTimeMillis() / 1000)
+                    }
                 }
-            }
             for (id in songIds) {
                 db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(id.toString()))
             }
@@ -551,12 +580,19 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         db.beginTransaction()
         try {
             for (id in songIds) {
-                val cv = ContentValues().apply {
-                    put(COLUMN_PS_PLAYLIST_ID, playlistId)
-                    put(COLUMN_PS_SONG_ID, id)
-                    put(COLUMN_PS_ADDED_AT, System.currentTimeMillis() / 1000)
-                }
-                val result = db.insertWithOnConflict(TABLE_PLAYLIST_SONGS, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
+                val cv =
+                    ContentValues().apply {
+                        put(COLUMN_PS_PLAYLIST_ID, playlistId)
+                        put(COLUMN_PS_SONG_ID, id)
+                        put(COLUMN_PS_ADDED_AT, System.currentTimeMillis() / 1000)
+                    }
+                val result =
+                    db.insertWithOnConflict(
+                        TABLE_PLAYLIST_SONGS,
+                        null,
+                        cv,
+                        SQLiteDatabase.CONFLICT_IGNORE,
+                    )
                 if (result != -1L) {
                     addedCount++
                 }
@@ -576,7 +612,7 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
                 db.delete(
                     TABLE_PLAYLIST_SONGS,
                     "$COLUMN_PS_PLAYLIST_ID = ? AND $COLUMN_PS_SONG_ID = ?",
-                    arrayOf(playlistId.toString(), id.toString())
+                    arrayOf(playlistId.toString(), id.toString()),
                 )
             }
             db.setTransactionSuccessful()
@@ -599,4 +635,3 @@ class MusicDatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE
         }
     }
 }
-

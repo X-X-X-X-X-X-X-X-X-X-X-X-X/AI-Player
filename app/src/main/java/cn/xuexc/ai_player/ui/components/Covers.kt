@@ -33,7 +33,7 @@ fun SongCover(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
-    fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.MusicNote
+    fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.MusicNote,
 ) {
     val context = LocalContext.current
     var bitmap by remember(song.id) { mutableStateOf(song.getCachedCover()) }
@@ -41,21 +41,20 @@ fun SongCover(
     LaunchedEffect(song.id) {
         if (bitmap == null) {
             delay(100)
-            withContext(Dispatchers.IO) {
-                bitmap = song.loadCover(context, 150)
-            }
+            withContext(Dispatchers.IO) { bitmap = song.loadCover(context, 150) }
         }
     }
 
     Box(
-        modifier = modifier.clip(shape).background(Color(0xFF2C2C2E)), contentAlignment = Alignment.Center
+        modifier = modifier.clip(shape).background(Color(0xFF2C2C2E)),
+        contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
             Image(
                 bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = "Album Art",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
             )
         }
 
@@ -63,13 +62,13 @@ fun SongCover(
         if (isCurrent) {
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isPlaying) "暂停" else "播放",
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
             }
         } else if (bitmap == null) {
@@ -77,7 +76,7 @@ fun SongCover(
                 imageVector = fallbackIcon,
                 contentDescription = "Cover Placeholder",
                 tint = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             )
         }
     }
@@ -89,18 +88,17 @@ fun PlaylistCover(
     currentAccent: AccentColor,
     modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
-    iconSize: androidx.compose.ui.unit.Dp = 24.dp
+    iconSize: androidx.compose.ui.unit.Dp = 24.dp,
 ) {
     val context = LocalContext.current
-    var bitmap by remember(firstSongId) { mutableStateOf(firstSongId?.let { getCachedCoverById(it) }) }
+    var bitmap by
+        remember(firstSongId) { mutableStateOf(firstSongId?.let { getCachedCoverById(it) }) }
 
     LaunchedEffect(firstSongId) {
         if (firstSongId != null) {
             if (bitmap == null) {
                 delay(100)
-                withContext(Dispatchers.IO) {
-                    bitmap = loadCoverById(context, firstSongId, 150)
-                }
+                withContext(Dispatchers.IO) { bitmap = loadCoverById(context, firstSongId, 150) }
             }
         } else {
             bitmap = null
@@ -108,23 +106,25 @@ fun PlaylistCover(
     }
 
     Box(
-        modifier = modifier.clip(shape).background(
-            if (bitmap != null) Color(0xFF2C2C2E) else currentAccent.mainColor
-        ), contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .clip(shape)
+                .background(if (bitmap != null) Color(0xFF2C2C2E) else currentAccent.mainColor),
+        contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
             Image(
                 bitmap = bitmap!!.asImageBitmap(),
                 contentDescription = "Playlist Cover",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
             )
         } else {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.List,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier.size(iconSize)
+                modifier = Modifier.size(iconSize),
             )
         }
     }

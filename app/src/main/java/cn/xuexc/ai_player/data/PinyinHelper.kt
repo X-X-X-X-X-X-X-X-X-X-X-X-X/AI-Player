@@ -3,16 +3,13 @@ package cn.xuexc.ai_player.data
 import android.icu.text.Transliterator
 import java.util.concurrent.ConcurrentHashMap
 
-data class SongItemWithLetter(
-    val song: Song,
-    val letter: Char
-)
+data class SongItemWithLetter(val song: Song, val letter: Char)
 
 data class ArtistItem(
     val artistKey: String,
     val displayName: String,
     val songs: List<Song>,
-    val letter: Char
+    val letter: Char,
 )
 
 object PinyinHelper {
@@ -39,18 +36,19 @@ object PinyinHelper {
         val cached = charLetterCache[firstChar]
         if (cached != null) return cached
 
-        val result = try {
-            // 使用单例 Transliterator 进行转换
-            val pinyin = TransliteratorHolder.transliterator.transliterate(firstChar.toString())
-            val firstPinyinChar = pinyin.firstOrNull() ?: '#'
-            if (firstPinyinChar in 'a'..'z' || firstPinyinChar in 'A'..'Z') {
-                firstPinyinChar.uppercaseChar()
-            } else {
+        val result =
+            try {
+                // 使用单例 Transliterator 进行转换
+                val pinyin = TransliteratorHolder.transliterator.transliterate(firstChar.toString())
+                val firstPinyinChar = pinyin.firstOrNull() ?: '#'
+                if (firstPinyinChar in 'a'..'z' || firstPinyinChar in 'A'..'Z') {
+                    firstPinyinChar.uppercaseChar()
+                } else {
+                    '#'
+                }
+            } catch (e: Exception) {
                 '#'
             }
-        } catch (e: Exception) {
-            '#'
-        }
 
         charLetterCache[firstChar] = result
         return result

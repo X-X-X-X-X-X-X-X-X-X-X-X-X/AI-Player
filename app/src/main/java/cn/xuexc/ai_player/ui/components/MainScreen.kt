@@ -54,12 +54,12 @@ import cn.xuexc.ai_player.playback.PlayMode
 import cn.xuexc.ai_player.ui.ScanStatus
 import cn.xuexc.ai_player.ui.SongViewModel
 import cn.xuexc.ai_player.ui.SortOrder
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 @Composable
 fun MainScreen(viewModel: SongViewModel) {
@@ -96,25 +96,28 @@ fun MainScreen(viewModel: SongViewModel) {
     }
 
     var currentScreen by remember { mutableStateOf(Screen.Library) }
-    val pagerState = rememberPagerState(
-        initialPage = when (currentScreen) {
-            Screen.Library -> 0
-            Screen.Playlists -> 1
-            Screen.Artists -> 2
-        },
-        pageCount = { 3 }
-    )
+    val pagerState =
+        rememberPagerState(
+            initialPage =
+                when (currentScreen) {
+                    Screen.Library -> 0
+                    Screen.Playlists -> 1
+                    Screen.Artists -> 2
+                },
+            pageCount = { 3 },
+        )
 
     var isProgrammaticScroll by remember { mutableStateOf(false) }
 
     LaunchedEffect(pagerState.currentPage) {
         if (!isProgrammaticScroll) {
-            val targetScreen = when (pagerState.currentPage) {
-                0 -> Screen.Library
-                1 -> Screen.Playlists
-                2 -> Screen.Artists
-                else -> Screen.Library
-            }
+            val targetScreen =
+                when (pagerState.currentPage) {
+                    0 -> Screen.Library
+                    1 -> Screen.Playlists
+                    2 -> Screen.Artists
+                    else -> Screen.Library
+                }
             if (currentScreen != targetScreen) {
                 currentScreen = targetScreen
             }
@@ -122,11 +125,12 @@ fun MainScreen(viewModel: SongViewModel) {
     }
 
     LaunchedEffect(currentScreen) {
-        val targetPage = when (currentScreen) {
-            Screen.Library -> 0
-            Screen.Playlists -> 1
-            Screen.Artists -> 2
-        }
+        val targetPage =
+            when (currentScreen) {
+                Screen.Library -> 0
+                Screen.Playlists -> 1
+                Screen.Artists -> 2
+            }
         if (pagerState.currentPage != targetPage) {
             try {
                 isProgrammaticScroll = true
@@ -136,7 +140,9 @@ fun MainScreen(viewModel: SongViewModel) {
             }
         }
     }
-    var activePlaylistId by remember { mutableStateOf<Long?>(null) } // -1 for Favorites, -2 for Blacklist, positive for custom, null for none
+    var activePlaylistId by remember {
+        mutableStateOf<Long?>(null)
+    } // -1 for Favorites, -2 for Blacklist, positive for custom, null for none
     var activePlaylistName by remember { mutableStateOf("") }
     var activeArtistName by remember { mutableStateOf<String?>(null) }
     var previousScreen by remember { mutableStateOf<Screen?>(null) }
@@ -160,7 +166,10 @@ fun MainScreen(viewModel: SongViewModel) {
         isCheckingUpdate = true
         coroutineScope.launch(Dispatchers.IO) {
             try {
-                val url = URL("https://api.github.com/repos/X-X-X-X-X-X-X-X-X-X-X-X-X/AI-Player/releases/latest")
+                val url =
+                    URL(
+                        "https://api.github.com/repos/X-X-X-X-X-X-X-X-X-X-X-X-X/AI-Player/releases/latest"
+                    )
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
@@ -184,7 +193,11 @@ fun MainScreen(viewModel: SongViewModel) {
                         withContext(Dispatchers.Main) {
                             isCheckingUpdate = false
                             if (showToastIfLatest) {
-                                Toast.makeText(context, "当前已是最新版本 (v$currentVersionName)", Toast.LENGTH_SHORT)
+                                Toast.makeText(
+                                        context,
+                                        "当前已是最新版本 (v$currentVersionName)",
+                                        Toast.LENGTH_SHORT,
+                                    )
                                     .show()
                             }
                         }
@@ -192,7 +205,11 @@ fun MainScreen(viewModel: SongViewModel) {
                 } else {
                     withContext(Dispatchers.Main) {
                         isCheckingUpdate = false
-                        Toast.makeText(context, "检查更新失败，响应码: ${connection.responseCode}", Toast.LENGTH_SHORT)
+                        Toast.makeText(
+                                context,
+                                "检查更新失败，响应码: ${connection.responseCode}",
+                                Toast.LENGTH_SHORT,
+                            )
                             .show()
                     }
                 }
@@ -212,7 +229,6 @@ fun MainScreen(viewModel: SongViewModel) {
         }
     }
 
-
     var showFullPlayer by remember { mutableStateOf(false) }
 
     val screenHeight = context.resources.displayMetrics.heightPixels.toFloat()
@@ -224,19 +240,21 @@ fun MainScreen(viewModel: SongViewModel) {
             hasOpenedPlayer = true
             playerOffsetY.animateTo(
                 targetValue = 0f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
-                )
+                animationSpec =
+                    spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    ),
             )
         } else {
             launch {
                 playerOffsetY.animateTo(
                     targetValue = screenHeight,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
+                    animationSpec =
+                        spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium,
+                        ),
                 )
             }
             if (hasOpenedPlayer) {
@@ -253,139 +271,179 @@ fun MainScreen(viewModel: SongViewModel) {
         }
     }
 
-    val miniPlayerDragModifier = Modifier.pointerInput(Unit) {
-        detectVerticalDragGestures(
-            onDragStart = {
-            },
-            onVerticalDrag = { change, dragAmount ->
-                change.consume()
-                coroutineScope.launch {
-                    playerOffsetY.snapTo((playerOffsetY.value + dragAmount).coerceIn(0f, screenHeight))
-                }
-            },
-            onDragEnd = {
-                coroutineScope.launch {
-                    if (playerOffsetY.value < screenHeight * 0.85f) {
-                        showFullPlayer = true
-                    } else {
-                        playerOffsetY.animateTo(screenHeight, spring(dampingRatio = Spring.DampingRatioNoBouncy))
+    val miniPlayerDragModifier =
+        Modifier.pointerInput(Unit) {
+            detectVerticalDragGestures(
+                onDragStart = {},
+                onVerticalDrag = { change, dragAmount ->
+                    change.consume()
+                    coroutineScope.launch {
+                        playerOffsetY.snapTo(
+                            (playerOffsetY.value + dragAmount).coerceIn(0f, screenHeight)
+                        )
                     }
-                }
-            },
-            onDragCancel = {
-                coroutineScope.launch {
-                    playerOffsetY.animateTo(screenHeight, spring(dampingRatio = Spring.DampingRatioNoBouncy))
-                }
-            }
-        )
-    }
-
-    val playerDragModifier = Modifier.pointerInput(Unit) {
-        detectVerticalDragGestures(
-            onVerticalDrag = { change, dragAmount ->
-                change.consume()
-                coroutineScope.launch {
-                    playerOffsetY.snapTo((playerOffsetY.value + dragAmount).coerceIn(0f, screenHeight))
-                }
-            },
-            onDragEnd = {
-                coroutineScope.launch {
-                    if (playerOffsetY.value > screenHeight * 0.15f) {
-                        showFullPlayer = false
-                    } else {
-                        playerOffsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy))
-                    }
-                }
-            },
-            onDragCancel = {
-                coroutineScope.launch {
-                    if (showFullPlayer) {
-                        playerOffsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy))
-                    } else {
-                        playerOffsetY.animateTo(screenHeight, spring(dampingRatio = Spring.DampingRatioNoBouncy))
-                    }
-                }
-            }
-        )
-    }
-
-    val exportPlaylistsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json"), onResult = { uri ->
-            uri?.let {
-                coroutineScope.launch(Dispatchers.IO) {
-                    try {
-                        val jsonString = viewModel.exportPlaylistsJson()
-                        context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                            outputStream.write(jsonString.toByteArray(Charsets.UTF_8))
+                },
+                onDragEnd = {
+                    coroutineScope.launch {
+                        if (playerOffsetY.value < screenHeight * 0.85f) {
+                            showFullPlayer = true
+                        } else {
+                            playerOffsetY.animateTo(
+                                screenHeight,
+                                spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                            )
                         }
-                        val displayPath = try {
-                            var fileName: String? = null
-                            if (it.scheme == "content") {
-                                context.contentResolver.query(
-                                    it, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null
-                                )?.use { cursor ->
-                                    if (cursor.moveToFirst()) {
-                                        val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                                        if (idx != -1) {
-                                            fileName = cursor.getString(idx)
-                                        }
-                                    }
-                                }
-                            }
+                    }
+                },
+                onDragCancel = {
+                    coroutineScope.launch {
+                        playerOffsetY.animateTo(
+                            screenHeight,
+                            spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                        )
+                    }
+                },
+            )
+        }
 
-                            val rawPath = it.path
-                            if (rawPath != null && rawPath.contains(":")) {
-                                val decoded = java.net.URLDecoder.decode(rawPath, "UTF-8")
-                                decoded.substringAfter(":")
-                            } else {
-                                fileName ?: rawPath ?: "未知文件"
+    val playerDragModifier =
+        Modifier.pointerInput(Unit) {
+            detectVerticalDragGestures(
+                onVerticalDrag = { change, dragAmount ->
+                    change.consume()
+                    coroutineScope.launch {
+                        playerOffsetY.snapTo(
+                            (playerOffsetY.value + dragAmount).coerceIn(0f, screenHeight)
+                        )
+                    }
+                },
+                onDragEnd = {
+                    coroutineScope.launch {
+                        if (playerOffsetY.value > screenHeight * 0.15f) {
+                            showFullPlayer = false
+                        } else {
+                            playerOffsetY.animateTo(
+                                0f,
+                                spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                            )
+                        }
+                    }
+                },
+                onDragCancel = {
+                    coroutineScope.launch {
+                        if (showFullPlayer) {
+                            playerOffsetY.animateTo(
+                                0f,
+                                spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                            )
+                        } else {
+                            playerOffsetY.animateTo(
+                                screenHeight,
+                                spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                            )
+                        }
+                    }
+                },
+            )
+        }
+
+    val exportPlaylistsLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json"),
+            onResult = { uri ->
+                uri?.let {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            val jsonString = viewModel.exportPlaylistsJson()
+                            context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                                outputStream.write(jsonString.toByteArray(Charsets.UTF_8))
+                            }
+                            val displayPath =
+                                try {
+                                    var fileName: String? = null
+                                    if (it.scheme == "content") {
+                                        context.contentResolver
+                                            .query(
+                                                it,
+                                                arrayOf(
+                                                    android.provider.OpenableColumns.DISPLAY_NAME
+                                                ),
+                                                null,
+                                                null,
+                                                null,
+                                            )
+                                            ?.use { cursor ->
+                                                if (cursor.moveToFirst()) {
+                                                    val idx =
+                                                        cursor.getColumnIndex(
+                                                            android.provider.OpenableColumns
+                                                                .DISPLAY_NAME
+                                                        )
+                                                    if (idx != -1) {
+                                                        fileName = cursor.getString(idx)
+                                                    }
+                                                }
+                                            }
+                                    }
+
+                                    val rawPath = it.path
+                                    if (rawPath != null && rawPath.contains(":")) {
+                                        val decoded = java.net.URLDecoder.decode(rawPath, "UTF-8")
+                                        decoded.substringAfter(":")
+                                    } else {
+                                        fileName ?: rawPath ?: "未知文件"
+                                    }
+                                } catch (e: Exception) {
+                                    it.lastPathSegment ?: "未知文件"
+                                }
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                        context,
+                                        "歌单导出成功，已保存至: $displayPath",
+                                        Toast.LENGTH_LONG,
+                                    )
+                                    .show()
                             }
                         } catch (e: Exception) {
-                            it.lastPathSegment ?: "未知文件"
-                        }
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "歌单导出成功，已保存至: $displayPath", Toast.LENGTH_LONG).show()
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            e.printStackTrace()
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
                         }
                     }
                 }
-            }
-        })
+            },
+        )
 
     var importResult by remember { mutableStateOf<cn.xuexc.ai_player.ui.ImportResult?>(null) }
     var importError by remember { mutableStateOf<String?>(null) }
 
-    val importPlaylistsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(), onResult = { uri ->
-            uri?.let {
-                coroutineScope.launch(Dispatchers.IO) {
-                    try {
-                        val content = context.contentResolver.openInputStream(it)?.use { inputStream ->
-                            inputStream.bufferedReader().use { reader -> reader.readText() }
-                        }
-                        if (content != null) {
-                            val result = viewModel.importPlaylistsJson(content)
-                            withContext(Dispatchers.Main) {
-                                importResult = result
+    val importPlaylistsLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+            onResult = { uri ->
+                uri?.let {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            val content =
+                                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                                    inputStream.bufferedReader().use { reader -> reader.readText() }
+                                }
+                            if (content != null) {
+                                val result = viewModel.importPlaylistsJson(content)
+                                withContext(Dispatchers.Main) { importResult = result }
+                            } else {
+                                withContext(Dispatchers.Main) { importError = "读取文件失败" }
                             }
-                        } else {
-                            withContext(Dispatchers.Main) {
-                                importError = "读取文件失败"
-                            }
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        withContext(Dispatchers.Main) {
-                            importError = "导入失败: ${e.message}"
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            withContext(Dispatchers.Main) { importError = "导入失败: ${e.message}" }
                         }
                     }
                 }
-            }
-        })
+            },
+        )
 
     // Multi-selection states
     var isMultiSelectMode by remember { mutableStateOf(false) }
@@ -394,7 +452,13 @@ fun MainScreen(viewModel: SongViewModel) {
     var songsToBlacklist by remember { mutableStateOf<List<Song>?>(null) }
     var showBatchAddToPlaylistDialog by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = isMultiSelectMode || showFullPlayer || activeArtistName != null || activePlaylistId != null) {
+    BackHandler(
+        enabled =
+            isMultiSelectMode ||
+                showFullPlayer ||
+                activeArtistName != null ||
+                activePlaylistId != null
+    ) {
         if (isMultiSelectMode) {
             isMultiSelectMode = false
             selectedSongs.clear()
@@ -429,22 +493,21 @@ fun MainScreen(viewModel: SongViewModel) {
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val activeListState by remember(currentScreen, activePlaylistId, activeArtistName) {
-        derivedStateOf {
-            when {
-                activePlaylistId != null -> playlistSongsListState
-                activeArtistName != null -> artistSongsDetailListState
-                currentScreen == Screen.Library -> songListState
-                currentScreen == Screen.Artists -> artistListState
-                else -> null
+    val activeListState by
+        remember(currentScreen, activePlaylistId, activeArtistName) {
+            derivedStateOf {
+                when {
+                    activePlaylistId != null -> playlistSongsListState
+                    activeArtistName != null -> artistSongsDetailListState
+                    currentScreen == Screen.Library -> songListState
+                    currentScreen == Screen.Artists -> artistListState
+                    else -> null
+                }
             }
         }
-    }
 
     val showBackToTop by remember {
         derivedStateOf {
@@ -453,19 +516,22 @@ fun MainScreen(viewModel: SongViewModel) {
         }
     }
 
-    val isAtBottom by remember(activeListState) {
-        derivedStateOf {
-            val state = activeListState ?: return@derivedStateOf false
-            val layoutInfo = state.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            if (visibleItemsInfo.isEmpty()) {
-                false
-            } else {
-                val lastVisibleItem = visibleItemsInfo.last()
-                lastVisibleItem.index == layoutInfo.totalItemsCount - 1 && (lastVisibleItem.offset + lastVisibleItem.size) <= (layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding + 10)
+    val isAtBottom by
+        remember(activeListState) {
+            derivedStateOf {
+                val state = activeListState ?: return@derivedStateOf false
+                val layoutInfo = state.layoutInfo
+                val visibleItemsInfo = layoutInfo.visibleItemsInfo
+                if (visibleItemsInfo.isEmpty()) {
+                    false
+                } else {
+                    val lastVisibleItem = visibleItemsInfo.last()
+                    lastVisibleItem.index == layoutInfo.totalItemsCount - 1 &&
+                        (lastVisibleItem.offset + lastVisibleItem.size) <=
+                            (layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding + 10)
+                }
             }
         }
-    }
     var showBlockedFoldersDialog by remember { mutableStateOf(false) }
     var showSortOrderDialog by remember { mutableStateOf(false) }
     val sortOrder by viewModel.sortOrder.collectAsState()
@@ -475,13 +541,12 @@ fun MainScreen(viewModel: SongViewModel) {
     val detectedFolders by viewModel.detectedFolders.collectAsState()
 
     val themeName by viewModel.themeName.collectAsState()
-    val currentAccent = remember(themeName) {
-        AccentColor.values().firstOrNull { it.id == themeName } ?: AccentColor.TitaniumGray
-    }
+    val currentAccent =
+        remember(themeName) {
+            AccentColor.values().firstOrNull { it.id == themeName } ?: AccentColor.TitaniumGray
+        }
     val isDarkMode by viewModel.isDarkMode.collectAsState()
-    val appColors = remember(currentAccent, isDarkMode) {
-        getAppColors(currentAccent, isDarkMode)
-    }
+    val appColors = remember(currentAccent, isDarkMode) { getAppColors(currentAccent, isDarkMode) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
 
@@ -492,7 +557,8 @@ fun MainScreen(viewModel: SongViewModel) {
             window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkMode
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !isDarkMode
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars =
+                !isDarkMode
         }
     }
 
@@ -527,19 +593,26 @@ fun MainScreen(viewModel: SongViewModel) {
     val blacklistSongsCount by viewModel.blacklistSongsCount.collectAsState()
     val playlistSongs by viewModel.currentPlaylistSongs.collectAsState()
 
-    val showLocateSong by remember(
-        currentSong, currentScreen, activePlaylistId, activeArtistName, songs, playlistSongs
-    ) {
-        derivedStateOf {
-            val curSong = currentSong ?: return@derivedStateOf false
-            when {
-                activePlaylistId != null -> playlistSongs.any { it.id == curSong.id }
-                activeArtistName != null -> songs.any { it.artist == activeArtistName && it.id == curSong.id }
-                currentScreen == Screen.Library -> songs.any { it.id == curSong.id }
-                else -> false
+    val showLocateSong by
+        remember(
+            currentSong,
+            currentScreen,
+            activePlaylistId,
+            activeArtistName,
+            songs,
+            playlistSongs,
+        ) {
+            derivedStateOf {
+                val curSong = currentSong ?: return@derivedStateOf false
+                when {
+                    activePlaylistId != null -> playlistSongs.any { it.id == curSong.id }
+                    activeArtistName != null ->
+                        songs.any { it.artist == activeArtistName && it.id == curSong.id }
+                    currentScreen == Screen.Library -> songs.any { it.id == curSong.id }
+                    else -> false
+                }
             }
         }
-    }
 
     // Dialog flags
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
@@ -550,13 +623,13 @@ fun MainScreen(viewModel: SongViewModel) {
     var songToRemoveFromPlaylist by remember { mutableStateOf<Pair<Long, Song>?>(null) }
     var songToDelete by remember { mutableStateOf<Song?>(null) }
 
-
-    val listBottomPadding by animateDpAsState(
-        targetValue = if (isMultiSelectMode && selectedSongs.isNotEmpty()) 100.dp
-        else if (currentSong != null) 100.dp
-        else 16.dp,
-        label = "list_bottom_padding"
-    )
+    val listBottomPadding by
+        animateDpAsState(
+            targetValue =
+                if (isMultiSelectMode && selectedSongs.isNotEmpty()) 100.dp
+                else if (currentSong != null) 100.dp else 16.dp,
+            label = "list_bottom_padding",
+        )
 
     LaunchedEffect(currentScreen, activePlaylistId, activeArtistName) {
         isMultiSelectMode = false
@@ -564,21 +637,22 @@ fun MainScreen(viewModel: SongViewModel) {
     }
 
     // Determine correct permission based on Android version
-    val requiredPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Manifest.permission.READ_MEDIA_AUDIO
-    } else {
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.startScan(context)
+    val requiredPermission =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_AUDIO
         } else {
-            Toast.makeText(context, "需要存储权限以扫描本地歌曲", Toast.LENGTH_LONG).show()
+            Manifest.permission.READ_EXTERNAL_STORAGE
         }
-    }
+
+    val permissionLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission()) {
+            isGranted ->
+            if (isGranted) {
+                viewModel.startScan(context)
+            } else {
+                Toast.makeText(context, "需要存储权限以扫描本地歌曲", Toast.LENGTH_LONG).show()
+            }
+        }
 
     fun checkAndStartScan() {
         val permissionCheck = ContextCompat.checkSelfPermission(context, requiredPermission)
@@ -612,7 +686,9 @@ fun MainScreen(viewModel: SongViewModel) {
                     currentScreen == Screen.Library -> {
                         if (isTitleSort) {
                             val index =
-                                songsDisplayList.indexOfFirst { it is SongItemWithLetter && it.song.id == curSong.id }
+                                songsDisplayList.indexOfFirst {
+                                    it is SongItemWithLetter && it.song.id == curSong.id
+                                }
                             if (index != -1) {
                                 songListState.scrollToItem(index)
                             }
@@ -631,11 +707,12 @@ fun MainScreen(viewModel: SongViewModel) {
     var isSearching by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize()
-        ) { innerPadding ->
+        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Column(
-                modifier = Modifier.fillMaxSize().background(appColors.mainBackground).padding(innerPadding)
+                modifier =
+                    Modifier.fillMaxSize()
+                        .background(appColors.mainBackground)
+                        .padding(innerPadding)
             ) {
                 TopBar(
                     activePlaylistId = activePlaylistId,
@@ -669,69 +746,85 @@ fun MainScreen(viewModel: SongViewModel) {
                     onCreatePlaylistClick = { showCreatePlaylistDialog = true },
                     onBlockedFoldersClick = { showBlockedFoldersDialog = true },
                     onSortOrderClick = { showSortOrderDialog = true },
-                    onImportPlaylistsClick = { importPlaylistsLauncher.launch(arrayOf("application/json")) },
-                    onExportPlaylistsClick = { exportPlaylistsLauncher.launch("ai_playlists.json") },
+                    onImportPlaylistsClick = {
+                        importPlaylistsLauncher.launch(arrayOf("application/json"))
+                    },
+                    onExportPlaylistsClick = {
+                        exportPlaylistsLauncher.launch("ai_playlists.json")
+                    },
                     appColors = appColors,
                     currentAccent = currentAccent,
                     isDark = isDarkMode,
                     scanState = scanState,
                     isCheckingUpdate = isCheckingUpdate,
-                    onCheckUpdateClick = { checkForUpdates(true) }
+                    onCheckUpdateClick = { checkForUpdates(true) },
                 )
 
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1.0f)
-                ) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1.0f)) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = activePlaylistId != null,
                         enter = EnterTransition.None,
-                        exit = ExitTransition.None
+                        exit = ExitTransition.None,
                     ) {
                         val currentPlaylistId = lastActivePlaylistId
                         if (currentPlaylistId != null) {
                             // PLAYLIST DETAILS PAGE
-                            Column(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
+                            Column(modifier = Modifier.fillMaxSize()) {
                                 // 随机播放控制栏 / 多选控制栏
                                 Row(
-                                    modifier = Modifier.fillMaxWidth()
-                                        .padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                            .padding(
+                                                start = 8.dp,
+                                                end = 16.dp,
+                                                top = 2.dp,
+                                                bottom = 2.dp,
+                                            ),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
                                     if (isMultiSelectMode) {
                                         val isAllSelected = selectedSongs.size == playlistSongs.size
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(start = 0.dp)
+                                            modifier = Modifier.padding(start = 0.dp),
                                         ) {
                                             Row(
-                                                modifier = Modifier.clip(RoundedCornerShape(16.dp))
-                                                    .clickable {
-                                                        if (isAllSelected) {
-                                                            selectedSongs.clear()
-                                                        } else {
-                                                            selectedSongs.clear()
-                                                            selectedSongs.addAll(playlistSongs)
+                                                modifier =
+                                                    Modifier.clip(RoundedCornerShape(16.dp))
+                                                        .clickable {
+                                                            if (isAllSelected) {
+                                                                selectedSongs.clear()
+                                                            } else {
+                                                                selectedSongs.clear()
+                                                                selectedSongs.addAll(playlistSongs)
+                                                            }
                                                         }
-                                                    }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
+                                                        .padding(
+                                                            horizontal = 8.dp,
+                                                            vertical = 4.dp,
+                                                        ),
+                                                verticalAlignment = Alignment.CenterVertically,
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.CheckCircle,
                                                     contentDescription = "全选",
-                                                    tint = if (isAllSelected) currentAccent.mainColor else appColors.textColorSecondary.copy(
-                                                        alpha = 0.4f
-                                                    ),
-                                                    modifier = Modifier.size(13.dp)
+                                                    tint =
+                                                        if (isAllSelected) currentAccent.mainColor
+                                                        else
+                                                            appColors.textColorSecondary.copy(
+                                                                alpha = 0.4f
+                                                            ),
+                                                    modifier = Modifier.size(13.dp),
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(
                                                     text = if (isAllSelected) "取消全选" else "全选",
-                                                    color = if (isAllSelected) currentAccent.mainColor else appColors.textColorSecondary,
+                                                    color =
+                                                        if (isAllSelected) currentAccent.mainColor
+                                                        else appColors.textColorSecondary,
                                                     fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold
+                                                    fontWeight = FontWeight.Bold,
                                                 )
                                             }
                                             Spacer(modifier = Modifier.width(8.dp))
@@ -739,7 +832,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 text = "已选择 ${selectedSongs.size} 首歌曲",
                                                 color = appColors.textColorPrimary,
                                                 fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
                                             )
                                         }
                                         IconButton(
@@ -747,41 +840,47 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
                                             },
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(24.dp),
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Close,
                                                 contentDescription = "退出多选",
                                                 tint = appColors.textColorSecondary,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(16.dp),
                                             )
                                         }
                                     } else {
                                         Row(
-                                            modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable {
-                                                val shuffled = playlistSongs.shuffled()
-                                                if (shuffled.isNotEmpty()) {
-                                                    viewModel.setPlaybackQueue(shuffled)
-                                                    while (viewModel.playMode.value != PlayMode.Shuffle) {
-                                                        viewModel.togglePlayMode()
+                                            modifier =
+                                                Modifier.clip(RoundedCornerShape(16.dp))
+                                                    .clickable {
+                                                        val shuffled = playlistSongs.shuffled()
+                                                        if (shuffled.isNotEmpty()) {
+                                                            viewModel.setPlaybackQueue(shuffled)
+                                                            while (
+                                                                viewModel.playMode.value !=
+                                                                    PlayMode.Shuffle
+                                                            ) {
+                                                                viewModel.togglePlayMode()
+                                                            }
+                                                            viewModel.playSong(context, shuffled[0])
+                                                        }
                                                     }
-                                                    viewModel.playSong(context, shuffled[0])
-                                                }
-                                            }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Shuffle,
                                                 contentDescription = "随机播放",
                                                 tint = currentAccent.mainColor,
-                                                modifier = Modifier.size(13.dp)
+                                                modifier = Modifier.size(13.dp),
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
                                                 text = "随机播放",
                                                 color = currentAccent.mainColor,
                                                 fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
                                             )
                                         }
 
@@ -789,7 +888,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                             Text(
                                                 text = "共 ${playlistSongs.size} 首歌曲",
                                                 color = appColors.textColorSecondary,
-                                                fontSize = 11.sp
+                                                fontSize = 11.sp,
                                             )
                                         }
                                     }
@@ -797,21 +896,28 @@ fun MainScreen(viewModel: SongViewModel) {
 
                                 if (playlistSongs.isEmpty()) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
-                                        contentAlignment = Alignment.Center
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .weight(1.0f)
+                                                .padding(horizontal = 16.dp),
+                                        contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
-                                            text = if (currentPlaylistId == -2L) "遗忘的沙漏为空" else "歌单为空",
+                                            text =
+                                                if (currentPlaylistId == -2L) "遗忘的沙漏为空" else "歌单为空",
                                             color = appColors.textColorSecondary,
-                                            fontSize = 14.sp
+                                            fontSize = 14.sp,
                                         )
                                     }
                                 } else {
                                     LazyColumn(
                                         state = playlistSongsListState,
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .weight(1.0f)
+                                                .padding(horizontal = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        contentPadding = PaddingValues(bottom = listBottomPadding)
+                                        contentPadding = PaddingValues(bottom = listBottomPadding),
                                     ) {
                                         items(playlistSongs, key = { it.id }) { song ->
                                             val isCurrent = currentSong?.id == song.id
@@ -819,10 +925,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 song = song,
                                                 isCurrent = isCurrent,
                                                 isPlaying = isCurrent && isPlaying,
-                                                onDelete = {
-                                                    songToDelete = song
-
-                                                },
+                                                onDelete = { songToDelete = song },
                                                 appColors = appColors,
                                                 onNavigateToArtist = { artist ->
                                                     previousScreen = currentScreen
@@ -831,56 +934,75 @@ fun MainScreen(viewModel: SongViewModel) {
                                                     activeArtistName = artist
                                                     activePlaylistId = null
                                                 },
-                                                onFavoriteToggle = if (currentPlaylistId == -2L) null else {
-                                                    {
-                                                        viewModel.toggleFavorite(song)
-                                                    }
-                                                },
-                                                onBlacklistToggle = if (currentPlaylistId == -2L) null else {
-                                                    {
-                                                        viewModel.addToBlacklist(context, song)
-                                                        if (currentPlaylistId == -1L) {
-                                                            viewModel.loadFavoriteSongs()
-                                                        } else {
-                                                            viewModel.loadSongsInPlaylist(currentPlaylistId)
+                                                onFavoriteToggle =
+                                                    if (currentPlaylistId == -2L) null
+                                                    else {
+                                                        { viewModel.toggleFavorite(song) }
+                                                    },
+                                                onBlacklistToggle =
+                                                    if (currentPlaylistId == -2L) null
+                                                    else {
+                                                        {
+                                                            viewModel.addToBlacklist(context, song)
+                                                            if (currentPlaylistId == -1L) {
+                                                                viewModel.loadFavoriteSongs()
+                                                            } else {
+                                                                viewModel.loadSongsInPlaylist(
+                                                                    currentPlaylistId
+                                                                )
+                                                            }
                                                         }
-                                                    }
-                                                },
+                                                    },
                                                 onClick = {
                                                     if (isMultiSelectMode) {
-                                                        val selected = selectedSongs.any { it.id == song.id }
-                                                        if (selected) selectedSongs.removeAll { it.id == song.id } else selectedSongs.add(
-                                                            song
-                                                        )
+                                                        val selected =
+                                                            selectedSongs.any { it.id == song.id }
+                                                        if (selected)
+                                                            selectedSongs.removeAll {
+                                                                it.id == song.id
+                                                            }
+                                                        else selectedSongs.add(song)
                                                     } else {
                                                         viewModel.setPlaybackQueue(playlistSongs)
                                                         viewModel.playSong(context, song)
                                                     }
                                                 },
-                                                customActionIcon = when {
-                                                    isMultiSelectMode -> null
-                                                    currentPlaylistId == -2L -> Icons.Default.Refresh // Refresh icon to restore from blacklist
-                                                    currentPlaylistId > 0L -> Icons.Default.Clear // Cross to remove from playlist
-                                                    else -> null
-                                                },
-                                                onCustomAction = when {
-                                                    currentPlaylistId == -2L -> {
-                                                        {
-                                                            viewModel.removeFromBlacklist(song)
-                                                            Toast.makeText(
-                                                                context, "已从遗忘的沙漏恢复", Toast.LENGTH_SHORT
-                                                            ).show()
+                                                customActionIcon =
+                                                    when {
+                                                        isMultiSelectMode -> null
+                                                        currentPlaylistId == -2L ->
+                                                            Icons.Default
+                                                                .Refresh // Refresh icon to restore
+                                                        // from blacklist
+                                                        currentPlaylistId > 0L ->
+                                                            Icons.Default
+                                                                .Clear // Cross to remove from
+                                                        // playlist
+                                                        else -> null
+                                                    },
+                                                onCustomAction =
+                                                    when {
+                                                        currentPlaylistId == -2L -> {
+                                                            {
+                                                                viewModel.removeFromBlacklist(song)
+                                                                Toast.makeText(
+                                                                        context,
+                                                                        "已从遗忘的沙漏恢复",
+                                                                        Toast.LENGTH_SHORT,
+                                                                    )
+                                                                    .show()
+                                                            }
                                                         }
-                                                    }
 
-                                                    currentPlaylistId > 0L -> {
-                                                        {
-                                                            songToRemoveFromPlaylist = currentPlaylistId to song
+                                                        currentPlaylistId > 0L -> {
+                                                            {
+                                                                songToRemoveFromPlaylist =
+                                                                    currentPlaylistId to song
+                                                            }
                                                         }
-                                                    }
 
-                                                    else -> null
-                                                },
+                                                        else -> null
+                                                    },
                                                 inSelectionMode = isMultiSelectMode,
                                                 isSelected = selectedSongs.any { it.id == song.id },
                                                 onSelectionChange = { selected ->
@@ -894,7 +1016,8 @@ fun MainScreen(viewModel: SongViewModel) {
                                                     isMultiSelectMode = true
                                                     selectedSongs.clear()
                                                     selectedSongs.add(song)
-                                                })
+                                                },
+                                            )
                                         }
                                     }
                                 }
@@ -905,56 +1028,71 @@ fun MainScreen(viewModel: SongViewModel) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = activeArtistName != null,
                         enter = EnterTransition.None,
-                        exit = ExitTransition.None
+                        exit = ExitTransition.None,
                     ) {
                         val currentArtistName = lastActiveArtistName
                         if (currentArtistName != null) {
                             // ARTIST SONGS DETAILS PAGE
-                            val artistSongs = remember(songs, currentArtistName) {
-                                songs.filter { it.artist == currentArtistName }
-                            }
-                            Column(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
+                            val artistSongs =
+                                remember(songs, currentArtistName) {
+                                    songs.filter { it.artist == currentArtistName }
+                                }
+                            Column(modifier = Modifier.fillMaxSize()) {
                                 // 随机播放控制栏 / 多选控制栏
                                 Row(
-                                    modifier = Modifier.fillMaxWidth()
-                                        .padding(start = 8.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                            .padding(
+                                                start = 8.dp,
+                                                end = 16.dp,
+                                                top = 2.dp,
+                                                bottom = 2.dp,
+                                            ),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
                                     if (isMultiSelectMode) {
                                         val isAllSelected = selectedSongs.size == artistSongs.size
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(start = 0.dp)
+                                            modifier = Modifier.padding(start = 0.dp),
                                         ) {
                                             Row(
-                                                modifier = Modifier.clip(RoundedCornerShape(16.dp))
-                                                    .clickable {
-                                                        if (isAllSelected) {
-                                                            selectedSongs.clear()
-                                                        } else {
-                                                            selectedSongs.clear()
-                                                            selectedSongs.addAll(artistSongs)
+                                                modifier =
+                                                    Modifier.clip(RoundedCornerShape(16.dp))
+                                                        .clickable {
+                                                            if (isAllSelected) {
+                                                                selectedSongs.clear()
+                                                            } else {
+                                                                selectedSongs.clear()
+                                                                selectedSongs.addAll(artistSongs)
+                                                            }
                                                         }
-                                                    }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically
+                                                        .padding(
+                                                            horizontal = 8.dp,
+                                                            vertical = 4.dp,
+                                                        ),
+                                                verticalAlignment = Alignment.CenterVertically,
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.CheckCircle,
                                                     contentDescription = "全选",
-                                                    tint = if (isAllSelected) currentAccent.mainColor else appColors.textColorSecondary.copy(
-                                                        alpha = 0.4f
-                                                    ),
-                                                    modifier = Modifier.size(13.dp)
+                                                    tint =
+                                                        if (isAllSelected) currentAccent.mainColor
+                                                        else
+                                                            appColors.textColorSecondary.copy(
+                                                                alpha = 0.4f
+                                                            ),
+                                                    modifier = Modifier.size(13.dp),
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(
                                                     text = if (isAllSelected) "取消全选" else "全选",
-                                                    color = if (isAllSelected) currentAccent.mainColor else appColors.textColorSecondary,
+                                                    color =
+                                                        if (isAllSelected) currentAccent.mainColor
+                                                        else appColors.textColorSecondary,
                                                     fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold
+                                                    fontWeight = FontWeight.Bold,
                                                 )
                                             }
                                             Spacer(modifier = Modifier.width(8.dp))
@@ -962,7 +1100,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 text = "已选择 ${selectedSongs.size} 首歌曲",
                                                 color = appColors.textColorPrimary,
                                                 fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
                                             )
                                         }
                                         IconButton(
@@ -970,41 +1108,47 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
                                             },
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(24.dp),
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Close,
                                                 contentDescription = "退出多选",
                                                 tint = appColors.textColorSecondary,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(16.dp),
                                             )
                                         }
                                     } else {
                                         Row(
-                                            modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable {
-                                                val shuffled = artistSongs.shuffled()
-                                                if (shuffled.isNotEmpty()) {
-                                                    viewModel.setPlaybackQueue(shuffled)
-                                                    while (viewModel.playMode.value != PlayMode.Shuffle) {
-                                                        viewModel.togglePlayMode()
+                                            modifier =
+                                                Modifier.clip(RoundedCornerShape(16.dp))
+                                                    .clickable {
+                                                        val shuffled = artistSongs.shuffled()
+                                                        if (shuffled.isNotEmpty()) {
+                                                            viewModel.setPlaybackQueue(shuffled)
+                                                            while (
+                                                                viewModel.playMode.value !=
+                                                                    PlayMode.Shuffle
+                                                            ) {
+                                                                viewModel.togglePlayMode()
+                                                            }
+                                                            viewModel.playSong(context, shuffled[0])
+                                                        }
                                                     }
-                                                    viewModel.playSong(context, shuffled[0])
-                                                }
-                                            }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Shuffle,
                                                 contentDescription = "随机播放",
                                                 tint = currentAccent.mainColor,
-                                                modifier = Modifier.size(13.dp)
+                                                modifier = Modifier.size(13.dp),
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
                                                 text = "随机播放",
                                                 color = currentAccent.mainColor,
                                                 fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.Bold,
                                             )
                                         }
 
@@ -1012,7 +1156,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                             Text(
                                                 text = "共 ${artistSongs.size} 首歌曲",
                                                 color = appColors.textColorSecondary,
-                                                fontSize = 11.sp
+                                                fontSize = 11.sp,
                                             )
                                         }
                                     }
@@ -1020,21 +1164,27 @@ fun MainScreen(viewModel: SongViewModel) {
 
                                 if (artistSongs.isEmpty()) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
-                                        contentAlignment = Alignment.Center
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .weight(1.0f)
+                                                .padding(horizontal = 16.dp),
+                                        contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
                                             text = "暂无该歌手的歌曲",
                                             color = appColors.textColorSecondary,
-                                            fontSize = 14.sp
+                                            fontSize = 14.sp,
                                         )
                                     }
                                 } else {
                                     LazyColumn(
                                         state = artistSongsDetailListState,
-                                        modifier = Modifier.fillMaxWidth().weight(1.0f).padding(horizontal = 16.dp),
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                                .weight(1.0f)
+                                                .padding(horizontal = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        contentPadding = PaddingValues(bottom = listBottomPadding)
+                                        contentPadding = PaddingValues(bottom = listBottomPadding),
                                     ) {
                                         items(artistSongs, key = { it.id }) { song ->
                                             val isCurrent = currentSong?.id == song.id
@@ -1042,10 +1192,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 song = song,
                                                 isCurrent = isCurrent,
                                                 isPlaying = isCurrent && isPlaying,
-                                                onDelete = {
-                                                    songToDelete = song
-
-                                                },
+                                                onDelete = { songToDelete = song },
                                                 appColors = appColors,
                                                 onNavigateToArtist = { artist ->
                                                     previousScreen = currentScreen
@@ -1062,10 +1209,13 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 },
                                                 onClick = {
                                                     if (isMultiSelectMode) {
-                                                        val selected = selectedSongs.any { it.id == song.id }
-                                                        if (selected) selectedSongs.removeAll { it.id == song.id } else selectedSongs.add(
-                                                            song
-                                                        )
+                                                        val selected =
+                                                            selectedSongs.any { it.id == song.id }
+                                                        if (selected)
+                                                            selectedSongs.removeAll {
+                                                                it.id == song.id
+                                                            }
+                                                        else selectedSongs.add(song)
                                                     } else {
                                                         viewModel.setPlaybackQueue(artistSongs)
                                                         viewModel.playSong(context, song)
@@ -1084,7 +1234,8 @@ fun MainScreen(viewModel: SongViewModel) {
                                                     isMultiSelectMode = true
                                                     selectedSongs.clear()
                                                     selectedSongs.add(song)
-                                                })
+                                                },
+                                            )
                                         }
                                     }
                                 }
@@ -1094,16 +1245,15 @@ fun MainScreen(viewModel: SongViewModel) {
 
                     if (activePlaylistId == null && activeArtistName == null) {
                         // TAB PAGES
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize()
-                        ) { page ->
-                            val screen = when (page) {
-                                0 -> Screen.Library
-                                1 -> Screen.Playlists
-                                2 -> Screen.Artists
-                                else -> Screen.Library
-                            }
+                        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) {
+                            page ->
+                            val screen =
+                                when (page) {
+                                    0 -> Screen.Library
+                                    1 -> Screen.Playlists
+                                    2 -> Screen.Artists
+                                    else -> Screen.Library
+                                }
                             when (screen) {
                                 Screen.Library -> {
                                     // LIBRARY TAB
@@ -1111,16 +1261,23 @@ fun MainScreen(viewModel: SongViewModel) {
                                     var selectedLetter by remember { mutableStateOf<Char?>(null) }
                                     var showLetterIndicator by remember { mutableStateOf(false) }
 
-
-                                    val firstVisibleIndex by remember { derivedStateOf { songListState.firstVisibleItemIndex } }
+                                    val firstVisibleIndex by remember {
+                                        derivedStateOf { songListState.firstVisibleItemIndex }
+                                    }
                                     LaunchedEffect(firstVisibleIndex, isTitleSort) {
-                                        if (isTitleSort && !showLetterIndicator && songsDisplayList.isNotEmpty()) {
-                                            val visibleItem = songsDisplayList.getOrNull(firstVisibleIndex)
-                                            val currentLetter = when (visibleItem) {
-                                                is Char -> visibleItem
-                                                is SongItemWithLetter -> visibleItem.letter
-                                                else -> null
-                                            }
+                                        if (
+                                            isTitleSort &&
+                                                !showLetterIndicator &&
+                                                songsDisplayList.isNotEmpty()
+                                        ) {
+                                            val visibleItem =
+                                                songsDisplayList.getOrNull(firstVisibleIndex)
+                                            val currentLetter =
+                                                when (visibleItem) {
+                                                    is Char -> visibleItem
+                                                    is SongItemWithLetter -> visibleItem.letter
+                                                    else -> null
+                                                }
                                             if (currentLetter != null) {
                                                 selectedLetter = currentLetter
                                             }
@@ -1136,14 +1293,12 @@ fun MainScreen(viewModel: SongViewModel) {
                                         }
                                     }
 
-                                    Box(
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.fillMaxSize()
-                                        ) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
+                                        Column(modifier = Modifier.fillMaxSize()) {
                                             // Scan Status Card
-                                            var lastNonIdleStatus by remember { mutableStateOf<ScanStatus>(ScanStatus.Idle) }
+                                            var lastNonIdleStatus by remember {
+                                                mutableStateOf<ScanStatus>(ScanStatus.Idle)
+                                            }
                                             LaunchedEffect(scanState) {
                                                 if (scanState !is ScanStatus.Idle) {
                                                     lastNonIdleStatus = scanState
@@ -1151,96 +1306,152 @@ fun MainScreen(viewModel: SongViewModel) {
                                             }
 
                                             AnimatedVisibility(
-                                                visible = scanState !is ScanStatus.Idle, exit = slideOutVertically(
-                                                    targetOffsetY = { -it }, animationSpec = tween(
-                                                        durationMillis = 350,
-                                                        easing = FastOutSlowInEasing
-                                                    )
-                                                ) + shrinkVertically(
-                                                    animationSpec = tween(
-                                                        durationMillis = 350,
-                                                        easing = FastOutSlowInEasing
-                                                    )
-                                                ) + fadeOut(
-                                                    animationSpec = tween(durationMillis = 200)
-                                                )
+                                                visible = scanState !is ScanStatus.Idle,
+                                                exit =
+                                                    slideOutVertically(
+                                                        targetOffsetY = { -it },
+                                                        animationSpec =
+                                                            tween(
+                                                                durationMillis = 350,
+                                                                easing = FastOutSlowInEasing,
+                                                            ),
+                                                    ) +
+                                                        shrinkVertically(
+                                                            animationSpec =
+                                                                tween(
+                                                                    durationMillis = 350,
+                                                                    easing = FastOutSlowInEasing,
+                                                                )
+                                                        ) +
+                                                        fadeOut(
+                                                            animationSpec =
+                                                                tween(durationMillis = 200)
+                                                        ),
                                             ) {
                                                 Card(
-                                                    modifier = Modifier.fillMaxWidth()
-                                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                                    modifier =
+                                                        Modifier.fillMaxWidth()
+                                                            .padding(
+                                                                horizontal = 16.dp,
+                                                                vertical = 8.dp,
+                                                            ),
                                                     shape = RoundedCornerShape(20.dp),
-                                                    colors = CardDefaults.cardColors(containerColor = appColors.cardBackground)
+                                                    colors =
+                                                        CardDefaults.cardColors(
+                                                            containerColor =
+                                                                appColors.cardBackground
+                                                        ),
                                                 ) {
                                                     Row(
-                                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
+                                                        modifier =
+                                                            Modifier.fillMaxWidth().padding(16.dp),
+                                                        verticalAlignment =
+                                                            Alignment.CenterVertically,
                                                     ) {
                                                         when (val status = lastNonIdleStatus) {
                                                             is ScanStatus.Scanning -> {
                                                                 CircularProgressIndicator(
                                                                     modifier = Modifier.size(24.dp),
                                                                     color = currentAccent.mainColor,
-                                                                    strokeWidth = 2.dp
+                                                                    strokeWidth = 2.dp,
                                                                 )
-                                                                Spacer(modifier = Modifier.width(16.dp))
+                                                                Spacer(
+                                                                    modifier = Modifier.width(16.dp)
+                                                                )
                                                                 Text(
                                                                     "正在扫描本地音频文件...",
-                                                                    color = appColors.textColorPrimary,
-                                                                    fontSize = 14.sp
+                                                                    color =
+                                                                        appColors.textColorPrimary,
+                                                                    fontSize = 14.sp,
                                                                 )
                                                             }
 
                                                             is ScanStatus.Success -> {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.Check,
+                                                                    imageVector =
+                                                                        Icons.Default.Check,
                                                                     contentDescription = "Success",
                                                                     tint = currentAccent.mainColor,
-                                                                    modifier = Modifier.size(24.dp)
+                                                                    modifier = Modifier.size(24.dp),
                                                                 )
-                                                                Spacer(modifier = Modifier.width(16.dp))
-                                                                Column(modifier = Modifier.weight(1.0f)) {
+                                                                Spacer(
+                                                                    modifier = Modifier.width(16.dp)
+                                                                )
+                                                                Column(
+                                                                    modifier = Modifier.weight(1.0f)
+                                                                ) {
                                                                     Text(
                                                                         "扫描完成！",
-                                                                        color = appColors.textColorPrimary,
+                                                                        color =
+                                                                            appColors
+                                                                                .textColorPrimary,
                                                                         fontSize = 14.sp,
-                                                                        fontWeight = FontWeight.Bold
+                                                                        fontWeight = FontWeight.Bold,
                                                                     )
                                                                     Text(
                                                                         "共发现 ${status.count} 首歌曲",
-                                                                        color = appColors.textColorSecondary,
-                                                                        fontSize = 12.sp
+                                                                        color =
+                                                                            appColors
+                                                                                .textColorSecondary,
+                                                                        fontSize = 12.sp,
                                                                     )
                                                                 }
-                                                                TextButton(onClick = { viewModel.resetScanState() }) {
-                                                                    Text("确定", color = currentAccent.mainColor)
+                                                                TextButton(
+                                                                    onClick = {
+                                                                        viewModel.resetScanState()
+                                                                    }
+                                                                ) {
+                                                                    Text(
+                                                                        "确定",
+                                                                        color =
+                                                                            currentAccent.mainColor,
+                                                                    )
                                                                 }
                                                             }
 
                                                             is ScanStatus.Error -> {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.Warning,
+                                                                    imageVector =
+                                                                        Icons.Default.Warning,
                                                                     contentDescription = "Error",
                                                                     tint = Color.Red,
-                                                                    modifier = Modifier.size(24.dp)
+                                                                    modifier = Modifier.size(24.dp),
                                                                 )
-                                                                Spacer(modifier = Modifier.width(16.dp))
-                                                                Column(modifier = Modifier.weight(1.0f)) {
+                                                                Spacer(
+                                                                    modifier = Modifier.width(16.dp)
+                                                                )
+                                                                Column(
+                                                                    modifier = Modifier.weight(1.0f)
+                                                                ) {
                                                                     Text(
                                                                         "扫描出错",
-                                                                        color = appColors.textColorPrimary,
+                                                                        color =
+                                                                            appColors
+                                                                                .textColorPrimary,
                                                                         fontSize = 14.sp,
-                                                                        fontWeight = FontWeight.Bold
+                                                                        fontWeight = FontWeight.Bold,
                                                                     )
                                                                     Text(
                                                                         status.message,
-                                                                        color = appColors.textColorSecondary,
+                                                                        color =
+                                                                            appColors
+                                                                                .textColorSecondary,
                                                                         fontSize = 12.sp,
                                                                         maxLines = 1,
-                                                                        overflow = TextOverflow.Ellipsis
+                                                                        overflow =
+                                                                            TextOverflow.Ellipsis,
                                                                     )
                                                                 }
-                                                                TextButton(onClick = { viewModel.resetScanState() }) {
-                                                                    Text("重试", color = currentAccent.mainColor)
+                                                                TextButton(
+                                                                    onClick = {
+                                                                        viewModel.resetScanState()
+                                                                    }
+                                                                ) {
+                                                                    Text(
+                                                                        "重试",
+                                                                        color =
+                                                                            currentAccent.mainColor,
+                                                                    )
                                                                 }
                                                             }
 
@@ -1254,60 +1465,83 @@ fun MainScreen(viewModel: SongViewModel) {
                                             if (songs.isEmpty()) {
                                                 if (isSongsLoaded) {
                                                     Box(
-                                                        modifier = Modifier.fillMaxWidth().weight(1.0f)
-                                                            .padding(horizontal = 16.dp),
-                                                        contentAlignment = Alignment.Center
+                                                        modifier =
+                                                            Modifier.fillMaxWidth()
+                                                                .weight(1.0f)
+                                                                .padding(horizontal = 16.dp),
+                                                        contentAlignment = Alignment.Center,
                                                     ) {
                                                         Column(
-                                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                                            verticalArrangement = Arrangement.Center
+                                                            horizontalAlignment =
+                                                                Alignment.CenterHorizontally,
+                                                            verticalArrangement = Arrangement.Center,
                                                         ) {
                                                             Box(
-                                                                modifier = Modifier.size(80.dp)
-                                                                    .clip(RoundedCornerShape(40.dp))
-                                                                    .background(appColors.textfieldContainer),
-                                                                contentAlignment = Alignment.Center
+                                                                modifier =
+                                                                    Modifier.size(80.dp)
+                                                                        .clip(
+                                                                            RoundedCornerShape(
+                                                                                40.dp
+                                                                            )
+                                                                        )
+                                                                        .background(
+                                                                            appColors
+                                                                                .textfieldContainer
+                                                                        ),
+                                                                contentAlignment = Alignment.Center,
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.PlayArrow,
+                                                                    imageVector =
+                                                                        Icons.Default.PlayArrow,
                                                                     contentDescription = "No Music",
-                                                                    tint = appColors.textColorSecondary.copy(alpha = 0.5f),
-                                                                    modifier = Modifier.size(40.dp)
+                                                                    tint =
+                                                                        appColors.textColorSecondary
+                                                                            .copy(alpha = 0.5f),
+                                                                    modifier = Modifier.size(40.dp),
                                                                 )
                                                             }
-                                                            Spacer(modifier = Modifier.height(16.dp))
+                                                            Spacer(
+                                                                modifier = Modifier.height(16.dp)
+                                                            )
                                                             Text(
                                                                 text = "未扫描到本地歌曲",
                                                                 fontSize = 16.sp,
                                                                 fontWeight = FontWeight.Bold,
-                                                                color = appColors.textColorPrimary
+                                                                color = appColors.textColorPrimary,
                                                             )
                                                             Spacer(modifier = Modifier.height(8.dp))
                                                             Text(
                                                                 text = "点击上方刷新按钮或下方按钮开始扫描",
                                                                 fontSize = 12.sp,
-                                                                color = appColors.textColorSecondary
+                                                                color = appColors.textColorSecondary,
                                                             )
-                                                            Spacer(modifier = Modifier.height(24.dp))
+                                                            Spacer(
+                                                                modifier = Modifier.height(24.dp)
+                                                            )
                                                             Button(
                                                                 onClick = { checkAndStartScan() },
-                                                                colors = ButtonDefaults.buttonColors(
-                                                                    containerColor = currentAccent.mainColor
-                                                                ),
+                                                                colors =
+                                                                    ButtonDefaults.buttonColors(
+                                                                        containerColor =
+                                                                            currentAccent.mainColor
+                                                                    ),
                                                                 shape = RoundedCornerShape(24.dp),
-                                                                modifier = Modifier.width(160.dp).height(48.dp)
+                                                                modifier =
+                                                                    Modifier.width(160.dp)
+                                                                        .height(48.dp),
                                                             ) {
                                                                 Text(
                                                                     "扫描歌曲",
                                                                     color = Color.White,
-                                                                    fontWeight = FontWeight.Bold
+                                                                    fontWeight = FontWeight.Bold,
                                                                 )
                                                             }
                                                         }
                                                     }
                                                 } else {
                                                     Box(
-                                                        modifier = Modifier.fillMaxWidth().weight(1.0f)
+                                                        modifier =
+                                                            Modifier.fillMaxWidth().weight(1.0f)
                                                     )
                                                 }
                                             } else {
@@ -1316,56 +1550,103 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 ) {
                                                     // 随机播放控制栏
                                                     Row(
-                                                        modifier = Modifier.fillMaxWidth()
-                                                            .padding(
-                                                                start = 8.dp,
-                                                                end = 16.dp,
-                                                                top = 2.dp,
-                                                                bottom = 2.dp
-                                                            ),
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                        modifier =
+                                                            Modifier.fillMaxWidth()
+                                                                .padding(
+                                                                    start = 8.dp,
+                                                                    end = 16.dp,
+                                                                    top = 2.dp,
+                                                                    bottom = 2.dp,
+                                                                ),
+                                                        verticalAlignment =
+                                                            Alignment.CenterVertically,
+                                                        horizontalArrangement =
+                                                            Arrangement.SpaceBetween,
                                                     ) {
                                                         if (isMultiSelectMode) {
-                                                            val isAllSelected = selectedSongs.size == songs.size
+                                                            val isAllSelected =
+                                                                selectedSongs.size == songs.size
                                                             Row(
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                modifier = Modifier.padding(start = 0.dp)
+                                                                verticalAlignment =
+                                                                    Alignment.CenterVertically,
+                                                                modifier =
+                                                                    Modifier.padding(start = 0.dp),
                                                             ) {
                                                                 Row(
-                                                                    modifier = Modifier.clip(RoundedCornerShape(16.dp))
-                                                                        .clickable {
-                                                                            if (isAllSelected) {
-                                                                                selectedSongs.clear()
-                                                                            } else {
-                                                                                selectedSongs.clear()
-                                                                                selectedSongs.addAll(songs)
+                                                                    modifier =
+                                                                        Modifier.clip(
+                                                                                RoundedCornerShape(
+                                                                                    16.dp
+                                                                                )
+                                                                            )
+                                                                            .clickable {
+                                                                                if (isAllSelected) {
+                                                                                    selectedSongs
+                                                                                        .clear()
+                                                                                } else {
+                                                                                    selectedSongs
+                                                                                        .clear()
+                                                                                    selectedSongs
+                                                                                        .addAll(
+                                                                                            songs
+                                                                                        )
+                                                                                }
                                                                             }
-                                                                        }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                                    verticalAlignment = Alignment.CenterVertically
+                                                                            .padding(
+                                                                                horizontal = 8.dp,
+                                                                                vertical = 4.dp,
+                                                                            ),
+                                                                    verticalAlignment =
+                                                                        Alignment.CenterVertically,
                                                                 ) {
                                                                     Icon(
-                                                                        imageVector = Icons.Default.CheckCircle,
+                                                                        imageVector =
+                                                                            Icons.Default
+                                                                                .CheckCircle,
                                                                         contentDescription = "全选",
-                                                                        tint = if (isAllSelected) currentAccent.mainColor else appColors.textColorSecondary.copy(
-                                                                            alpha = 0.4f
-                                                                        ),
-                                                                        modifier = Modifier.size(13.dp)
+                                                                        tint =
+                                                                            if (isAllSelected)
+                                                                                currentAccent
+                                                                                    .mainColor
+                                                                            else
+                                                                                appColors
+                                                                                    .textColorSecondary
+                                                                                    .copy(
+                                                                                        alpha = 0.4f
+                                                                                    ),
+                                                                        modifier =
+                                                                            Modifier.size(13.dp),
                                                                     )
-                                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                                    Spacer(
+                                                                        modifier =
+                                                                            Modifier.width(4.dp)
+                                                                    )
                                                                     Text(
-                                                                        text = if (isAllSelected) "取消全选" else "全选",
-                                                                        color = if (isAllSelected) currentAccent.mainColor else appColors.textColorSecondary,
+                                                                        text =
+                                                                            if (isAllSelected)
+                                                                                "取消全选"
+                                                                            else "全选",
+                                                                        color =
+                                                                            if (isAllSelected)
+                                                                                currentAccent
+                                                                                    .mainColor
+                                                                            else
+                                                                                appColors
+                                                                                    .textColorSecondary,
                                                                         fontSize = 11.sp,
-                                                                        fontWeight = FontWeight.Bold
+                                                                        fontWeight = FontWeight.Bold,
                                                                     )
                                                                 }
-                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Spacer(
+                                                                    modifier = Modifier.width(8.dp)
+                                                                )
                                                                 Text(
-                                                                    text = "已选择 ${selectedSongs.size} 首歌曲",
-                                                                    color = appColors.textColorPrimary,
+                                                                    text =
+                                                                        "已选择 ${selectedSongs.size} 首歌曲",
+                                                                    color =
+                                                                        appColors.textColorPrimary,
                                                                     fontSize = 12.sp,
-                                                                    fontWeight = FontWeight.Bold
+                                                                    fontWeight = FontWeight.Bold,
                                                                 )
                                                             }
                                                             IconButton(
@@ -1373,212 +1654,381 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                     isMultiSelectMode = false
                                                                     selectedSongs.clear()
                                                                 },
-                                                                modifier = Modifier.size(24.dp)
+                                                                modifier = Modifier.size(24.dp),
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.Close,
+                                                                    imageVector =
+                                                                        Icons.Default.Close,
                                                                     contentDescription = "退出多选",
-                                                                    tint = appColors.textColorSecondary,
-                                                                    modifier = Modifier.size(16.dp)
+                                                                    tint =
+                                                                        appColors
+                                                                            .textColorSecondary,
+                                                                    modifier = Modifier.size(16.dp),
                                                                 )
                                                             }
                                                         } else {
                                                             Row(
-                                                                modifier = Modifier.clip(RoundedCornerShape(16.dp))
-                                                                    .clickable {
-                                                                        val shuffled = songs.shuffled()
-                                                                        if (shuffled.isNotEmpty()) {
-                                                                            viewModel.setPlaybackQueue(shuffled)
-                                                                            while (viewModel.playMode.value != PlayMode.Shuffle) {
-                                                                                viewModel.togglePlayMode()
+                                                                modifier =
+                                                                    Modifier.clip(
+                                                                            RoundedCornerShape(
+                                                                                16.dp
+                                                                            )
+                                                                        )
+                                                                        .clickable {
+                                                                            val shuffled =
+                                                                                songs.shuffled()
+                                                                            if (
+                                                                                shuffled
+                                                                                    .isNotEmpty()
+                                                                            ) {
+                                                                                viewModel
+                                                                                    .setPlaybackQueue(
+                                                                                        shuffled
+                                                                                    )
+                                                                                while (
+                                                                                    viewModel
+                                                                                        .playMode
+                                                                                        .value !=
+                                                                                        PlayMode
+                                                                                            .Shuffle
+                                                                                ) {
+                                                                                    viewModel
+                                                                                        .togglePlayMode()
+                                                                                }
+                                                                                viewModel.playSong(
+                                                                                    context,
+                                                                                    shuffled[0],
+                                                                                )
                                                                             }
-                                                                            viewModel.playSong(context, shuffled[0])
                                                                         }
-                                                                    }.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
+                                                                        .padding(
+                                                                            horizontal = 8.dp,
+                                                                            vertical = 4.dp,
+                                                                        ),
+                                                                verticalAlignment =
+                                                                    Alignment.CenterVertically,
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.Shuffle,
+                                                                    imageVector =
+                                                                        Icons.Default.Shuffle,
                                                                     contentDescription = "随机播放",
                                                                     tint = currentAccent.mainColor,
-                                                                    modifier = Modifier.size(13.dp)
+                                                                    modifier = Modifier.size(13.dp),
                                                                 )
-                                                                Spacer(modifier = Modifier.width(4.dp))
+                                                                Spacer(
+                                                                    modifier = Modifier.width(4.dp)
+                                                                )
                                                                 Text(
                                                                     text = "随机播放",
                                                                     color = currentAccent.mainColor,
                                                                     fontSize = 11.sp,
-                                                                    fontWeight = FontWeight.Bold
+                                                                    fontWeight = FontWeight.Bold,
                                                                 )
                                                             }
 
-                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            Row(
+                                                                verticalAlignment =
+                                                                    Alignment.CenterVertically
+                                                            ) {
                                                                 Text(
                                                                     text = "共 ${songs.size} 首歌曲",
-                                                                    color = appColors.textColorSecondary,
-                                                                    fontSize = 11.sp
+                                                                    color =
+                                                                        appColors
+                                                                            .textColorSecondary,
+                                                                    fontSize = 11.sp,
                                                                 )
                                                             }
                                                         }
                                                     }
 
                                                     Box(
-                                                        modifier = Modifier.fillMaxWidth().weight(1.0f)
+                                                        modifier =
+                                                            Modifier.fillMaxWidth().weight(1.0f)
                                                     ) {
                                                         LazyColumn(
                                                             state = songListState,
-                                                            modifier = Modifier.fillMaxSize().padding(
-                                                                start = 16.dp, end = if (isTitleSort) 36.dp else 16.dp
-                                                            ),
-                                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                                            contentPadding = PaddingValues(bottom = listBottomPadding)
+                                                            modifier =
+                                                                Modifier.fillMaxSize()
+                                                                    .padding(
+                                                                        start = 16.dp,
+                                                                        end =
+                                                                            if (isTitleSort) 36.dp
+                                                                            else 16.dp,
+                                                                    ),
+                                                            verticalArrangement =
+                                                                Arrangement.spacedBy(8.dp),
+                                                            contentPadding =
+                                                                PaddingValues(
+                                                                    bottom = listBottomPadding
+                                                                ),
                                                         ) {
                                                             if (isTitleSort) {
-                                                                itemsIndexed(songsDisplayList) { index, item ->
+                                                                itemsIndexed(songsDisplayList) {
+                                                                    index,
+                                                                    item ->
                                                                     when (item) {
                                                                         is Char -> {
                                                                             CharacterHeader(
-                                                                                letter = item, appColors = appColors
+                                                                                letter = item,
+                                                                                appColors =
+                                                                                    appColors,
                                                                             )
                                                                         }
 
                                                                         is SongItemWithLetter -> {
                                                                             val song = item.song
-                                                                            val isCurrent = currentSong?.id == song.id
+                                                                            val isCurrent =
+                                                                                currentSong?.id ==
+                                                                                    song.id
                                                                             SongItemCard(
                                                                                 song = song,
-                                                                                isCurrent = isCurrent,
-                                                                                isPlaying = isCurrent && isPlaying,
+                                                                                isCurrent =
+                                                                                    isCurrent,
+                                                                                isPlaying =
+                                                                                    isCurrent &&
+                                                                                        isPlaying,
                                                                                 onDelete = {
-                                                                                    songToDelete = song
-
+                                                                                    songToDelete =
+                                                                                        song
                                                                                 },
-                                                                                appColors = appColors,
-                                                                                onNavigateToArtist = { artist ->
-                                                                                    previousScreen = currentScreen
+                                                                                appColors =
+                                                                                    appColors,
+                                                                                onNavigateToArtist = {
+                                                                                    artist ->
+                                                                                    previousScreen =
+                                                                                        currentScreen
                                                                                     previousPlaylistId =
                                                                                         activePlaylistId
-                                                                                    currentScreen = Screen.Artists
-                                                                                    activeArtistName = artist
-                                                                                    activePlaylistId = null
+                                                                                    currentScreen =
+                                                                                        Screen
+                                                                                            .Artists
+                                                                                    activeArtistName =
+                                                                                        artist
+                                                                                    activePlaylistId =
+                                                                                        null
                                                                                 },
                                                                                 onFavoriteToggle = {
-                                                                                    viewModel.toggleFavorite(
-                                                                                        song
-                                                                                    )
+                                                                                    viewModel
+                                                                                        .toggleFavorite(
+                                                                                            song
+                                                                                        )
                                                                                 },
                                                                                 onBlacklistToggle = {
-                                                                                    viewModel.addToBlacklist(
-                                                                                        context, song
-                                                                                    )
+                                                                                    viewModel
+                                                                                        .addToBlacklist(
+                                                                                            context,
+                                                                                            song,
+                                                                                        )
                                                                                 },
                                                                                 onClick = {
-                                                                                    if (isMultiSelectMode) {
+                                                                                    if (
+                                                                                        isMultiSelectMode
+                                                                                    ) {
                                                                                         val selected =
-                                                                                            selectedSongs.any { it.id == song.id }
-                                                                                        if (selected) selectedSongs.removeAll { it.id == song.id } else selectedSongs.add(
-                                                                                            song
+                                                                                            selectedSongs
+                                                                                                .any {
+                                                                                                    it
+                                                                                                        .id ==
+                                                                                                        song
+                                                                                                            .id
+                                                                                                }
+                                                                                        if (
+                                                                                            selected
                                                                                         )
+                                                                                            selectedSongs
+                                                                                                .removeAll {
+                                                                                                    it
+                                                                                                        .id ==
+                                                                                                        song
+                                                                                                            .id
+                                                                                                }
+                                                                                        else
+                                                                                            selectedSongs
+                                                                                                .add(
+                                                                                                    song
+                                                                                                )
                                                                                     } else {
-                                                                                        viewModel.setPlaybackQueue(songs)
-                                                                                        viewModel.playSong(
-                                                                                            context,
-                                                                                            song
-                                                                                        )
+                                                                                        viewModel
+                                                                                            .setPlaybackQueue(
+                                                                                                songs
+                                                                                            )
+                                                                                        viewModel
+                                                                                            .playSong(
+                                                                                                context,
+                                                                                                song,
+                                                                                            )
                                                                                     }
                                                                                 },
-                                                                                customActionIcon = Icons.Default.Add,
+                                                                                customActionIcon =
+                                                                                    Icons.Default
+                                                                                        .Add,
                                                                                 onCustomAction = {
-                                                                                    selectedSongForAddToPlaylist = song
-                                                                                    showAddToPlaylistDialog = true
+                                                                                    selectedSongForAddToPlaylist =
+                                                                                        song
+                                                                                    showAddToPlaylistDialog =
+                                                                                        true
                                                                                 },
-                                                                                inSelectionMode = isMultiSelectMode,
-                                                                                isSelected = selectedSongs.any { it.id == song.id },
-                                                                                onSelectionChange = { selected ->
+                                                                                inSelectionMode =
+                                                                                    isMultiSelectMode,
+                                                                                isSelected =
+                                                                                    selectedSongs
+                                                                                        .any {
+                                                                                            it.id ==
+                                                                                                song
+                                                                                                    .id
+                                                                                        },
+                                                                                onSelectionChange = {
+                                                                                    selected ->
                                                                                     if (selected) {
-                                                                                        selectedSongs.add(song)
+                                                                                        selectedSongs
+                                                                                            .add(
+                                                                                                song
+                                                                                            )
                                                                                     } else {
-                                                                                        selectedSongs.removeAll { it.id == song.id }
+                                                                                        selectedSongs
+                                                                                            .removeAll {
+                                                                                                it
+                                                                                                    .id ==
+                                                                                                    song
+                                                                                                        .id
+                                                                                            }
                                                                                     }
                                                                                 },
                                                                                 onLongClick = {
-                                                                                    isMultiSelectMode = true
-                                                                                    selectedSongs.clear()
-                                                                                    selectedSongs.add(song)
-                                                                                })
+                                                                                    isMultiSelectMode =
+                                                                                        true
+                                                                                    selectedSongs
+                                                                                        .clear()
+                                                                                    selectedSongs
+                                                                                        .add(song)
+                                                                                },
+                                                                            )
                                                                         }
                                                                     }
                                                                 }
                                                             } else {
-                                                                items(songs, key = { it.id }) { song ->
-                                                                    val isCurrent = currentSong?.id == song.id
+                                                                items(songs, key = { it.id }) { song
+                                                                    ->
+                                                                    val isCurrent =
+                                                                        currentSong?.id == song.id
                                                                     SongItemCard(
                                                                         song = song,
                                                                         isCurrent = isCurrent,
-                                                                        isPlaying = isCurrent && isPlaying,
+                                                                        isPlaying =
+                                                                            isCurrent && isPlaying,
                                                                         onDelete = {
                                                                             songToDelete = song
-
                                                                         },
                                                                         appColors = appColors,
-                                                                        onNavigateToArtist = { artist ->
-                                                                            previousScreen = currentScreen
-                                                                            previousPlaylistId = activePlaylistId
-                                                                            currentScreen = Screen.Artists
-                                                                            activeArtistName = artist
+                                                                        onNavigateToArtist = {
+                                                                            artist ->
+                                                                            previousScreen =
+                                                                                currentScreen
+                                                                            previousPlaylistId =
+                                                                                activePlaylistId
+                                                                            currentScreen =
+                                                                                Screen.Artists
+                                                                            activeArtistName =
+                                                                                artist
                                                                             activePlaylistId = null
                                                                         },
                                                                         onFavoriteToggle = {
-                                                                            viewModel.toggleFavorite(
-                                                                                song
-                                                                            )
+                                                                            viewModel
+                                                                                .toggleFavorite(
+                                                                                    song
+                                                                                )
                                                                         },
                                                                         onBlacklistToggle = {
-                                                                            viewModel.addToBlacklist(
-                                                                                context, song
-                                                                            )
+                                                                            viewModel
+                                                                                .addToBlacklist(
+                                                                                    context,
+                                                                                    song,
+                                                                                )
                                                                         },
                                                                         onClick = {
                                                                             if (isMultiSelectMode) {
                                                                                 val selected =
-                                                                                    selectedSongs.any { it.id == song.id }
-                                                                                if (selected) selectedSongs.removeAll { it.id == song.id } else selectedSongs.add(
+                                                                                    selectedSongs
+                                                                                        .any {
+                                                                                            it.id ==
+                                                                                                song
+                                                                                                    .id
+                                                                                        }
+                                                                                if (selected)
+                                                                                    selectedSongs
+                                                                                        .removeAll {
+                                                                                            it.id ==
+                                                                                                song
+                                                                                                    .id
+                                                                                        }
+                                                                                else
+                                                                                    selectedSongs
+                                                                                        .add(song)
+                                                                            } else {
+                                                                                viewModel
+                                                                                    .setPlaybackQueue(
+                                                                                        songs
+                                                                                    )
+                                                                                viewModel.playSong(
+                                                                                    context,
+                                                                                    song,
+                                                                                )
+                                                                            }
+                                                                        },
+                                                                        customActionIcon =
+                                                                            Icons.Default.Add,
+                                                                        onCustomAction = {
+                                                                            selectedSongForAddToPlaylist =
+                                                                                song
+                                                                            showAddToPlaylistDialog =
+                                                                                true
+                                                                        },
+                                                                        inSelectionMode =
+                                                                            isMultiSelectMode,
+                                                                        isSelected =
+                                                                            selectedSongs.any {
+                                                                                it.id == song.id
+                                                                            },
+                                                                        onSelectionChange = {
+                                                                            selected ->
+                                                                            if (selected) {
+                                                                                selectedSongs.add(
                                                                                     song
                                                                                 )
                                                                             } else {
-                                                                                viewModel.setPlaybackQueue(songs)
-                                                                                viewModel.playSong(context, song)
-                                                                            }
-                                                                        },
-                                                                        customActionIcon = Icons.Default.Add,
-                                                                        onCustomAction = {
-                                                                            selectedSongForAddToPlaylist = song
-                                                                            showAddToPlaylistDialog = true
-                                                                        },
-                                                                        inSelectionMode = isMultiSelectMode,
-                                                                        isSelected = selectedSongs.any { it.id == song.id },
-                                                                        onSelectionChange = { selected ->
-                                                                            if (selected) {
-                                                                                selectedSongs.add(song)
-                                                                            } else {
-                                                                                selectedSongs.removeAll { it.id == song.id }
+                                                                                selectedSongs
+                                                                                    .removeAll {
+                                                                                        it.id ==
+                                                                                            song.id
+                                                                                    }
                                                                             }
                                                                         },
                                                                         onLongClick = {
                                                                             isMultiSelectMode = true
                                                                             selectedSongs.clear()
                                                                             selectedSongs.add(song)
-                                                                        })
+                                                                        },
+                                                                    )
                                                                 }
                                                             }
                                                         }
 
                                                         // 右侧字母定位滑块
-                                                        if (isTitleSort && songsDisplayList.isNotEmpty()) {
+                                                        if (
+                                                            isTitleSort &&
+                                                                songsDisplayList.isNotEmpty()
+                                                        ) {
                                                             AlphabetIndexer(
-                                                                modifier = Modifier.align(Alignment.CenterEnd)
-                                                                    .width(16.dp)
-                                                                    .padding(end = 4.dp, bottom = listBottomPadding),
+                                                                modifier =
+                                                                    Modifier.align(
+                                                                            Alignment.CenterEnd
+                                                                        )
+                                                                        .width(16.dp)
+                                                                        .padding(
+                                                                            end = 4.dp,
+                                                                            bottom =
+                                                                                listBottomPadding,
+                                                                        ),
                                                                 selectedLetter = selectedLetter,
                                                                 onLetterSelected = { letter ->
                                                                     if (selectedLetter != letter) {
@@ -1593,29 +2043,57 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                     showLetterIndicator = false
                                                                 },
                                                                 appColors = appColors,
-                                                                currentAccent = currentAccent
+                                                                currentAccent = currentAccent,
                                                             )
 
                                                             // 屏幕中央大字显示气泡
-                                                            androidx.compose.animation.AnimatedVisibility(
-                                                                visible = showLetterIndicator && selectedLetter != null,
-                                                                enter = fadeIn(animationSpec = tween(100)),
-                                                                exit = fadeOut(animationSpec = tween(150)),
-                                                                modifier = Modifier.align(Alignment.Center)
-                                                            ) {
-                                                                Box(
-                                                                    modifier = Modifier.size(80.dp).clip(CircleShape)
-                                                                        .background(currentAccent.mainColor.copy(alpha = 0.85f)),
-                                                                    contentAlignment = Alignment.Center
+                                                            androidx.compose.animation
+                                                                .AnimatedVisibility(
+                                                                    visible =
+                                                                        showLetterIndicator &&
+                                                                            selectedLetter != null,
+                                                                    enter =
+                                                                        fadeIn(
+                                                                            animationSpec =
+                                                                                tween(100)
+                                                                        ),
+                                                                    exit =
+                                                                        fadeOut(
+                                                                            animationSpec =
+                                                                                tween(150)
+                                                                        ),
+                                                                    modifier =
+                                                                        Modifier.align(
+                                                                            Alignment.Center
+                                                                        ),
                                                                 ) {
-                                                                    Text(
-                                                                        text = selectedLetter?.toString() ?: "",
-                                                                        color = Color.White,
-                                                                        fontSize = 38.sp,
-                                                                        fontWeight = FontWeight.Bold
-                                                                    )
+                                                                    Box(
+                                                                        modifier =
+                                                                            Modifier.size(80.dp)
+                                                                                .clip(CircleShape)
+                                                                                .background(
+                                                                                    currentAccent
+                                                                                        .mainColor
+                                                                                        .copy(
+                                                                                            alpha =
+                                                                                                0.85f
+                                                                                        )
+                                                                                ),
+                                                                        contentAlignment =
+                                                                            Alignment.Center,
+                                                                    ) {
+                                                                        Text(
+                                                                            text =
+                                                                                selectedLetter
+                                                                                    ?.toString()
+                                                                                    ?: "",
+                                                                            color = Color.White,
+                                                                            fontSize = 38.sp,
+                                                                            fontWeight =
+                                                                                FontWeight.Bold,
+                                                                        )
+                                                                    }
                                                                 }
-                                                            }
                                                         }
                                                     }
                                                 }
@@ -1626,38 +2104,48 @@ fun MainScreen(viewModel: SongViewModel) {
 
                                 Screen.Playlists -> {
                                     // PLAYLISTS TAB
-                                    Box(
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {
+                                    Box(modifier = Modifier.fillMaxSize()) {
                                         LazyColumn(
-                                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                            modifier =
+                                                Modifier.fillMaxSize().padding(horizontal = 16.dp),
                                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                                            contentPadding = PaddingValues(bottom = listBottomPadding)
+                                            contentPadding =
+                                                PaddingValues(bottom = listBottomPadding),
                                         ) {
-                                            // 1. Fixed Playlist Cards (Favorites & Blacklist) in a single row
+                                            // 1. Fixed Playlist Cards (Favorites & Blacklist) in a
+                                            // single row
                                             item {
                                                 Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(top = 4.dp),
-                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                    modifier =
+                                                        Modifier.fillMaxWidth().padding(top = 4.dp),
+                                                    horizontalArrangement =
+                                                        Arrangement.spacedBy(8.dp),
                                                 ) {
                                                     CommonItemCard(
                                                         cover = {
                                                             Box(
-                                                                modifier = Modifier.size(42.dp)
-                                                                    .clip(RoundedCornerShape(12.dp))
-                                                                    .background(
-                                                                        if (isDarkMode) Color.White.copy(alpha = 0.1f)
-                                                                        else Color(0x0F000000)
-                                                                    ),
-                                                                contentAlignment = Alignment.Center
+                                                                modifier =
+                                                                    Modifier.size(42.dp)
+                                                                        .clip(
+                                                                            RoundedCornerShape(
+                                                                                12.dp
+                                                                            )
+                                                                        )
+                                                                        .background(
+                                                                            if (isDarkMode)
+                                                                                Color.White.copy(
+                                                                                    alpha = 0.1f
+                                                                                )
+                                                                            else Color(0x0F000000)
+                                                                        ),
+                                                                contentAlignment = Alignment.Center,
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.Favorite,
+                                                                    imageVector =
+                                                                        Icons.Default.Favorite,
                                                                     contentDescription = "我喜欢的音乐",
                                                                     tint = Color(0xFFE06C75),
-                                                                    modifier = Modifier.size(21.dp)
+                                                                    modifier = Modifier.size(21.dp),
                                                                 )
                                                             }
                                                         },
@@ -1669,26 +2157,39 @@ fun MainScreen(viewModel: SongViewModel) {
                                                             activePlaylistName = "我喜欢的音乐"
                                                             viewModel.loadFavoriteSongs()
                                                         },
-                                                        modifier = Modifier.weight(1f)
+                                                        modifier = Modifier.weight(1f),
                                                     )
 
                                                     CommonItemCard(
                                                         cover = {
                                                             Box(
-                                                                modifier = Modifier.size(42.dp)
-                                                                    .clip(RoundedCornerShape(12.dp)).background(
-                                                                        if (isDarkMode) Color.White.copy(
-                                                                            alpha = 0.1f
-                                                                        ) else Color(0x0F000000)
-                                                                    ), contentAlignment = Alignment.Center
+                                                                modifier =
+                                                                    Modifier.size(42.dp)
+                                                                        .clip(
+                                                                            RoundedCornerShape(
+                                                                                12.dp
+                                                                            )
+                                                                        )
+                                                                        .background(
+                                                                            if (isDarkMode)
+                                                                                Color.White.copy(
+                                                                                    alpha = 0.1f
+                                                                                )
+                                                                            else Color(0x0F000000)
+                                                                        ),
+                                                                contentAlignment = Alignment.Center,
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.HourglassEmpty,
+                                                                    imageVector =
+                                                                        Icons.Default
+                                                                            .HourglassEmpty,
                                                                     contentDescription = "遗忘的沙漏",
-                                                                    tint = if (isDarkMode) Color(0xFFE5C07B).copy(
-                                                                        alpha = 0.8f
-                                                                    ) else Color(0xFFE5C07B),
-                                                                    modifier = Modifier.size(21.dp)
+                                                                    tint =
+                                                                        if (isDarkMode)
+                                                                            Color(0xFFE5C07B)
+                                                                                .copy(alpha = 0.8f)
+                                                                        else Color(0xFFE5C07B),
+                                                                    modifier = Modifier.size(21.dp),
                                                                 )
                                                             }
                                                         },
@@ -1700,7 +2201,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                             activePlaylistName = "遗忘的沙漏"
                                                             viewModel.loadBlacklistSongs()
                                                         },
-                                                        modifier = Modifier.weight(1f)
+                                                        modifier = Modifier.weight(1f),
                                                     )
                                                 }
                                             }
@@ -1713,7 +2214,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                         fontSize = 13.sp,
                                                         fontWeight = FontWeight.Bold,
                                                         color = appColors.textColorSecondary,
-                                                        modifier = Modifier.padding(top = 4.dp)
+                                                        modifier = Modifier.padding(top = 4.dp),
                                                     )
                                                 }
 
@@ -1723,7 +2224,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                                             PlaylistCover(
                                                                 firstSongId = playlist.firstSongId,
                                                                 currentAccent = currentAccent,
-                                                                modifier = Modifier.size(42.dp)
+                                                                modifier = Modifier.size(42.dp),
                                                             )
                                                         },
                                                         title = playlist.name,
@@ -1732,43 +2233,55 @@ fun MainScreen(viewModel: SongViewModel) {
                                                         onClick = {
                                                             activePlaylistId = playlist.id
                                                             activePlaylistName = playlist.name
-                                                            viewModel.loadSongsInPlaylist(playlist.id)
+                                                            viewModel.loadSongsInPlaylist(
+                                                                playlist.id
+                                                            )
                                                         },
                                                         actionArea = {
                                                             IconButton(
-                                                                onClick = { playlistToDelete = playlist },
-                                                                modifier = Modifier.size(36.dp)
+                                                                onClick = {
+                                                                    playlistToDelete = playlist
+                                                                },
+                                                                modifier = Modifier.size(36.dp),
                                                             ) {
                                                                 Icon(
-                                                                    imageVector = Icons.Default.Delete,
+                                                                    imageVector =
+                                                                        Icons.Default.Delete,
                                                                     contentDescription = "删除歌单",
-                                                                    tint = appColors.textColorSecondary,
-                                                                    modifier = Modifier.size(18.dp)
+                                                                    tint =
+                                                                        appColors
+                                                                            .textColorSecondary,
+                                                                    modifier = Modifier.size(18.dp),
                                                                 )
                                                             }
-                                                        }
+                                                        },
                                                     )
                                                 }
                                             } else {
                                                 if (isPlaylistsLoaded) {
                                                     item {
                                                         Box(
-                                                            modifier = Modifier.fillMaxWidth().height(120.dp),
-                                                            contentAlignment = Alignment.Center
+                                                            modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                    .height(120.dp),
+                                                            contentAlignment = Alignment.Center,
                                                         ) {
                                                             Text(
                                                                 text = "暂无自定义歌单\n点击右上角 '+' 按钮创建",
-                                                                color = appColors.textColorSecondary,
+                                                                color =
+                                                                    appColors.textColorSecondary,
                                                                 fontSize = 13.sp,
                                                                 fontWeight = FontWeight.Medium,
-                                                                textAlign = TextAlign.Center
+                                                                textAlign = TextAlign.Center,
                                                             )
                                                         }
                                                     }
                                                 } else {
                                                     item {
                                                         Box(
-                                                            modifier = Modifier.fillMaxWidth().height(120.dp)
+                                                            modifier =
+                                                                Modifier.fillMaxWidth()
+                                                                    .height(120.dp)
                                                         )
                                                     }
                                                 }
@@ -1780,42 +2293,55 @@ fun MainScreen(viewModel: SongViewModel) {
                                 Screen.Artists -> {
                                     // ARTISTS TAB
 
-                                    Column(
-                                        modifier = Modifier.fillMaxSize()
-                                    ) {
+                                    Column(modifier = Modifier.fillMaxSize()) {
                                         if (artistDisplayList.isEmpty()) {
                                             if (isSongsLoaded) {
                                                 Box(
-                                                    modifier = Modifier.fillMaxWidth().weight(1.0f)
-                                                        .padding(horizontal = 16.dp),
-                                                    contentAlignment = Alignment.Center
+                                                    modifier =
+                                                        Modifier.fillMaxWidth()
+                                                            .weight(1.0f)
+                                                            .padding(horizontal = 16.dp),
+                                                    contentAlignment = Alignment.Center,
                                                 ) {
                                                     Text(
                                                         text = "暂无歌手信息。请先扫描歌曲。",
                                                         color = appColors.textColorSecondary,
-                                                        fontSize = 14.sp
+                                                        fontSize = 14.sp,
                                                     )
                                                 }
                                             } else {
-                                                Box(
-                                                    modifier = Modifier.fillMaxWidth().weight(1.0f)
-                                                )
+                                                Box(modifier = Modifier.fillMaxWidth().weight(1.0f))
                                             }
                                         } else {
-                                            var selectedLetter by remember { mutableStateOf<Char?>(null) }
-                                            var showLetterIndicator by remember { mutableStateOf(false) }
+                                            var selectedLetter by remember {
+                                                mutableStateOf<Char?>(null)
+                                            }
+                                            var showLetterIndicator by remember {
+                                                mutableStateOf(false)
+                                            }
                                             val alphabet = remember { ('A'..'Z').toList() + '#' }
                                             var alphabetHeight by remember { mutableStateOf(1f) }
 
-                                            val firstVisibleIndex by remember { derivedStateOf { artistListState.firstVisibleItemIndex } }
+                                            val firstVisibleIndex by remember {
+                                                derivedStateOf {
+                                                    artistListState.firstVisibleItemIndex
+                                                }
+                                            }
                                             LaunchedEffect(firstVisibleIndex) {
-                                                if (!showLetterIndicator && artistDisplayList.isNotEmpty()) {
-                                                    val visibleItem = artistDisplayList.getOrNull(firstVisibleIndex)
-                                                    val currentLetter = when (visibleItem) {
-                                                        is Char -> visibleItem
-                                                        is ArtistItem -> visibleItem.letter
-                                                        else -> null
-                                                    }
+                                                if (
+                                                    !showLetterIndicator &&
+                                                        artistDisplayList.isNotEmpty()
+                                                ) {
+                                                    val visibleItem =
+                                                        artistDisplayList.getOrNull(
+                                                            firstVisibleIndex
+                                                        )
+                                                    val currentLetter =
+                                                        when (visibleItem) {
+                                                            is Char -> visibleItem
+                                                            is ArtistItem -> visibleItem.letter
+                                                            else -> null
+                                                        }
                                                     if (currentLetter != null) {
                                                         selectedLetter = currentLetter
                                                     }
@@ -1823,7 +2349,8 @@ fun MainScreen(viewModel: SongViewModel) {
                                             }
 
                                             val scrollToLetter = { letter: Char ->
-                                                val targetIndex = getTargetIndex(letter, artistIndexMap)
+                                                val targetIndex =
+                                                    getTargetIndex(letter, artistIndexMap)
                                                 if (targetIndex != -1) {
                                                     coroutineScope.launch {
                                                         artistListState.scrollToItem(targetIndex)
@@ -1831,62 +2358,100 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 }
                                             }
 
-                                            Box(
-                                                modifier = Modifier.fillMaxWidth().weight(1.0f)
-                                            ) {
+                                            Box(modifier = Modifier.fillMaxWidth().weight(1.0f)) {
                                                 // 歌手列表
                                                 LazyColumn(
                                                     state = artistListState,
-                                                    modifier = Modifier.fillMaxSize()
-                                                        .padding(start = 16.dp, end = 36.dp),
-                                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                                    contentPadding = PaddingValues(bottom = listBottomPadding)
+                                                    modifier =
+                                                        Modifier.fillMaxSize()
+                                                            .padding(start = 16.dp, end = 36.dp),
+                                                    verticalArrangement =
+                                                        Arrangement.spacedBy(8.dp),
+                                                    contentPadding =
+                                                        PaddingValues(bottom = listBottomPadding),
                                                 ) {
                                                     itemsIndexed(artistDisplayList) { index, item ->
                                                         when (item) {
                                                             is Char -> {
-                                                                CharacterHeader(letter = item, appColors = appColors)
+                                                                CharacterHeader(
+                                                                    letter = item,
+                                                                    appColors = appColors,
+                                                                )
                                                             }
 
                                                             is ArtistItem -> {
                                                                 CommonItemCard(
                                                                     cover = {
-                                                                        val firstSong = item.songs.firstOrNull()
+                                                                        val firstSong =
+                                                                            item.songs.firstOrNull()
                                                                         if (firstSong != null) {
                                                                             SongCover(
                                                                                 song = firstSong,
                                                                                 isCurrent = false,
                                                                                 isPlaying = false,
-                                                                                modifier = Modifier.size(42.dp),
-                                                                                shape = RoundedCornerShape(12.dp),
-                                                                                fallbackIcon = Icons.Default.Person
+                                                                                modifier =
+                                                                                    Modifier.size(
+                                                                                        42.dp
+                                                                                    ),
+                                                                                shape =
+                                                                                    RoundedCornerShape(
+                                                                                        12.dp
+                                                                                    ),
+                                                                                fallbackIcon =
+                                                                                    Icons.Default
+                                                                                        .Person,
                                                                             )
                                                                         } else {
                                                                             Box(
-                                                                                modifier = Modifier.size(42.dp)
-                                                                                    .clip(RoundedCornerShape(12.dp))
-                                                                                    .background(
-                                                                                        currentAccent.mainColor.copy(
-                                                                                            alpha = 0.15f
+                                                                                modifier =
+                                                                                    Modifier.size(
+                                                                                            42.dp
                                                                                         )
-                                                                                    ),
-                                                                                contentAlignment = Alignment.Center
+                                                                                        .clip(
+                                                                                            RoundedCornerShape(
+                                                                                                12
+                                                                                                    .dp
+                                                                                            )
+                                                                                        )
+                                                                                        .background(
+                                                                                            currentAccent
+                                                                                                .mainColor
+                                                                                                .copy(
+                                                                                                    alpha =
+                                                                                                        0.15f
+                                                                                                )
+                                                                                        ),
+                                                                                contentAlignment =
+                                                                                    Alignment.Center,
                                                                             ) {
                                                                                 Icon(
-                                                                                    imageVector = Icons.Default.Person,
-                                                                                    contentDescription = null,
-                                                                                    tint = currentAccent.mainColor,
-                                                                                    modifier = Modifier.size(24.dp)
+                                                                                    imageVector =
+                                                                                        Icons
+                                                                                            .Default
+                                                                                            .Person,
+                                                                                    contentDescription =
+                                                                                        null,
+                                                                                    tint =
+                                                                                        currentAccent
+                                                                                            .mainColor,
+                                                                                    modifier =
+                                                                                        Modifier
+                                                                                            .size(
+                                                                                                24
+                                                                                                    .dp
+                                                                                            ),
                                                                                 )
                                                                             }
                                                                         }
                                                                     },
                                                                     title = item.displayName,
-                                                                    subtitleText = "${item.songs.size} 首歌曲",
+                                                                    subtitleText =
+                                                                        "${item.songs.size} 首歌曲",
                                                                     appColors = appColors,
                                                                     onClick = {
-                                                                        activeArtistName = item.artistKey
-                                                                    }
+                                                                        activeArtistName =
+                                                                            item.artistKey
+                                                                    },
                                                                 )
                                                             }
                                                         }
@@ -1895,8 +2460,13 @@ fun MainScreen(viewModel: SongViewModel) {
 
                                                 // 右侧 A-Z 定位条
                                                 AlphabetIndexer(
-                                                    modifier = Modifier.align(Alignment.CenterEnd).width(16.dp)
-                                                        .padding(end = 4.dp, bottom = listBottomPadding),
+                                                    modifier =
+                                                        Modifier.align(Alignment.CenterEnd)
+                                                            .width(16.dp)
+                                                            .padding(
+                                                                end = 4.dp,
+                                                                bottom = listBottomPadding,
+                                                            ),
                                                     selectedLetter = selectedLetter,
                                                     onLetterSelected = { letter ->
                                                         if (selectedLetter != letter) {
@@ -1904,33 +2474,37 @@ fun MainScreen(viewModel: SongViewModel) {
                                                             scrollToLetter(letter)
                                                         }
                                                     },
-                                                    onDragStart = {
-                                                        showLetterIndicator = true
-                                                    },
-                                                    onDragEnd = {
-                                                        showLetterIndicator = false
-                                                    },
+                                                    onDragStart = { showLetterIndicator = true },
+                                                    onDragEnd = { showLetterIndicator = false },
                                                     appColors = appColors,
-                                                    currentAccent = currentAccent
+                                                    currentAccent = currentAccent,
                                                 )
 
                                                 // 屏幕正中央大字字母提示气泡
                                                 androidx.compose.animation.AnimatedVisibility(
-                                                    visible = showLetterIndicator && selectedLetter != null,
+                                                    visible =
+                                                        showLetterIndicator &&
+                                                            selectedLetter != null,
                                                     enter = fadeIn(animationSpec = tween(100)),
                                                     exit = fadeOut(animationSpec = tween(150)),
-                                                    modifier = Modifier.align(Alignment.Center)
+                                                    modifier = Modifier.align(Alignment.Center),
                                                 ) {
                                                     Box(
-                                                        modifier = Modifier.size(80.dp).clip(CircleShape)
-                                                            .background(currentAccent.mainColor.copy(alpha = 0.85f)),
-                                                        contentAlignment = Alignment.Center
+                                                        modifier =
+                                                            Modifier.size(80.dp)
+                                                                .clip(CircleShape)
+                                                                .background(
+                                                                    currentAccent.mainColor.copy(
+                                                                        alpha = 0.85f
+                                                                    )
+                                                                ),
+                                                        contentAlignment = Alignment.Center,
                                                     ) {
                                                         Text(
                                                             text = selectedLetter?.toString() ?: "",
                                                             color = Color.White,
                                                             fontSize = 38.sp,
-                                                            fontWeight = FontWeight.Bold
+                                                            fontWeight = FontWeight.Bold,
                                                         )
                                                     }
                                                 }
@@ -1947,28 +2521,31 @@ fun MainScreen(viewModel: SongViewModel) {
                         visible = isMultiSelectMode && selectedSongs.isNotEmpty(),
                         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                        modifier = Modifier.align(Alignment.BottomCenter)
+                        modifier = Modifier.align(Alignment.BottomCenter),
                     ) {
                         Card(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .navigationBarsPadding()
-                                .border(
-                                    width = 0.5.dp,
-                                    color = if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
-                                    shape = DialogShape
-                                ),
+                            modifier =
+                                Modifier.padding(16.dp)
+                                    .navigationBarsPadding()
+                                    .border(
+                                        width = 0.5.dp,
+                                        color =
+                                            if (isDarkMode) Color.White.copy(alpha = 0.12f)
+                                            else Color.Black.copy(alpha = 0.08f),
+                                        shape = DialogShape,
+                                    ),
                             shape = DialogShape,
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDarkMode) Color(0xE61E1E22) else Color(0xE6FFFFFF)
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor =
+                                        if (isDarkMode) Color(0xE61E1E22) else Color(0xE6FFFFFF)
+                                ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .padding(vertical = 8.dp, horizontal = 16.dp),
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(20.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 val currentPlaylistId = lastActivePlaylistId
                                 when {
@@ -1978,24 +2555,30 @@ fun MainScreen(viewModel: SongViewModel) {
                                             label = "恢复",
                                             tint = currentAccent.mainColor,
                                             onClick = {
-                                                viewModel.removeSongsFromBlacklist(selectedSongs.toList())
+                                                viewModel.removeSongsFromBlacklist(
+                                                    selectedSongs.toList()
+                                                )
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
-                                                Toast.makeText(context, "已批量从遗忘的沙漏恢复", Toast.LENGTH_SHORT)
+                                                Toast.makeText(
+                                                        context,
+                                                        "已批量从遗忘的沙漏恢复",
+                                                        Toast.LENGTH_SHORT,
+                                                    )
                                                     .show()
-                                            }
+                                            },
                                         )
                                         BatchActionButton(
                                             icon = Icons.Default.Delete,
                                             label = "删除",
                                             tint = Color(0xFFE06C75),
-                                            onClick = {
-                                                songsToDelete = selectedSongs.toList()
-                                            }
+                                            onClick = { songsToDelete = selectedSongs.toList() },
                                         )
                                     }
 
-                                    activePlaylistId != null && currentPlaylistId != null && currentPlaylistId > 0 -> {
+                                    activePlaylistId != null &&
+                                        currentPlaylistId != null &&
+                                        currentPlaylistId > 0 -> {
                                         BatchActionButton(
                                             icon = Icons.Default.PlayArrow,
                                             label = "播放",
@@ -2005,18 +2588,25 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 viewModel.playSong(context, selectedSongs[0])
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
-                                            }
+                                            },
                                         )
-                                        val anyNotFav = selectedSongs.isEmpty() || selectedSongs.any { !it.isFavorite }
+                                        val anyNotFav =
+                                            selectedSongs.isEmpty() ||
+                                                selectedSongs.any { !it.isFavorite }
                                         BatchActionButton(
-                                            icon = if (anyNotFav) Icons.Default.FavoriteBorder else Icons.Default.Favorite,
+                                            icon =
+                                                if (anyNotFav) Icons.Default.FavoriteBorder
+                                                else Icons.Default.Favorite,
                                             label = if (anyNotFav) "喜欢" else "取消喜欢",
                                             tint = Color(0xFFE06C75),
                                             onClick = {
-                                                viewModel.toggleFavoriteBatch(selectedSongs.toList(), anyNotFav)
+                                                viewModel.toggleFavoriteBatch(
+                                                    selectedSongs.toList(),
+                                                    anyNotFav,
+                                                )
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
-                                            }
+                                            },
                                         )
                                         BatchActionButton(
                                             icon = Icons.Default.Clear,
@@ -2025,27 +2615,29 @@ fun MainScreen(viewModel: SongViewModel) {
                                             onClick = {
                                                 viewModel.removeSongsFromPlaylist(
                                                     currentPlaylistId!!,
-                                                    selectedSongs.map { it.id })
+                                                    selectedSongs.map { it.id },
+                                                )
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
-                                                Toast.makeText(context, "已批量从歌单中移除", Toast.LENGTH_SHORT).show()
-                                            }
+                                                Toast.makeText(
+                                                        context,
+                                                        "已批量从歌单中移除",
+                                                        Toast.LENGTH_SHORT,
+                                                    )
+                                                    .show()
+                                            },
                                         )
                                         BatchActionButton(
                                             icon = Icons.Default.HourglassEmpty,
                                             label = "移入沙漏",
                                             tint = Color(0xFFE5C07B),
-                                            onClick = {
-                                                songsToBlacklist = selectedSongs.toList()
-                                            }
+                                            onClick = { songsToBlacklist = selectedSongs.toList() },
                                         )
                                         BatchActionButton(
                                             icon = Icons.Default.Delete,
                                             label = "删除",
                                             tint = Color(0xFFE06C75),
-                                            onClick = {
-                                                songsToDelete = selectedSongs.toList()
-                                            }
+                                            onClick = { songsToDelete = selectedSongs.toList() },
                                         )
                                     }
 
@@ -2059,42 +2651,43 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 viewModel.playSong(context, selectedSongs[0])
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
-                                            }
+                                            },
                                         )
-                                        val anyNotFav = selectedSongs.isEmpty() || selectedSongs.any { !it.isFavorite }
+                                        val anyNotFav =
+                                            selectedSongs.isEmpty() ||
+                                                selectedSongs.any { !it.isFavorite }
                                         BatchActionButton(
-                                            icon = if (anyNotFav) Icons.Default.FavoriteBorder else Icons.Default.Favorite,
+                                            icon =
+                                                if (anyNotFav) Icons.Default.FavoriteBorder
+                                                else Icons.Default.Favorite,
                                             label = if (anyNotFav) "喜欢" else "取消喜欢",
                                             tint = Color(0xFFE06C75),
                                             onClick = {
-                                                viewModel.toggleFavoriteBatch(selectedSongs.toList(), anyNotFav)
+                                                viewModel.toggleFavoriteBatch(
+                                                    selectedSongs.toList(),
+                                                    anyNotFav,
+                                                )
                                                 isMultiSelectMode = false
                                                 selectedSongs.clear()
-                                            }
+                                            },
                                         )
                                         BatchActionButton(
                                             icon = Icons.Default.Add,
                                             label = "加歌单",
                                             tint = appColors.textColorPrimary,
-                                            onClick = {
-                                                showBatchAddToPlaylistDialog = true
-                                            }
+                                            onClick = { showBatchAddToPlaylistDialog = true },
                                         )
                                         BatchActionButton(
                                             icon = Icons.Default.HourglassEmpty,
                                             label = "移入沙漏",
                                             tint = Color(0xFFE5C07B),
-                                            onClick = {
-                                                songsToBlacklist = selectedSongs.toList()
-                                            }
+                                            onClick = { songsToBlacklist = selectedSongs.toList() },
                                         )
                                         BatchActionButton(
                                             icon = Icons.Default.Delete,
                                             label = "删除",
                                             tint = Color(0xFFE06C75),
-                                            onClick = {
-                                                songsToDelete = selectedSongs.toList()
-                                            }
+                                            onClick = { songsToDelete = selectedSongs.toList() },
                                         )
                                     }
                                 }
@@ -2107,47 +2700,60 @@ fun MainScreen(viewModel: SongViewModel) {
                         visible = currentSong != null && !isMultiSelectMode,
                         enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                        modifier = Modifier.align(Alignment.BottomCenter)
+                        modifier = Modifier.align(Alignment.BottomCenter),
                     ) {
                         currentSong?.let { song ->
                             Card(
-                                modifier = Modifier.fillMaxWidth().clickable { showFullPlayer = true }
-                                    .then(miniPlayerDragModifier),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .clickable { showFullPlayer = true }
+                                        .then(miniPlayerDragModifier),
                                 shape = RoundedCornerShape(0.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isDarkMode) Color(0xFF161619) else Color(0xFFFFFFFF)
-                                ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                                colors =
+                                    CardDefaults.cardColors(
+                                        containerColor =
+                                            if (isDarkMode) Color(0xFF161619) else Color(0xFFFFFFFF)
+                                    ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             ) {
                                 Column(modifier = Modifier.fillMaxWidth()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().height(68.dp)
-                                    ) {
+                                    Box(modifier = Modifier.fillMaxWidth().height(68.dp)) {
                                         Box(
-                                            modifier = Modifier.fillMaxWidth().height(1.dp)
-                                                .background(if (isDarkMode) Color(0x1AFFFFFF) else Color(0x0D000000))
-                                                .align(Alignment.TopCenter)
+                                            modifier =
+                                                Modifier.fillMaxWidth()
+                                                    .height(1.dp)
+                                                    .background(
+                                                        if (isDarkMode) Color(0x1AFFFFFF)
+                                                        else Color(0x0D000000)
+                                                    )
+                                                    .align(Alignment.TopCenter)
                                         )
 
-                                        val progress = if (song.duration > 0) {
-                                            playbackProgress.toFloat() / song.duration.toFloat()
-                                        } else {
-                                            0f
-                                        }
+                                        val progress =
+                                            if (song.duration > 0) {
+                                                playbackProgress.toFloat() / song.duration.toFloat()
+                                            } else {
+                                                0f
+                                            }
                                         Box(
-                                            modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(2.5.dp)
-                                                .background(currentAccent.mainColor).align(Alignment.TopStart)
+                                            modifier =
+                                                Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
+                                                    .height(2.5.dp)
+                                                    .background(currentAccent.mainColor)
+                                                    .align(Alignment.TopStart)
                                         )
 
                                         Row(
-                                            modifier = Modifier.fillMaxSize().padding(start = 26.dp, end = 16.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                            modifier =
+                                                Modifier.fillMaxSize()
+                                                    .padding(start = 26.dp, end = 16.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             SongCover(
                                                 song = song,
                                                 isCurrent = false,
                                                 isPlaying = false,
-                                                modifier = Modifier.size(42.dp)
+                                                modifier = Modifier.size(42.dp),
                                             )
 
                                             Spacer(modifier = Modifier.width(12.dp))
@@ -2159,22 +2765,26 @@ fun MainScreen(viewModel: SongViewModel) {
                                                     fontWeight = FontWeight.Bold,
                                                     color = appColors.textColorPrimary,
                                                     maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
+                                                    overflow = TextOverflow.Ellipsis,
                                                 )
                                                 val quality = song.getQualityType()
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                    horizontalArrangement =
+                                                        Arrangement.spacedBy(4.dp),
                                                 ) {
                                                     if (quality != QualityType.SQ) {
-                                                        QualityBadge(quality = quality, isDarkMode = isDarkMode)
+                                                        QualityBadge(
+                                                            quality = quality,
+                                                            isDarkMode = isDarkMode,
+                                                        )
                                                     }
                                                     Text(
                                                         text = song.artist,
                                                         fontSize = 11.sp,
                                                         color = appColors.textColorSecondary,
                                                         maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis
+                                                        overflow = TextOverflow.Ellipsis,
                                                     )
                                                 }
                                             }
@@ -2188,13 +2798,18 @@ fun MainScreen(viewModel: SongViewModel) {
                                                     } else {
                                                         viewModel.resumeSong()
                                                     }
-                                                }, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp))
+                                                },
+                                                modifier =
+                                                    Modifier.size(40.dp)
+                                                        .clip(RoundedCornerShape(20.dp)),
                                             ) {
                                                 Icon(
-                                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                    imageVector =
+                                                        if (isPlaying) Icons.Default.Pause
+                                                        else Icons.Default.PlayArrow,
                                                     contentDescription = "Play/Pause",
                                                     tint = currentAccent.mainColor,
-                                                    modifier = Modifier.size(24.dp)
+                                                    modifier = Modifier.size(24.dp),
                                                 )
                                             }
                                         }
@@ -2205,78 +2820,119 @@ fun MainScreen(viewModel: SongViewModel) {
                         }
                     }
 
-                    val backToTopBottomPadding by animateDpAsState(
-                        targetValue = if (currentSong != null) 84.dp else 16.dp, label = "back_to_top_padding"
-                    )
+                    val backToTopBottomPadding by
+                        animateDpAsState(
+                            targetValue = if (currentSong != null) 84.dp else 16.dp,
+                            label = "back_to_top_padding",
+                        )
 
                     val locateInteractionSource = remember { MutableInteractionSource() }
                     val isLocatePressed by locateInteractionSource.collectIsPressedAsState()
-                    val locateAlpha by animateFloatAsState(
-                        targetValue = if (isLocatePressed) 1.0f else 0.92f, label = "locate_alpha"
-                    )
-                    val locateScale by animateFloatAsState(
-                        targetValue = if (isLocatePressed) 0.86f else 1.0f, animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
-                        ), label = "locate_scale"
-                    )
+                    val locateAlpha by
+                        animateFloatAsState(
+                            targetValue = if (isLocatePressed) 1.0f else 0.92f,
+                            label = "locate_alpha",
+                        )
+                    val locateScale by
+                        animateFloatAsState(
+                            targetValue = if (isLocatePressed) 0.86f else 1.0f,
+                            animationSpec =
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
+                                ),
+                            label = "locate_scale",
+                        )
 
                     val topInteractionSource = remember { MutableInteractionSource() }
                     val isTopPressed by topInteractionSource.collectIsPressedAsState()
-                    val topAlpha by animateFloatAsState(
-                        targetValue = if (isTopPressed) 1.0f else 0.92f, label = "top_alpha"
-                    )
-                    val topScale by animateFloatAsState(
-                        targetValue = if (isTopPressed) 0.86f else 1.0f, animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
-                        ), label = "top_scale"
-                    )
+                    val topAlpha by
+                        animateFloatAsState(
+                            targetValue = if (isTopPressed) 1.0f else 0.92f,
+                            label = "top_alpha",
+                        )
+                    val topScale by
+                        animateFloatAsState(
+                            targetValue = if (isTopPressed) 0.86f else 1.0f,
+                            animationSpec =
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
+                                ),
+                            label = "top_scale",
+                        )
 
-                    val locateOffset by animateDpAsState(
-                        targetValue = if (showBackToTop) 52.dp else 0.dp, animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow
-                        ), label = "locate_offset"
-                    )
+                    val locateOffset by
+                        animateDpAsState(
+                            targetValue = if (showBackToTop) 52.dp else 0.dp,
+                            animationSpec =
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
+                                ),
+                            label = "locate_offset",
+                        )
 
-                    val buttonBorder = Modifier.border(
-                        width = 1.dp,
-                        color = if (isDarkMode) Color.White.copy(alpha = 0.12f) else Color.Black.copy(alpha = 0.08f),
-                        shape = CircleShape
-                    )
+                    val buttonBorder =
+                        Modifier.border(
+                            width = 1.dp,
+                            color =
+                                if (isDarkMode) Color.White.copy(alpha = 0.12f)
+                                else Color.Black.copy(alpha = 0.08f),
+                            shape = CircleShape,
+                        )
 
                     Box(
-                        modifier = Modifier.align(Alignment.BottomEnd)
-                            .padding(end = 16.dp, bottom = backToTopBottomPadding).navigationBarsPadding(),
-                        contentAlignment = Alignment.BottomCenter
+                        modifier =
+                            Modifier.align(Alignment.BottomEnd)
+                                .padding(end = 16.dp, bottom = backToTopBottomPadding)
+                                .navigationBarsPadding(),
+                        contentAlignment = Alignment.BottomCenter,
                     ) {
                         // 1. 定位当前歌曲按钮
                         androidx.compose.animation.AnimatedVisibility(
                             visible = showLocateSong && !isAtBottom,
                             enter = scaleIn() + fadeIn(),
                             exit = scaleOut() + fadeOut(),
-                            modifier = Modifier.padding(bottom = if (locateOffset < 0.dp) 0.dp else locateOffset)
+                            modifier =
+                                Modifier.padding(
+                                    bottom = if (locateOffset < 0.dp) 0.dp else locateOffset
+                                ),
                         ) {
                             Box(
-                                modifier = Modifier.size(40.dp).graphicsLayer {
-                                    alpha = locateAlpha
-                                    scaleX = locateScale
-                                    scaleY = locateScale
-                                }.clip(CircleShape).background(currentAccent.mainColor).then(buttonBorder).clickable(
-                                    interactionSource = locateInteractionSource,
-                                    indication = androidx.compose.material3.ripple(color = Color.White),
-                                    onClick = {
-                                        locateCurrentSong()
-                                    }), contentAlignment = Alignment.Center
+                                modifier =
+                                    Modifier.size(40.dp)
+                                        .graphicsLayer {
+                                            alpha = locateAlpha
+                                            scaleX = locateScale
+                                            scaleY = locateScale
+                                        }
+                                        .clip(CircleShape)
+                                        .background(currentAccent.mainColor)
+                                        .then(buttonBorder)
+                                        .clickable(
+                                            interactionSource = locateInteractionSource,
+                                            indication =
+                                                androidx.compose.material3.ripple(
+                                                    color = Color.White
+                                                ),
+                                            onClick = { locateCurrentSong() },
+                                        ),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.MyLocation,
                                     contentDescription = "定位当前歌曲",
                                     tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
                                 )
                                 Box(
-                                    modifier = Modifier.fillMaxSize().background(
-                                        if (isLocatePressed) Color.White.copy(alpha = 0.15f) else Color.Transparent
-                                    )
+                                    modifier =
+                                        Modifier.fillMaxSize()
+                                            .background(
+                                                if (isLocatePressed) Color.White.copy(alpha = 0.15f)
+                                                else Color.Transparent
+                                            )
                                 )
                             }
                         }
@@ -2285,32 +2941,46 @@ fun MainScreen(viewModel: SongViewModel) {
                         androidx.compose.animation.AnimatedVisibility(
                             visible = showBackToTop && !isAtBottom,
                             enter = scaleIn() + fadeIn(),
-                            exit = scaleOut() + fadeOut()
+                            exit = scaleOut() + fadeOut(),
                         ) {
                             Box(
-                                modifier = Modifier.size(40.dp).graphicsLayer {
-                                    alpha = topAlpha
-                                    scaleX = topScale
-                                    scaleY = topScale
-                                }.clip(CircleShape).background(currentAccent.mainColor).then(buttonBorder).clickable(
-                                    interactionSource = topInteractionSource,
-                                    indication = androidx.compose.material3.ripple(color = Color.White),
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            activeListState?.scrollToItem(0)
+                                modifier =
+                                    Modifier.size(40.dp)
+                                        .graphicsLayer {
+                                            alpha = topAlpha
+                                            scaleX = topScale
+                                            scaleY = topScale
                                         }
-                                    }), contentAlignment = Alignment.Center
+                                        .clip(CircleShape)
+                                        .background(currentAccent.mainColor)
+                                        .then(buttonBorder)
+                                        .clickable(
+                                            interactionSource = topInteractionSource,
+                                            indication =
+                                                androidx.compose.material3.ripple(
+                                                    color = Color.White
+                                                ),
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    activeListState?.scrollToItem(0)
+                                                }
+                                            },
+                                        ),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.KeyboardArrowUp,
                                     contentDescription = "回到顶部",
                                     tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(24.dp),
                                 )
                                 Box(
-                                    modifier = Modifier.fillMaxSize().background(
-                                        if (isTopPressed) Color.White.copy(alpha = 0.15f) else Color.Transparent
-                                    )
+                                    modifier =
+                                        Modifier.fillMaxSize()
+                                            .background(
+                                                if (isTopPressed) Color.White.copy(alpha = 0.15f)
+                                                else Color.Transparent
+                                            )
                                 )
                             }
                         }
@@ -2332,37 +3002,53 @@ fun MainScreen(viewModel: SongViewModel) {
             title = "选择排序方式",
             icon = Icons.Default.Sort,
             iconColor = currentAccent.mainColor,
-            appColors = appColors
+            appColors = appColors,
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
+                horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
             ) {
                 Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                        .background(if (isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
-                        .clickable { viewModel.setSortAscending(true) }.padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier.weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f)
+                                else itemBg
+                            )
+                            .clickable { viewModel.setSortAscending(true) }
+                            .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "正序",
-                        color = if (isSortAscending) currentAccent.mainColor else appColors.textColorPrimary,
+                        color =
+                            if (isSortAscending) currentAccent.mainColor
+                            else appColors.textColorPrimary,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 }
 
                 Box(
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                        .background(if (!isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f) else itemBg)
-                        .clickable { viewModel.setSortAscending(false) }.padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier.weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (!isSortAscending) currentAccent.mainColor.copy(alpha = 0.15f)
+                                else itemBg
+                            )
+                            .clickable { viewModel.setSortAscending(false) }
+                            .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "倒序",
-                        color = if (!isSortAscending) currentAccent.mainColor else appColors.textColorPrimary,
+                        color =
+                            if (!isSortAscending) currentAccent.mainColor
+                            else appColors.textColorPrimary,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -2371,45 +3057,50 @@ fun MainScreen(viewModel: SongViewModel) {
 
             Column(
                 verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 SortOrder.values().forEach { order ->
                     val isSelected = order == currentSortOrder
-                    val accentItemBg = if (isSelected) {
-                        currentAccent.mainColor.copy(alpha = 0.12f)
-                    } else {
-                        appColors.cardBackground
-                    }
+                    val accentItemBg =
+                        if (isSelected) {
+                            currentAccent.mainColor.copy(alpha = 0.12f)
+                        } else {
+                            appColors.cardBackground
+                        }
                     Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                            .background(accentItemBg).border(
-                                1.5.dp,
-                                if (isSelected) currentAccent.mainColor else Color.Transparent,
-                                RoundedCornerShape(12.dp)
-                            ).clickable {
-                                viewModel.setSortOrder(order)
-                            }.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(accentItemBg)
+                                .border(
+                                    1.5.dp,
+                                    if (isSelected) currentAccent.mainColor else Color.Transparent,
+                                    RoundedCornerShape(12.dp),
+                                )
+                                .clickable { viewModel.setSortOrder(order) }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = when (order) {
-                                SortOrder.BY_TITLE -> "按歌名排序"
-                                SortOrder.BY_DATE_ADDED -> "按创建时间排序"
-                                SortOrder.BY_ADD_TIME -> "按扫描时间排序"
-                                SortOrder.BY_ARTIST -> "按歌手排序"
-                                SortOrder.BY_DURATION -> "按时长排序"
-                            },
+                            text =
+                                when (order) {
+                                    SortOrder.BY_TITLE -> "按歌名排序"
+                                    SortOrder.BY_DATE_ADDED -> "按创建时间排序"
+                                    SortOrder.BY_ADD_TIME -> "按扫描时间排序"
+                                    SortOrder.BY_ARTIST -> "按歌手排序"
+                                    SortOrder.BY_DURATION -> "按时长排序"
+                                },
                             color = appColors.textColorPrimary,
                             fontSize = 13.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         )
                         if (isSelected) {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Selected",
                                 tint = currentAccent.mainColor,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }
@@ -2430,77 +3121,87 @@ fun MainScreen(viewModel: SongViewModel) {
             appColors = appColors,
             actionArea = {
                 IconButton(
-                    onClick = { showBlockedFoldersDialog = false }, modifier = Modifier.size(24.dp)
+                    onClick = { showBlockedFoldersDialog = false },
+                    modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "关闭",
                         tint = appColors.textColorSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                 }
-            }
+            },
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing)
+                verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
             ) {
                 // Section 1: 已屏蔽的文件夹
                 Text(
                     text = "已屏蔽的文件夹 (${blockedFolders.size})",
                     color = appColors.textColorSecondary,
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
 
                 if (blockedFolders.isEmpty()) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(8.dp))
-                            .background(itemBg),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(itemBg),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "暂无已屏蔽文件夹",
                             color = appColors.textColorSecondary.copy(alpha = 0.8f),
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
                         )
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 100.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         items(blockedFolders.toList()) { folderPath ->
-                            val folderName = remember(folderPath) {
-                                val file = java.io.File(folderPath)
-                                file.name.ifEmpty { folderPath }
-                            }
+                            val folderName =
+                                remember(folderPath) {
+                                    val file = java.io.File(folderPath)
+                                    file.name.ifEmpty { folderPath }
+                                }
                             Row(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                    .background(itemBg).padding(horizontal = 10.dp, vertical = 6.dp),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(itemBg)
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Column(modifier = Modifier.weight(1.0f)) {
                                     Text(
                                         text = folderName,
                                         color = appColors.textColorPrimary,
                                         fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
                                     )
                                     Text(
-                                        text = folderPath, color = appColors.textColorSecondary, fontSize = 10.sp
+                                        text = folderPath,
+                                        color = appColors.textColorSecondary,
+                                        fontSize = 10.sp,
                                     )
                                 }
                                 IconButton(
                                     onClick = { viewModel.removeBlockedFolder(folderPath) },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(28.dp),
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Clear,
                                         contentDescription = "取消屏蔽",
                                         tint = Color(0xFFE06C75),
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(16.dp),
                                     )
                                 }
                             }
@@ -2515,57 +3216,66 @@ fun MainScreen(viewModel: SongViewModel) {
                     text = "检测到的音频文件夹 (${detectedFolders.size})",
                     color = appColors.textColorSecondary,
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
 
                 if (detectedFolders.isEmpty()) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(8.dp))
-                            .background(itemBg),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier.fillMaxWidth()
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(itemBg),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "暂无检测到的文件夹",
                             color = appColors.textColorSecondary.copy(alpha = 0.8f),
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
                         )
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 140.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         items(detectedFolders) { folderPath ->
-                            val folderName = remember(folderPath) {
-                                val file = java.io.File(folderPath)
-                                file.name.ifEmpty { folderPath }
-                            }
+                            val folderName =
+                                remember(folderPath) {
+                                    val file = java.io.File(folderPath)
+                                    file.name.ifEmpty { folderPath }
+                                }
                             Row(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                    .background(itemBg).padding(horizontal = 10.dp, vertical = 8.dp),
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(itemBg)
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Column(modifier = Modifier.weight(1.0f)) {
                                     Text(
                                         text = folderName,
                                         color = appColors.textColorPrimary,
                                         fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
                                     )
                                     Text(
-                                        text = folderPath, color = appColors.textColorSecondary, fontSize = 10.sp
+                                        text = folderPath,
+                                        color = appColors.textColorSecondary,
+                                        fontSize = 10.sp,
                                     )
                                 }
                                 IconButton(
                                     onClick = { viewModel.addBlockedFolder(folderPath) },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(28.dp),
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
                                         contentDescription = "屏蔽该文件夹",
                                         tint = currentAccent.mainColor,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(18.dp),
                                     )
                                 }
                             }
@@ -2583,40 +3293,51 @@ fun MainScreen(viewModel: SongViewModel) {
             title = "创建新歌单",
             icon = Icons.Default.PlaylistAdd,
             iconColor = currentAccent.mainColor,
-            appColors = appColors
+            appColors = appColors,
         ) {
             // Input TextField
             OutlinedTextField(
-                value = newPlaylistName, onValueChange = { newPlaylistName = it }, placeholder = {
+                value = newPlaylistName,
+                onValueChange = { newPlaylistName = it },
+                placeholder = {
                     Text(
                         "输入歌单名称...",
                         color = appColors.textColorSecondary.copy(alpha = 0.5f),
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
                     )
-                }, singleLine = true, trailingIcon = {
+                },
+                singleLine = true,
+                trailingIcon = {
                     if (newPlaylistName.isNotEmpty()) {
                         IconButton(
-                            onClick = { newPlaylistName = "" }, modifier = Modifier.size(24.dp)
+                            onClick = { newPlaylistName = "" },
+                            modifier = Modifier.size(24.dp),
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
                                 contentDescription = "清空",
                                 tint = appColors.textColorSecondary.copy(alpha = 0.6f),
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(14.dp),
                             )
                         }
                     }
-                }, colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = if (isDarkMode) Color(0xFF222225) else Color(0xFFF3F3F5),
-                    unfocusedContainerColor = if (isDarkMode) Color(0xFF1B1B1E) else Color(0xFFF9F9FA),
-                    focusedTextColor = appColors.textColorPrimary,
-                    unfocusedTextColor = appColors.textColorPrimary,
-                    focusedBorderColor = currentAccent.mainColor,
-                    unfocusedBorderColor = if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(
-                        alpha = 0.06f
+                },
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor =
+                            if (isDarkMode) Color(0xFF222225) else Color(0xFFF3F3F5),
+                        unfocusedContainerColor =
+                            if (isDarkMode) Color(0xFF1B1B1E) else Color(0xFFF9F9FA),
+                        focusedTextColor = appColors.textColorPrimary,
+                        unfocusedTextColor = appColors.textColorPrimary,
+                        focusedBorderColor = currentAccent.mainColor,
+                        unfocusedBorderColor =
+                            if (isDarkMode) Color.White.copy(alpha = 0.08f)
+                            else Color.Black.copy(alpha = 0.06f),
+                        cursorColor = currentAccent.mainColor,
                     ),
-                    cursorColor = currentAccent.mainColor
-                ), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
             )
 
             Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
@@ -2624,7 +3345,8 @@ fun MainScreen(viewModel: SongViewModel) {
             // Action Buttons
             val isNameValid = newPlaylistName.isNotBlank()
             Row(
-                modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
             ) {
                 // Cancel Button
                 Button(
@@ -2632,13 +3354,15 @@ fun MainScreen(viewModel: SongViewModel) {
                         showCreatePlaylistDialog = false
                         newPlaylistName = ""
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
-                        contentColor = appColors.textColorSecondary
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                            contentColor = appColors.textColorSecondary,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
@@ -2651,15 +3375,17 @@ fun MainScreen(viewModel: SongViewModel) {
                         newPlaylistName = ""
                         showCreatePlaylistDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = currentAccent.mainColor,
-                        contentColor = Color.White,
-                        disabledContainerColor = if (isDarkMode) Color(0xFF2E2E33) else Color(0xFFE5E5E9),
-                        disabledContentColor = appColors.textColorSecondary.copy(alpha = 0.4f)
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = currentAccent.mainColor,
+                            contentColor = Color.White,
+                            disabledContainerColor =
+                                if (isDarkMode) Color(0xFF2E2E33) else Color(0xFFE5E5E9),
+                            disabledContentColor = appColors.textColorSecondary.copy(alpha = 0.4f),
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("创建", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
@@ -2674,13 +3400,13 @@ fun MainScreen(viewModel: SongViewModel) {
             title = "删除歌单",
             icon = Icons.Default.Delete,
             iconColor = Color(0xFFE06C75),
-            appColors = appColors
+            appColors = appColors,
         ) {
             Text(
                 text = "确认要删除歌单「${playlistToDelete!!.name}」吗？\n删除后歌单内的歌曲记录将丢失，该操作无法撤销。",
                 color = appColors.textColorPrimary,
                 fontSize = 13.sp,
-                lineHeight = 18.sp
+                lineHeight = 18.sp,
             )
 
             Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
@@ -2688,18 +3414,20 @@ fun MainScreen(viewModel: SongViewModel) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Cancel Button
                 Button(
                     onClick = { playlistToDelete = null },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
-                        contentColor = appColors.textColorSecondary
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                            contentColor = appColors.textColorSecondary,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
@@ -2712,13 +3440,14 @@ fun MainScreen(viewModel: SongViewModel) {
                         playlistToDelete = null
                         Toast.makeText(context, "歌单已删除", Toast.LENGTH_SHORT).show()
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE06C75),
-                        contentColor = Color.White
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE06C75),
+                            contentColor = Color.White,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("确认删除", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
@@ -2736,28 +3465,28 @@ fun MainScreen(viewModel: SongViewModel) {
             title = "导入歌单结果",
             icon = if (hasFailure) Icons.Default.Warning else Icons.Default.Check,
             iconColor = if (hasFailure) Color(0xFFD97706) else currentAccent.mainColor,
-            appColors = appColors
+            appColors = appColors,
         ) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     text = "已导入歌单/分组: ${result.playlistsImported} 个",
                     color = appColors.textColorPrimary,
-                    fontSize = 13.sp
+                    fontSize = 13.sp,
                 )
                 Text(
                     text = "成功关联本地文件: ${result.successCount} 首",
                     color = currentAccent.mainColor,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = "未找到本地物理文件: ${result.failureCount} 首",
                     color = if (hasFailure) Color(0xFFE06C75) else appColors.textColorSecondary,
                     fontSize = 13.sp,
-                    fontWeight = if (hasFailure) FontWeight.Bold else FontWeight.Normal
+                    fontWeight = if (hasFailure) FontWeight.Bold else FontWeight.Normal,
                 )
             }
 
@@ -2767,30 +3496,41 @@ fun MainScreen(viewModel: SongViewModel) {
                     text = "未找到物理文件的歌曲列表:",
                     color = appColors.textColorSecondary,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Box(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp).clip(RoundedCornerShape(8.dp))
-                        .background(if (isDarkMode) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f))
-                        .border(
-                            0.5.dp,
-                            if (isDarkMode) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
-                            RoundedCornerShape(8.dp)
-                        ).padding(8.dp)
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .heightIn(max = 160.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isDarkMode) Color.White.copy(alpha = 0.05f)
+                                else Color.Black.copy(alpha = 0.03f)
+                            )
+                            .border(
+                                0.5.dp,
+                                if (isDarkMode) Color.White.copy(alpha = 0.08f)
+                                else Color.Black.copy(alpha = 0.05f),
+                                RoundedCornerShape(8.dp),
+                            )
+                            .padding(8.dp)
                 ) {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         items(result.failedSongs) { songText ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Box(
-                                    modifier = Modifier.size(4.dp).clip(CircleShape)
-                                        .background(Color(0xFFE06C75))
+                                    modifier =
+                                        Modifier.size(4.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFE06C75))
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -2798,7 +3538,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                     color = appColors.textColorPrimary,
                                     fontSize = 12.sp,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
@@ -2810,12 +3550,14 @@ fun MainScreen(viewModel: SongViewModel) {
 
             Button(
                 onClick = { importResult = null },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = currentAccent.mainColor, contentColor = Color.White
-                ),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = currentAccent.mainColor,
+                        contentColor = Color.White,
+                    ),
                 shape = DialogButtonShape,
                 modifier = Modifier.fillMaxWidth().height(DialogButtonHeight),
-                contentPadding = PaddingValues(0.dp)
+                contentPadding = PaddingValues(0.dp),
             ) {
                 Text("我知道了", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
@@ -2829,22 +3571,27 @@ fun MainScreen(viewModel: SongViewModel) {
             title = "导入歌单失败",
             icon = Icons.Default.Warning,
             iconColor = Color(0xFFE06C75),
-            appColors = appColors
+            appColors = appColors,
         ) {
             Text(
-                text = importError!!, color = appColors.textColorPrimary, fontSize = 13.sp, lineHeight = 18.sp
+                text = importError!!,
+                color = appColors.textColorPrimary,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
             )
 
             Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
 
             Button(
                 onClick = { importError = null },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE06C75), contentColor = Color.White
-                ),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE06C75),
+                        contentColor = Color.White,
+                    ),
                 shape = DialogButtonShape,
                 modifier = Modifier.fillMaxWidth().height(DialogButtonHeight),
-                contentPadding = PaddingValues(0.dp)
+                contentPadding = PaddingValues(0.dp),
             ) {
                 Text("我知道了", fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
@@ -2859,13 +3606,13 @@ fun MainScreen(viewModel: SongViewModel) {
             icon = Icons.Default.Delete,
             iconColor = Color(0xFFE06C75),
             titleColor = Color(0xFFE06C75),
-            appColors = appColors
+            appColors = appColors,
         ) {
             Text(
                 text = "确定要删除歌曲「${songToDelete!!.title}」吗？",
                 color = appColors.textColorPrimary,
                 fontSize = 13.sp,
-                lineHeight = 18.sp
+                lineHeight = 18.sp,
             )
 
             Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
@@ -2873,18 +3620,20 @@ fun MainScreen(viewModel: SongViewModel) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Cancel Button
                 Button(
                     onClick = { songToDelete = null },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
-                        contentColor = appColors.textColorSecondary
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                            contentColor = appColors.textColorSecondary,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
@@ -2897,13 +3646,14 @@ fun MainScreen(viewModel: SongViewModel) {
                         songToDelete = null
                         Toast.makeText(context, "已删除歌曲记录", Toast.LENGTH_SHORT).show()
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE06C75),
-                        contentColor = Color.White
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE06C75),
+                            contentColor = Color.White,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("确认删除", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
@@ -2919,13 +3669,13 @@ fun MainScreen(viewModel: SongViewModel) {
             icon = Icons.Default.Delete,
             iconColor = Color(0xFFE06C75),
             titleColor = Color(0xFFE06C75),
-            appColors = appColors
+            appColors = appColors,
         ) {
             Text(
                 text = "确定要删除选中的 ${songsToDelete!!.size} 首歌曲吗？\n删除后本地歌曲记录将丢失，无法撤销。",
                 color = appColors.textColorPrimary,
                 fontSize = 13.sp,
-                lineHeight = 18.sp
+                lineHeight = 18.sp,
             )
 
             Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
@@ -2933,17 +3683,19 @@ fun MainScreen(viewModel: SongViewModel) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Button(
                     onClick = { songsToDelete = null },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
-                        contentColor = appColors.textColorSecondary
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                            contentColor = appColors.textColorSecondary,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
@@ -2957,13 +3709,14 @@ fun MainScreen(viewModel: SongViewModel) {
                         selectedSongs.clear()
                         Toast.makeText(context, "已批量删除歌曲记录", Toast.LENGTH_SHORT).show()
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE06C75),
-                        contentColor = Color.White
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE06C75),
+                            contentColor = Color.White,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("确认删除", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
@@ -2978,13 +3731,13 @@ fun MainScreen(viewModel: SongViewModel) {
             title = "移入遗忘的沙漏",
             icon = Icons.Default.HourglassEmpty,
             iconColor = Color(0xFFE5C07B),
-            appColors = appColors
+            appColors = appColors,
         ) {
             Text(
                 text = "确认要将选中的 ${songsToBlacklist!!.size} 首歌曲移至遗忘的沙漏吗？\n移入后歌曲将自动停止播放且不再在歌库中显示。",
                 color = appColors.textColorPrimary,
                 fontSize = 13.sp,
-                lineHeight = 18.sp
+                lineHeight = 18.sp,
             )
 
             Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
@@ -2992,17 +3745,19 @@ fun MainScreen(viewModel: SongViewModel) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Button(
                     onClick = { songsToBlacklist = null },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
-                        contentColor = appColors.textColorSecondary
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                            contentColor = appColors.textColorSecondary,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
@@ -3014,13 +3769,14 @@ fun MainScreen(viewModel: SongViewModel) {
                         isMultiSelectMode = false
                         selectedSongs.clear()
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE5C07B),
-                        contentColor = Color.White
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE5C07B),
+                            contentColor = Color.White,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("确认移入", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
@@ -3033,27 +3789,24 @@ fun MainScreen(viewModel: SongViewModel) {
         val itemBg = if (isDarkMode) Color(0x0AFFFFFF) else Color(0x0A000000)
 
         AppDialog(
-            onDismissRequest = {
-                showBatchAddToPlaylistDialog = false
-            },
+            onDismissRequest = { showBatchAddToPlaylistDialog = false },
             title = "批量加入到歌单",
             icon = Icons.Default.PlaylistAdd,
             iconColor = currentAccent.mainColor,
             appColors = appColors,
             actionArea = {
                 IconButton(
-                    onClick = {
-                        showBatchAddToPlaylistDialog = false
-                    }, modifier = Modifier.size(24.dp)
+                    onClick = { showBatchAddToPlaylistDialog = false },
+                    modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "关闭",
                         tint = appColors.textColorSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                 }
-            }
+            },
         ) {
             if (playlists.isEmpty()) {
                 Text(
@@ -3061,12 +3814,12 @@ fun MainScreen(viewModel: SongViewModel) {
                     color = appColors.textColorSecondary,
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                    modifier = Modifier.heightIn(max = 220.dp)
+                    modifier = Modifier.heightIn(max = 220.dp),
                 ) {
                     items(playlists) { playlist ->
                         CommonItemCard(
@@ -3074,7 +3827,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                 PlaylistCover(
                                     firstSongId = playlist.firstSongId,
                                     currentAccent = currentAccent,
-                                    modifier = Modifier.size(42.dp)
+                                    modifier = Modifier.size(42.dp),
                                 )
                             },
                             title = playlist.name,
@@ -3082,16 +3835,20 @@ fun MainScreen(viewModel: SongViewModel) {
                             appColors = appColors,
                             onClick = {
                                 viewModel.addSongsToPlaylist(
-                                    playlist.id, selectedSongs.map { it.id }
+                                    playlist.id,
+                                    selectedSongs.map { it.id },
                                 )
                                 Toast.makeText(
-                                    context, "已成功批量加入: ${playlist.name}", Toast.LENGTH_SHORT
-                                ).show()
+                                        context,
+                                        "已成功批量加入: ${playlist.name}",
+                                        Toast.LENGTH_SHORT,
+                                    )
+                                    .show()
                                 showBatchAddToPlaylistDialog = false
                                 isMultiSelectMode = false
                                 selectedSongs.clear()
                             },
-                            containerColor = itemBg
+                            containerColor = itemBg,
                         )
                     }
                 }
@@ -3106,13 +3863,13 @@ fun MainScreen(viewModel: SongViewModel) {
             title = "从歌单移除",
             icon = Icons.Default.Delete,
             iconColor = currentAccent.mainColor,
-            appColors = appColors
+            appColors = appColors,
         ) {
             Text(
                 text = "确认要将歌曲「${songToRemoveFromPlaylist!!.second.title}」从当前歌单中移出吗？",
                 color = appColors.textColorPrimary,
                 fontSize = 13.sp,
-                lineHeight = 18.sp
+                lineHeight = 18.sp,
             )
 
             Spacer(modifier = Modifier.height(DialogContentToButtonsSpace))
@@ -3120,18 +3877,20 @@ fun MainScreen(viewModel: SongViewModel) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Cancel Button
                 Button(
                     onClick = { songToRemoveFromPlaylist = null },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
-                        contentColor = appColors.textColorSecondary
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor =
+                                if (isDarkMode) Color(0xFF28282C) else Color(0xFFEBEBEF),
+                            contentColor = appColors.textColorSecondary,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("取消", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 }
@@ -3145,13 +3904,14 @@ fun MainScreen(viewModel: SongViewModel) {
                         songToRemoveFromPlaylist = null
                         Toast.makeText(context, "已从歌单移除", Toast.LENGTH_SHORT).show()
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE06C75),
-                        contentColor = Color.White
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE06C75),
+                            contentColor = Color.White,
+                        ),
                     shape = DialogButtonShape,
                     modifier = Modifier.weight(1f).height(DialogButtonHeight),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Text("确认移除", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
@@ -3177,16 +3937,17 @@ fun MainScreen(viewModel: SongViewModel) {
                     onClick = {
                         showAddToPlaylistDialog = false
                         selectedSongForAddToPlaylist = null
-                    }, modifier = Modifier.size(24.dp)
+                    },
+                    modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "关闭",
                         tint = appColors.textColorSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                 }
-            }
+            },
         ) {
             if (playlists.isEmpty()) {
                 Text(
@@ -3194,12 +3955,12 @@ fun MainScreen(viewModel: SongViewModel) {
                     color = appColors.textColorSecondary,
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                    modifier = Modifier.heightIn(max = 220.dp)
+                    modifier = Modifier.heightIn(max = 220.dp),
                 ) {
                     items(playlists) { playlist ->
                         CommonItemCard(
@@ -3207,7 +3968,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                 PlaylistCover(
                                     firstSongId = playlist.firstSongId,
                                     currentAccent = currentAccent,
-                                    modifier = Modifier.size(42.dp)
+                                    modifier = Modifier.size(42.dp),
                                 )
                             },
                             title = playlist.name,
@@ -3215,15 +3976,19 @@ fun MainScreen(viewModel: SongViewModel) {
                             appColors = appColors,
                             onClick = {
                                 viewModel.addSongToPlaylist(
-                                    playlist.id, selectedSongForAddToPlaylist!!.id
+                                    playlist.id,
+                                    selectedSongForAddToPlaylist!!.id,
                                 )
                                 Toast.makeText(
-                                    context, "已成功加入: ${playlist.name}", Toast.LENGTH_SHORT
-                                ).show()
+                                        context,
+                                        "已成功加入: ${playlist.name}",
+                                        Toast.LENGTH_SHORT,
+                                    )
+                                    .show()
                                 showAddToPlaylistDialog = false
                                 selectedSongForAddToPlaylist = null
                             },
-                            containerColor = itemBg
+                            containerColor = itemBg,
                         )
                     }
                 }
@@ -3240,58 +4005,72 @@ fun MainScreen(viewModel: SongViewModel) {
             iconColor = currentAccent.mainColor,
             appColors = appColors,
             actionArea = {
-                IconButton(
-                    onClick = { showThemeDialog = false }, modifier = Modifier.size(24.dp)
-                ) {
+                IconButton(onClick = { showThemeDialog = false }, modifier = Modifier.size(24.dp)) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "关闭",
                         tint = appColors.textColorSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                 }
-            }
+            },
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing)
+                    horizontalArrangement = Arrangement.spacedBy(DialogButtonSpacing),
                 ) {
                     Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                            .background(if (!isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f) else appColors.cardBackground)
-                            .border(
-                                1.5.dp,
-                                if (!isDarkMode) currentAccent.mainColor else Color.Transparent,
-                                RoundedCornerShape(12.dp)
-                            ).clickable { viewModel.setDarkMode(false) }.padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier.weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (!isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f)
+                                    else appColors.cardBackground
+                                )
+                                .border(
+                                    1.5.dp,
+                                    if (!isDarkMode) currentAccent.mainColor else Color.Transparent,
+                                    RoundedCornerShape(12.dp),
+                                )
+                                .clickable { viewModel.setDarkMode(false) }
+                                .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "日间模式",
-                            color = if (!isDarkMode) currentAccent.mainColor else appColors.textColorSecondary,
+                            color =
+                                if (!isDarkMode) currentAccent.mainColor
+                                else appColors.textColorSecondary,
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
 
                     Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                            .background(if (isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f) else appColors.cardBackground)
-                            .border(
-                                1.5.dp,
-                                if (isDarkMode) currentAccent.mainColor else Color.Transparent,
-                                RoundedCornerShape(12.dp)
-                            ).clickable { viewModel.setDarkMode(true) }.padding(vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier.weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isDarkMode) currentAccent.mainColor.copy(alpha = 0.15f)
+                                    else appColors.cardBackground
+                                )
+                                .border(
+                                    1.5.dp,
+                                    if (isDarkMode) currentAccent.mainColor else Color.Transparent,
+                                    RoundedCornerShape(12.dp),
+                                )
+                                .clickable { viewModel.setDarkMode(true) }
+                                .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "夜间模式",
-                            color = if (isDarkMode) currentAccent.mainColor else appColors.textColorSecondary,
+                            color =
+                                if (isDarkMode) currentAccent.mainColor
+                                else appColors.textColorSecondary,
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -3300,37 +4079,45 @@ fun MainScreen(viewModel: SongViewModel) {
 
                 Column(
                     verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     AccentColor.values().forEach { accent ->
                         val isSelected = accent.id == themeName
-                        val accentItemBg = if (isSelected) {
-                            accent.mainColor.copy(alpha = 0.12f)
-                        } else {
-                            appColors.cardBackground
-                        }
+                        val accentItemBg =
+                            if (isSelected) {
+                                accent.mainColor.copy(alpha = 0.12f)
+                            } else {
+                                appColors.cardBackground
+                            }
                         Row(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                .background(accentItemBg).border(
-                                    1.5.dp,
-                                    if (isSelected) accent.mainColor else Color.Transparent,
-                                    RoundedCornerShape(12.dp)
-                                ).clickable {
-                                    viewModel.setThemeName(accent.id)
-                                }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(accentItemBg)
+                                    .border(
+                                        1.5.dp,
+                                        if (isSelected) accent.mainColor else Color.Transparent,
+                                        RoundedCornerShape(12.dp),
+                                    )
+                                    .clickable { viewModel.setThemeName(accent.id) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
-                                    modifier = Modifier.size(24.dp).clip(CircleShape).background(accent.mainColor)
+                                    modifier =
+                                        Modifier.size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(accent.mainColor)
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
                                     text = accent.label,
                                     color = appColors.textColorPrimary,
                                     fontSize = 14.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    fontWeight =
+                                        if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 )
                             }
                             if (isSelected) {
@@ -3338,7 +4125,7 @@ fun MainScreen(viewModel: SongViewModel) {
                                     imageVector = Icons.Default.Check,
                                     contentDescription = "Selected",
                                     tint = accent.mainColor,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(18.dp),
                                 )
                             }
                         }
@@ -3354,7 +4141,7 @@ fun MainScreen(viewModel: SongViewModel) {
             appColors = appColors,
             isDarkMode = isDarkMode,
             currentAccent = currentAccent,
-            onDismissRequest = { showSleepTimerDialog = false }
+            onDismissRequest = { showSleepTimerDialog = false },
         )
     }
 
@@ -3370,40 +4157,37 @@ fun MainScreen(viewModel: SongViewModel) {
             appColors = appColors,
             actionArea = {
                 IconButton(
-                    onClick = { showUpdateDialog = false }, modifier = Modifier.size(24.dp)
+                    onClick = { showUpdateDialog = false },
+                    modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "关闭",
                         tint = appColors.textColorSecondary,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                 }
-            }
+            },
         ) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "当前版本: v$currentVersionName",
                         color = appColors.textColorSecondary,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
                     )
-                    Text(
-                        text = "•",
-                        color = appColors.textColorSecondary,
-                        fontSize = 12.sp
-                    )
+                    Text(text = "•", color = appColors.textColorSecondary, fontSize = 12.sp)
                     Text(
                         text = "最新版本: ${info.tagName}",
                         color = currentAccent.mainColor,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
                     )
                 }
 
@@ -3413,94 +4197,80 @@ fun MainScreen(viewModel: SongViewModel) {
                     text = "更新内容：",
                     color = appColors.textColorPrimary,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
                 )
 
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 180.dp)
-                        .background(
-                            if (isDarkMode) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .padding(10.dp)
+                    modifier =
+                        Modifier.fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                            .background(
+                                if (isDarkMode) Color.White.copy(alpha = 0.05f)
+                                else Color.Black.copy(alpha = 0.03f),
+                                RoundedCornerShape(8.dp),
+                            )
+                            .padding(10.dp)
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
+                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                     ) {
                         Text(
                             text = info.body.ifBlank { "无更新日志说明。" },
                             color = appColors.textColorPrimary.copy(alpha = 0.9f),
                             fontSize = 12.sp,
-                            lineHeight = 18.sp
+                            lineHeight = 18.sp,
                         )
                     }
                 }
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = DialogContentToButtonsSpace),
+                    modifier = Modifier.fillMaxWidth().padding(top = DialogContentToButtonsSpace),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(
                         onClick = { showUpdateDialog = false },
                         modifier = Modifier.height(DialogButtonHeight),
-                        shape = DialogButtonShape
+                        shape = DialogButtonShape,
                     ) {
-                        Text(
-                            text = "以后再说",
-                            color = appColors.textColorSecondary,
-                            fontSize = 13.sp
-                        )
+                        Text(text = "以后再说", color = appColors.textColorSecondary, fontSize = 13.sp)
                     }
                     Spacer(modifier = Modifier.width(DialogButtonSpacing))
                     Button(
                         onClick = {
                             showUpdateDialog = false
                             try {
-                                val intent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    Uri.parse(info.htmlUrl)
-                                )
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(info.htmlUrl))
                                 context.startActivity(intent)
                             } catch (e: Exception) {
                                 Toast.makeText(context, "无法打开浏览器", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = currentAccent.mainColor,
-                            contentColor = Color.White
-                        ),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = currentAccent.mainColor,
+                                contentColor = Color.White,
+                            ),
                         shape = DialogButtonShape,
                         modifier = Modifier.height(DialogButtonHeight),
-                        contentPadding = PaddingValues(horizontal = 16.dp)
+                        contentPadding = PaddingValues(horizontal = 16.dp),
                     ) {
-                        Text(
-                            text = "立即更新",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(text = "立即更新", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
     }
 
-    val isPlayerVisible = (showFullPlayer || playerOffsetY.value < screenHeight) && currentSong != null
+    val isPlayerVisible =
+        (showFullPlayer || playerOffsetY.value < screenHeight) && currentSong != null
 
     if (isPlayerVisible) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    translationY = playerOffsetY.value
-                }
-                .clipToBounds()
+            modifier =
+                Modifier.fillMaxSize()
+                    .graphicsLayer { translationY = playerOffsetY.value }
+                    .clipToBounds()
         ) {
             currentSong?.let { song ->
                 FullPlayerScreen(
@@ -3525,7 +4295,7 @@ fun MainScreen(viewModel: SongViewModel) {
                         showFullPlayer = false
                     },
                     dragModifier = playerDragModifier,
-                    onSleepTimerClick = { showSleepTimerDialog = true }
+                    onSleepTimerClick = { showSleepTimerDialog = true },
                 )
             }
         }
@@ -3538,21 +4308,18 @@ private fun BatchActionButton(
     label: String,
     tint: Color,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(12.dp)
+        modifier =
+            modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(12.dp),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
             tint = tint,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(22.dp),
         )
     }
 }
-

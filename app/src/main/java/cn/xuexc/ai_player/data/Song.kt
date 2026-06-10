@@ -16,30 +16,30 @@ data class Song(
     val albumId: Long,
     val isFavorite: Boolean = false,
     val isBlacklisted: Boolean = false,
-    val dateAdded: Long = 0L
+    val dateAdded: Long = 0L,
 )
 
 // 全局内存缓存，使用最大可用内存的 1/8 作为上限（最少 16MB），按照 Bitmap 实际字节大小计重淘汰，根治 OOM 隐患
-private val maxCacheSize = (Runtime.getRuntime().maxMemory() / 8).coerceAtLeast(1024 * 1024 * 16).toInt()
+private val maxCacheSize =
+    (Runtime.getRuntime().maxMemory() / 8).coerceAtLeast(1024 * 1024 * 16).toInt()
 
 private data class CacheKey(val songId: Long, val size: Int)
 
-private val coverCache = object : android.util.LruCache<CacheKey, android.graphics.Bitmap>(maxCacheSize) {
-    override fun sizeOf(key: CacheKey?, value: android.graphics.Bitmap?): Int {
-        return value?.byteCount ?: 0
+private val coverCache =
+    object : android.util.LruCache<CacheKey, android.graphics.Bitmap>(maxCacheSize) {
+        override fun sizeOf(key: CacheKey?, value: android.graphics.Bitmap?): Int {
+            return value?.byteCount ?: 0
+        }
     }
-}
 
 // 并发信号量限流，防止快速滑动歌曲列表时，同时启动过多的底层 Native 图片解码导致 CPU 满载及 UI 顿挫
 private val decodeSemaphore = Semaphore(3)
 
-/**
- * 辅助方法：计算最适合目标大小的 inSampleSize
- */
+/** 辅助方法：计算最适合目标大小的 inSampleSize */
 private fun calculateInSampleSize(
     options: android.graphics.BitmapFactory.Options,
     reqWidth: Int,
-    reqHeight: Int
+    reqHeight: Int,
 ): Int {
     val height = options.outHeight
     val width = options.outWidth
@@ -55,18 +55,18 @@ private fun calculateInSampleSize(
     return inSampleSize
 }
 
-/**
- * 辅助方法：根据歌曲 ID 从 MediaStore 获取其对应的本地文件物理路径
- */
+/** 辅助方法：根据歌曲 ID 从 MediaStore 获取其对应的本地文件物理路径 */
 private fun getSongPathById(context: android.content.Context, songId: Long): String? {
     val uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
     val projection = arrayOf(android.provider.MediaStore.Audio.Media.DATA)
     val selection = "${android.provider.MediaStore.Audio.Media._ID} = ?"
     val selectionArgs = arrayOf(songId.toString())
     try {
-        context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor ->
+        context.contentResolver.query(uri, projection, selection, selectionArgs, null)?.use { cursor
+            ->
             if (cursor.moveToFirst()) {
-                val dataIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Audio.Media.DATA)
+                val dataIndex =
+                    cursor.getColumnIndexOrThrow(android.provider.MediaStore.Audio.Media.DATA)
                 return cursor.getString(dataIndex)
             }
         }
@@ -77,8 +77,7 @@ private fun getSongPathById(context: android.content.Context, songId: Long): Str
 }
 
 /**
- * 核心挂起方法：使用 MediaMetadataRetriever 从本地音频文件中提取内嵌的专辑图片数据并进行动态缩放解码
- * 支持快速响应协程取消，避免不必要的 native 解码消耗 CPU。
+ * 核心挂起方法：使用 MediaMetadataRetriever 从本地音频文件中提取内嵌的专辑图片数据并进行动态缩放解码 支持快速响应协程取消，避免不必要的 native 解码消耗 CPU。
  */
 private suspend fun loadCoverFromPath(path: String, size: Int): android.graphics.Bitmap? {
     if (path.isEmpty()) return null
@@ -94,9 +93,7 @@ private suspend fun loadCoverFromPath(path: String, size: Int): android.graphics
         val artBytes = retriever.embeddedPicture
         if (artBytes != null) {
             currentCoroutineContext().ensureActive()
-            val opts = android.graphics.BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
+            val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size, opts)
 
             currentCoroutineContext().ensureActive()
@@ -112,15 +109,12 @@ private suspend fun loadCoverFromPath(path: String, size: Int): android.graphics
     } finally {
         try {
             retriever.release()
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) {}
     }
     return null
 }
 
-/**
- * 核心同步方法：用于非挂起函数上下文（如同步服务拉取通知栏封面），同样享受动态 inSampleSize 优化
- */
+/** 核心同步方法：用于非挂起函数上下文（如同步服务拉取通知栏封面），同样享受动态 inSampleSize 优化 */
 private fun loadCoverFromPathSync(path: String, size: Int): android.graphics.Bitmap? {
     if (path.isEmpty()) return null
     val file = java.io.File(path)
@@ -131,9 +125,7 @@ private fun loadCoverFromPathSync(path: String, size: Int): android.graphics.Bit
         retriever.setDataSource(path)
         val artBytes = retriever.embeddedPicture
         if (artBytes != null) {
-            val opts = android.graphics.BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
+            val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeByteArray(artBytes, 0, artBytes.size, opts)
             opts.inSampleSize = calculateInSampleSize(opts, size, size)
             opts.inJustDecodeBounds = false
@@ -144,13 +136,16 @@ private fun loadCoverFromPathSync(path: String, size: Int): android.graphics.Bit
     } finally {
         try {
             retriever.release()
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) {}
     }
     return null
 }
 
-private fun getCoverCacheFile(context: android.content.Context, songId: Long, size: Int): java.io.File {
+private fun getCoverCacheFile(
+    context: android.content.Context,
+    songId: Long,
+    size: Int,
+): java.io.File {
     val cacheDir = java.io.File(context.cacheDir, "covers")
     if (!cacheDir.exists()) {
         cacheDir.mkdirs()
@@ -163,11 +158,11 @@ fun getCachedCoverById(songId: Long): android.graphics.Bitmap? {
     return coverCache.get(CacheKey(songId, 400)) ?: coverCache.get(CacheKey(songId, 150))
 }
 
-/**
- * API 1: 直接根据 Song 实例挂起加载文件内嵌封面
- * 引入排队双检索与信号量控频，并在本地进行磁盘缓存，大幅降低 CPU 开销
- */
-suspend fun Song.loadCover(context: android.content.Context, size: Int = 150): android.graphics.Bitmap? {
+/** API 1: 直接根据 Song 实例挂起加载文件内嵌封面 引入排队双检索与信号量控频，并在本地进行磁盘缓存，大幅降低 CPU 开销 */
+suspend fun Song.loadCover(
+    context: android.content.Context,
+    size: Int = 150,
+): android.graphics.Bitmap? {
     val key = CacheKey(this.id, size)
     // 1. 内存缓存检查
     val cached = coverCache.get(key)
@@ -191,8 +186,7 @@ suspend fun Song.loadCover(context: android.content.Context, size: Int = 150): a
         } catch (e: Exception) {
             try {
                 cacheFile.delete()
-            } catch (ex: Exception) {
-            }
+            } catch (ex: Exception) {}
         }
     }
 
@@ -212,8 +206,7 @@ suspend fun Song.loadCover(context: android.content.Context, size: Int = 150): a
             } catch (e: Exception) {
                 try {
                     cacheFile.delete()
-                } catch (ex: Exception) {
-                }
+                } catch (ex: Exception) {}
             }
         }
 
@@ -233,10 +226,11 @@ suspend fun Song.loadCover(context: android.content.Context, size: Int = 150): a
     }
 }
 
-/**
- * API 1 (Sync): 同步版本 API（用于不支持挂起函数的传统上下文）
- */
-fun Song.loadCoverSync(context: android.content.Context, size: Int = 150): android.graphics.Bitmap? {
+/** API 1 (Sync): 同步版本 API（用于不支持挂起函数的传统上下文） */
+fun Song.loadCoverSync(
+    context: android.content.Context,
+    size: Int = 150,
+): android.graphics.Bitmap? {
     val key = CacheKey(this.id, size)
     val cached = coverCache.get(key)
     if (cached != null) return cached
@@ -257,8 +251,7 @@ fun Song.loadCoverSync(context: android.content.Context, size: Int = 150): andro
         } catch (e: Exception) {
             try {
                 cacheFile.delete()
-            } catch (ex: Exception) {
-            }
+            } catch (ex: Exception) {}
         }
     }
 
@@ -276,10 +269,12 @@ fun Song.loadCoverSync(context: android.content.Context, size: Int = 150): andro
     return loaded
 }
 
-/**
- * API 2: 根据歌曲 ID 挂起加载内嵌封面
- */
-suspend fun loadCoverById(context: android.content.Context, songId: Long, size: Int = 150): android.graphics.Bitmap? {
+/** API 2: 根据歌曲 ID 挂起加载内嵌封面 */
+suspend fun loadCoverById(
+    context: android.content.Context,
+    songId: Long,
+    size: Int = 150,
+): android.graphics.Bitmap? {
     val key = CacheKey(songId, size)
     val cached = coverCache.get(key)
     if (cached != null) return cached
@@ -300,8 +295,7 @@ suspend fun loadCoverById(context: android.content.Context, songId: Long, size: 
         } catch (e: Exception) {
             try {
                 cacheFile.delete()
-            } catch (ex: Exception) {
-            }
+            } catch (ex: Exception) {}
         }
     }
 
@@ -319,8 +313,7 @@ suspend fun loadCoverById(context: android.content.Context, songId: Long, size: 
             } catch (e: Exception) {
                 try {
                     cacheFile.delete()
-                } catch (ex: Exception) {
-                }
+                } catch (ex: Exception) {}
             }
         }
 
@@ -343,16 +336,16 @@ suspend fun loadCoverById(context: android.content.Context, songId: Long, size: 
     }
 }
 
-/**
- * 辅助方法：在主线程同步获取封面 LruCache 缓存的 Bitmap，实现 0 延迟首帧渲染
- */
+/** 辅助方法：在主线程同步获取封面 LruCache 缓存的 Bitmap，实现 0 延迟首帧渲染 */
 fun Song.getCachedCover(): android.graphics.Bitmap? {
     // 优先返回大尺寸缓存以保证清晰度，没有则返回小尺寸做占位
     return coverCache.get(CacheKey(this.id, 400)) ?: coverCache.get(CacheKey(this.id, 150))
 }
 
 enum class QualityType {
-    HiRes, HQ, SQ
+    HiRes,
+    HQ,
+    SQ,
 }
 
 fun Song.getQualityType(): QualityType {
@@ -371,4 +364,3 @@ fun Song.getQualityType(): QualityType {
     }
     return QualityType.SQ
 }
-

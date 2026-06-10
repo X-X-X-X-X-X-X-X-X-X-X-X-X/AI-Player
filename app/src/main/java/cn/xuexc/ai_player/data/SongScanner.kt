@@ -6,13 +6,14 @@ import android.provider.MediaStore
 object SongScanner {
     fun isPathBlocked(filePath: String, blockedFolders: Set<String>): Boolean {
         if (blockedFolders.isEmpty()) return false
-        val standardBlocked = blockedFolders.map {
-            try {
-                java.io.File(it).absolutePath
-            } catch (e: Exception) {
-                it
+        val standardBlocked =
+            blockedFolders.map {
+                try {
+                    java.io.File(it).absolutePath
+                } catch (e: Exception) {
+                    it
+                }
             }
-        }
         return isPathBlocked(filePath, standardBlocked)
     }
 
@@ -25,7 +26,8 @@ object SongScanner {
             val standardParent = java.io.File(parentPath).absolutePath
             val separator = java.io.File.separator
             standardBlockedFolders.any { standardBlocked ->
-                standardParent == standardBlocked || standardParent.startsWith(standardBlocked + separator)
+                standardParent == standardBlocked ||
+                    standardParent.startsWith(standardBlocked + separator)
             }
         } catch (e: Exception) {
             false
@@ -35,30 +37,27 @@ object SongScanner {
     fun scanSongs(context: Context, blockedFolders: Set<String> = emptySet()): List<Song> {
         val songsList = mutableListOf<Song>()
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Audio.Media._ID,
-            MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.ARTIST,
-            MediaStore.Audio.Media.ALBUM,
-            MediaStore.Audio.Media.DATA,
-            MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.SIZE,
-            MediaStore.Audio.Media.ALBUM_ID,
-            MediaStore.Audio.Media.DATE_ADDED
-        )
+        val projection =
+            arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.DATA,
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.SIZE,
+                MediaStore.Audio.Media.ALBUM_ID,
+                MediaStore.Audio.Media.DATE_ADDED,
+            )
 
-        // Filter: Only music files, and length >= 10 seconds (10000ms) to filter out ringtones and system notification sounds
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 10000"
+        // Filter: Only music files, and length >= 10 seconds (10000ms) to filter out ringtones and
+        // system notification sounds
+        val selection =
+            "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 10000"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
         try {
-            val cursor = context.contentResolver.query(
-                uri,
-                projection,
-                selection,
-                null,
-                sortOrder
-            )
+            val cursor = context.contentResolver.query(uri, projection, selection, null, sortOrder)
 
             cursor?.use {
                 val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -82,8 +81,10 @@ object SongScanner {
                     val albumId = cursor.getLong(albumIdCol)
                     val dateAdded = cursor.getLong(dateAddedCol)
 
-                    // Do not skip blocked folders during physical scan so that DB retains all songs.
-                    // Dynamic filtering is handled in loadSongs/detectedFolders to support 0-latency unblocking.
+                    // Do not skip blocked folders during physical scan so that DB retains all
+                    // songs.
+                    // Dynamic filtering is handled in loadSongs/detectedFolders to support
+                    // 0-latency unblocking.
 
                     songsList.add(
                         Song(
@@ -95,7 +96,7 @@ object SongScanner {
                             duration = duration,
                             size = size,
                             albumId = albumId,
-                            dateAdded = dateAdded
+                            dateAdded = dateAdded,
                         )
                     )
                 }

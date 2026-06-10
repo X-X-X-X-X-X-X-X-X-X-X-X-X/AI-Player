@@ -21,14 +21,16 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun CharacterHeader(letter: Char, appColors: AppColors) {
     Box(
-        modifier = Modifier.fillMaxWidth().background(appColors.mainBackground)
-            .padding(vertical = 6.dp, horizontal = 16.dp)
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(appColors.mainBackground)
+                .padding(vertical = 6.dp, horizontal = 16.dp)
     ) {
         Text(
             text = letter.toString(),
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            color = appColors.textColorSecondary.copy(alpha = 0.8f)
+            color = appColors.textColorSecondary.copy(alpha = 0.8f),
         )
     }
 }
@@ -60,7 +62,7 @@ fun AlphabetIndexer(
     onDragStart: () -> Unit,
     onDragEnd: () -> Unit,
     appColors: AppColors,
-    currentAccent: AccentColor
+    currentAccent: AccentColor,
 ) {
     val alphabet = remember { ('A'..'Z').toList() + '#' }
     var alphabetHeight by remember { mutableStateOf(1f) }
@@ -70,77 +72,75 @@ fun AlphabetIndexer(
     val fontSize = if (isLandscape) 8.sp else 10.sp
 
     Column(
-        modifier = modifier
-            .fillMaxHeight(0.9f)
-            .onGloballyPositioned {
-                alphabetHeight = it.size.height.toFloat()
-            }
-            .pointerInput(alphabet) {
-                detectTapGestures(
-                    onPress = { offset ->
-                        val itemHeight = alphabetHeight / alphabet.size
-                        val index = (offset.y / itemHeight).toInt().coerceIn(0, alphabet.lastIndex)
-                        val letter = alphabet[index]
-                        onLetterSelected(letter)
-                        onDragStart()
-                        tryAwaitRelease()
-                        onDragEnd()
-                    }
-                )
-            }
-            .pointerInput(alphabet) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        val itemHeight = alphabetHeight / alphabet.size
-                        val index = (offset.y / itemHeight).toInt().coerceIn(0, alphabet.lastIndex)
-                        val letter = alphabet[index]
-                        onLetterSelected(letter)
-                        onDragStart()
-                    },
-                    onDrag = { change, _ ->
-                        val itemHeight = alphabetHeight / alphabet.size
-                        val index = (change.position.y / itemHeight).toInt().coerceIn(0, alphabet.lastIndex)
-                        val letter = alphabet[index]
-                        onLetterSelected(letter)
-                    },
-                    onDragEnd = {
-                        onDragEnd()
-                    },
-                    onDragCancel = {
-                        onDragEnd()
-                    }
-                )
-            },
+        modifier =
+            modifier
+                .fillMaxHeight(0.9f)
+                .onGloballyPositioned { alphabetHeight = it.size.height.toFloat() }
+                .pointerInput(alphabet) {
+                    detectTapGestures(
+                        onPress = { offset ->
+                            val itemHeight = alphabetHeight / alphabet.size
+                            val index =
+                                (offset.y / itemHeight).toInt().coerceIn(0, alphabet.lastIndex)
+                            val letter = alphabet[index]
+                            onLetterSelected(letter)
+                            onDragStart()
+                            tryAwaitRelease()
+                            onDragEnd()
+                        }
+                    )
+                }
+                .pointerInput(alphabet) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val itemHeight = alphabetHeight / alphabet.size
+                            val index =
+                                (offset.y / itemHeight).toInt().coerceIn(0, alphabet.lastIndex)
+                            val letter = alphabet[index]
+                            onLetterSelected(letter)
+                            onDragStart()
+                        },
+                        onDrag = { change, _ ->
+                            val itemHeight = alphabetHeight / alphabet.size
+                            val index =
+                                (change.position.y / itemHeight)
+                                    .toInt()
+                                    .coerceIn(0, alphabet.lastIndex)
+                            val letter = alphabet[index]
+                            onLetterSelected(letter)
+                        },
+                        onDragEnd = { onDragEnd() },
+                        onDragCancel = { onDragEnd() },
+                    )
+                },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         alphabet.forEachIndexed { index, letter ->
             val isSelected = selectedLetter == letter
             val showAsDot = isLandscape && (index % 2 != 0) // 横屏下奇数索引显示为圆点占位
 
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
             ) {
                 if (showAsDot) {
                     Text(
                         text = "•",
                         fontSize = fontSize,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) currentAccent.mainColor else appColors.textColorSecondary.copy(
-                            alpha = 0.4f
-                        )
+                        color =
+                            if (isSelected) currentAccent.mainColor
+                            else appColors.textColorSecondary.copy(alpha = 0.4f),
                     )
                 } else {
                     Text(
                         text = letter.toString(),
                         fontSize = fontSize,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) currentAccent.mainColor else appColors.textColorSecondary.copy(
-                            alpha = 0.6f
-                        )
+                        color =
+                            if (isSelected) currentAccent.mainColor
+                            else appColors.textColorSecondary.copy(alpha = 0.6f),
                     )
                 }
             }

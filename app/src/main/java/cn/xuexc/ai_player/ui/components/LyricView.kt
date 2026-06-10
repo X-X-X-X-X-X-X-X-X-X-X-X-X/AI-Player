@@ -30,16 +30,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.xuexc.ai_player.data.Song
+import java.io.File
+import java.io.FileInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileInputStream
 
-data class LyricLine(
-    val timeMs: Long, val text: String
-)
+data class LyricLine(val timeMs: Long, val text: String)
 
 fun parseLrc(lrcContent: String): List<LyricLine> {
     val lines = lrcContent.split("\n")
@@ -84,7 +82,10 @@ fun extractLyricsFromMp3(filePath: String): String? {
         val majorVersion = header[3].toInt()
 
         val tagSize =
-            ((header[6].toInt() and 0x7f) shl 21) or ((header[7].toInt() and 0x7f) shl 14) or ((header[8].toInt() and 0x7f) shl 7) or (header[9].toInt() and 0x7f)
+            ((header[6].toInt() and 0x7f) shl 21) or
+                ((header[7].toInt() and 0x7f) shl 14) or
+                ((header[8].toInt() and 0x7f) shl 7) or
+                (header[9].toInt() and 0x7f)
 
         val maxReadSize = minOf(tagSize, 10 * 1024 * 1024)
         val tagData = ByteArray(maxReadSize)
@@ -97,17 +98,29 @@ fun extractLyricsFromMp3(filePath: String): String? {
 
         var pos = 0
         while (pos + 10 <= totalRead) {
-            if (tagData[pos].toInt() == 0 && tagData[pos + 1].toInt() == 0 && tagData[pos + 2].toInt() == 0 && tagData[pos + 3].toInt() == 0) {
+            if (
+                tagData[pos].toInt() == 0 &&
+                    tagData[pos + 1].toInt() == 0 &&
+                    tagData[pos + 2].toInt() == 0 &&
+                    tagData[pos + 3].toInt() == 0
+            ) {
                 break
             }
 
             val frameId = String(tagData, pos, 4, Charsets.US_ASCII)
 
-            val frameSize = if (majorVersion == 3) {
-                ((tagData[pos + 4].toInt() and 0xff) shl 24) or ((tagData[pos + 5].toInt() and 0xff) shl 16) or ((tagData[pos + 6].toInt() and 0xff) shl 8) or (tagData[pos + 7].toInt() and 0xff)
-            } else {
-                ((tagData[pos + 4].toInt() and 0x7f) shl 21) or ((tagData[pos + 5].toInt() and 0x7f) shl 14) or ((tagData[pos + 6].toInt() and 0x7f) shl 7) or (tagData[pos + 7].toInt() and 0xff)
-            }
+            val frameSize =
+                if (majorVersion == 3) {
+                    ((tagData[pos + 4].toInt() and 0xff) shl 24) or
+                        ((tagData[pos + 5].toInt() and 0xff) shl 16) or
+                        ((tagData[pos + 6].toInt() and 0xff) shl 8) or
+                        (tagData[pos + 7].toInt() and 0xff)
+                } else {
+                    ((tagData[pos + 4].toInt() and 0x7f) shl 21) or
+                        ((tagData[pos + 5].toInt() and 0x7f) shl 14) or
+                        ((tagData[pos + 6].toInt() and 0x7f) shl 7) or
+                        (tagData[pos + 7].toInt() and 0xff)
+                }
 
             if (frameSize <= 0 || pos + 10 + frameSize > totalRead) {
                 break
@@ -124,19 +137,24 @@ fun extractLyricsFromMp3(filePath: String): String? {
                         }
                         textOffset += 1
                     } else {
-                        while (textOffset + 1 < payload.size && !(payload[textOffset].toInt() == 0 && payload[textOffset + 1].toInt() == 0)) {
+                        while (
+                            textOffset + 1 < payload.size &&
+                                !(payload[textOffset].toInt() == 0 &&
+                                    payload[textOffset + 1].toInt() == 0)
+                        ) {
                             textOffset += 2
                         }
                         textOffset += 2
                     }
                     if (textOffset < payload.size) {
-                        val charset = when (encodingByte) {
-                            0 -> Charsets.ISO_8859_1
-                            1 -> Charsets.UTF_16
-                            2 -> java.nio.charset.Charset.forName("UTF-16BE")
-                            3 -> Charsets.UTF_8
-                            else -> Charsets.UTF_8
-                        }
+                        val charset =
+                            when (encodingByte) {
+                                0 -> Charsets.ISO_8859_1
+                                1 -> Charsets.UTF_16
+                                2 -> java.nio.charset.Charset.forName("UTF-16BE")
+                                3 -> Charsets.UTF_8
+                                else -> Charsets.UTF_8
+                            }
                         return String(payload, textOffset, payload.size - textOffset, charset)
                     }
                 }
@@ -149,8 +167,7 @@ fun extractLyricsFromMp3(filePath: String): String? {
     } finally {
         try {
             fis?.close()
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) {}
     }
     return null
 }
@@ -163,7 +180,12 @@ fun extractLyricsFromFlac(filePath: String): String? {
         fis = FileInputStream(file)
         val header = ByteArray(4)
         if (fis.read(header) != 4) return null
-        if (header[0].toChar() != 'f' || header[1].toChar() != 'L' || header[2].toChar() != 'a' || header[3].toChar() != 'C') {
+        if (
+            header[0].toChar() != 'f' ||
+                header[1].toChar() != 'L' ||
+                header[2].toChar() != 'a' ||
+                header[3].toChar() != 'C'
+        ) {
             return null
         }
 
@@ -175,7 +197,9 @@ fun extractLyricsFromFlac(filePath: String): String? {
             isLast = (blockHeader[0].toInt() and 0x80) != 0
             val blockType = blockHeader[0].toInt() and 0x7f
             val blockLength =
-                ((blockHeader[1].toInt() and 0xff) shl 16) or ((blockHeader[2].toInt() and 0xff) shl 8) or (blockHeader[3].toInt() and 0xff)
+                ((blockHeader[1].toInt() and 0xff) shl 16) or
+                    ((blockHeader[2].toInt() and 0xff) shl 8) or
+                    (blockHeader[3].toInt() and 0xff)
 
             if (blockType == 4) { // VORBIS_COMMENT
                 val blockData = ByteArray(blockLength)
@@ -190,7 +214,10 @@ fun extractLyricsFromFlac(filePath: String): String? {
                 fun readInt32(): Int {
                     if (offset + 4 > blockLength) return 0
                     val val32 =
-                        (blockData[offset].toInt() and 0xff) or ((blockData[offset + 1].toInt() and 0xff) shl 8) or ((blockData[offset + 2].toInt() and 0xff) shl 16) or ((blockData[offset + 3].toInt() and 0xff) shl 24)
+                        (blockData[offset].toInt() and 0xff) or
+                            ((blockData[offset + 1].toInt() and 0xff) shl 8) or
+                            ((blockData[offset + 2].toInt() and 0xff) shl 16) or
+                            ((blockData[offset + 3].toInt() and 0xff) shl 24)
                     offset += 4
                     return val32
                 }
@@ -223,8 +250,7 @@ fun extractLyricsFromFlac(filePath: String): String? {
     } finally {
         try {
             fis?.close()
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) {}
     }
     return null
 }
@@ -237,7 +263,12 @@ fun extractLyricsFromM4a(filePath: String): String? {
         fis = FileInputStream(file)
         val fileLength = file.length()
 
-        fun searchAtom(startOffset: Long, endOffset: Long, targetPath: List<String>, pathIndex: Int): String? {
+        fun searchAtom(
+            startOffset: Long,
+            endOffset: Long,
+            targetPath: List<String>,
+            pathIndex: Int,
+        ): String? {
             var offset = startOffset
             while (offset + 8 <= endOffset) {
                 fis?.channel?.position(offset)
@@ -245,21 +276,25 @@ fun extractLyricsFromM4a(filePath: String): String? {
                 if (fis?.read(header) != 8) break
 
                 val size =
-                    ((header[0].toInt() and 0xff) shl 24) or ((header[1].toInt() and 0xff) shl 16) or ((header[2].toInt() and 0xff) shl 8) or (header[3].toInt() and 0xff)
+                    ((header[0].toInt() and 0xff) shl 24) or
+                        ((header[1].toInt() and 0xff) shl 16) or
+                        ((header[2].toInt() and 0xff) shl 8) or
+                        (header[3].toInt() and 0xff)
                 val type = String(header, 4, 4, Charsets.US_ASCII)
-                val actualSize = if (size == 1) {
-                    val size64 = ByteArray(8)
-                    fis?.read(size64)
-                    var sizeVal = 0L
-                    for (i in 0..7) {
-                        sizeVal = (sizeVal shl 8) or (size64[i].toLong() and 0xff)
+                val actualSize =
+                    if (size == 1) {
+                        val size64 = ByteArray(8)
+                        fis?.read(size64)
+                        var sizeVal = 0L
+                        for (i in 0..7) {
+                            sizeVal = (sizeVal shl 8) or (size64[i].toLong() and 0xff)
+                        }
+                        sizeVal
+                    } else if (size == 0) {
+                        endOffset - offset
+                    } else {
+                        size.toLong()
                     }
-                    sizeVal
-                } else if (size == 0) {
-                    endOffset - offset
-                } else {
-                    size.toLong()
-                }
 
                 if (actualSize <= 0) break
 
@@ -274,7 +309,10 @@ fun extractLyricsFromM4a(filePath: String): String? {
                             val childHeader = ByteArray(8)
                             fis?.read(childHeader)
                             val childSize =
-                                ((childHeader[0].toInt() and 0xff) shl 24) or ((childHeader[1].toInt() and 0xff) shl 16) or ((childHeader[2].toInt() and 0xff) shl 8) or (childHeader[3].toInt() and 0xff)
+                                ((childHeader[0].toInt() and 0xff) shl 24) or
+                                    ((childHeader[1].toInt() and 0xff) shl 16) or
+                                    ((childHeader[2].toInt() and 0xff) shl 8) or
+                                    (childHeader[3].toInt() and 0xff)
                             val childType = String(childHeader, 4, 4, Charsets.US_ASCII)
                             if (childType == "data") {
                                 val dataContentStart = childOffset + 16
@@ -290,9 +328,11 @@ fun extractLyricsFromM4a(filePath: String): String? {
                         }
                         return null
                     } else {
-                        val containerStart = offset + (if (size == 1) 16 else 8) + (if (type == "meta") 4 else 0)
+                        val containerStart =
+                            offset + (if (size == 1) 16 else 8) + (if (type == "meta") 4 else 0)
                         val containerEnd = offset + actualSize
-                        val result = searchAtom(containerStart, containerEnd, targetPath, pathIndex + 1)
+                        val result =
+                            searchAtom(containerStart, containerEnd, targetPath, pathIndex + 1)
                         if (result != null) return result
                     }
                 }
@@ -302,7 +342,10 @@ fun extractLyricsFromM4a(filePath: String): String? {
         }
 
         val copyrightLyr =
-            String(byteArrayOf(0xA9.toByte(), 0x6C.toByte(), 0x79.toByte(), 0x72.toByte()), Charsets.ISO_8859_1)
+            String(
+                byteArrayOf(0xA9.toByte(), 0x6C.toByte(), 0x79.toByte(), 0x72.toByte()),
+                Charsets.ISO_8859_1,
+            )
         val path = listOf("moov", "udta", "meta", "ilst", copyrightLyr)
         return searchAtom(0L, fileLength, path, 0)
     } catch (e: Exception) {
@@ -310,8 +353,7 @@ fun extractLyricsFromM4a(filePath: String): String? {
     } finally {
         try {
             fis?.close()
-        } catch (e: Exception) {
-        }
+        } catch (e: Exception) {}
     }
     return null
 }
@@ -321,7 +363,8 @@ fun extractLyricsFromAudio(filePath: String): String? {
     return when (ext) {
         "mp3" -> extractLyricsFromMp3(filePath)
         "flac" -> extractLyricsFromFlac(filePath)
-        "m4a", "mp4" -> extractLyricsFromM4a(filePath)
+        "m4a",
+        "mp4" -> extractLyricsFromM4a(filePath)
         else -> null
     }
 }
@@ -365,7 +408,11 @@ fun loadLyricsForSong(songPath: String): List<LyricLine> {
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun LyricView(
-    song: Song, playbackProgress: Long, appColors: AppColors, currentAccent: AccentColor, onSeek: (Long) -> Unit
+    song: Song,
+    playbackProgress: Long,
+    appColors: AppColors,
+    currentAccent: AccentColor,
+    onSeek: (Long) -> Unit,
 ) {
     var lyrics by remember(song.id) { mutableStateOf<List<LyricLine>>(emptyList()) }
     var hasLoaded by remember(song.id) { mutableStateOf(false) }
@@ -382,37 +429,32 @@ fun LyricView(
     }
 
     if (!hasLoaded) {
-        Box(
-            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = currentAccent.mainColor)
         }
     } else if (lyrics.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = null,
                     tint = appColors.textColorSecondary.copy(alpha = 0.4f),
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "暂无歌词", color = appColors.textColorSecondary, fontSize = 15.sp
-                )
+                Text(text = "暂无歌词", color = appColors.textColorSecondary, fontSize = 15.sp)
             }
         }
     } else {
-        val activeIndex = remember(lyrics, playbackProgress, clickedActiveIndex) {
-            if (clickedActiveIndex != null) {
-                clickedActiveIndex!!
-            } else {
-                val idx = lyrics.indexOfLast { it.timeMs <= playbackProgress }
-                if (idx == -1) 0 else idx
+        val activeIndex =
+            remember(lyrics, playbackProgress, clickedActiveIndex) {
+                if (clickedActiveIndex != null) {
+                    clickedActiveIndex!!
+                } else {
+                    val idx = lyrics.indexOfLast { it.timeMs <= playbackProgress }
+                    if (idx == -1) 0 else idx
+                }
             }
-        }
 
         val lyricListState = rememberLazyListState()
         val isUserScrolling by lyricListState.interactionSource.collectIsDraggedAsState()
@@ -425,7 +467,12 @@ fun LyricView(
         }
 
         LaunchedEffect(activeIndex, isClickSeeking) {
-            if (lyrics.isNotEmpty() && !lyricListState.isScrollInProgress && !isClickSeeking && !isAutoFollowPaused) {
+            if (
+                lyrics.isNotEmpty() &&
+                    !lyricListState.isScrollInProgress &&
+                    !isClickSeeking &&
+                    !isAutoFollowPaused
+            ) {
                 lyricListState.animateScrollToItem(activeIndex)
             }
         }
@@ -437,32 +484,37 @@ fun LyricView(
 
             LazyColumn(
                 state = lyricListState,
-                contentPadding = PaddingValues(top = halfHeight - 24.dp, bottom = halfHeight - 24.dp),
+                contentPadding =
+                    PaddingValues(top = halfHeight - 24.dp, bottom = halfHeight - 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             ) {
                 itemsIndexed(lyrics) { index, line ->
                     val isActive = index == activeIndex
-                    val textColor by animateColorAsState(
-                        targetValue = if (isActive) {
-                            currentAccent.mainColor
-                        } else {
-                            appColors.textColorPrimary.copy(alpha = 0.5f)
-                        },
-                        animationSpec = tween(durationMillis = 350),
-                        label = "lyric_color"
-                    )
-                    val scale by animateFloatAsState(
-                        targetValue = if (isActive) 1.15f else 1.0f,
-                        animationSpec = tween(durationMillis = 350),
-                        label = "lyric_scale"
-                    )
-                    val scaleAlphaValue by animateFloatAsState(
-                        targetValue = if (isActive) 1.0f else 0.4f,
-                        animationSpec = tween(durationMillis = 350),
-                        label = "lyric_alpha"
-                    )
+                    val textColor by
+                        animateColorAsState(
+                            targetValue =
+                                if (isActive) {
+                                    currentAccent.mainColor
+                                } else {
+                                    appColors.textColorPrimary.copy(alpha = 0.5f)
+                                },
+                            animationSpec = tween(durationMillis = 350),
+                            label = "lyric_color",
+                        )
+                    val scale by
+                        animateFloatAsState(
+                            targetValue = if (isActive) 1.15f else 1.0f,
+                            animationSpec = tween(durationMillis = 350),
+                            label = "lyric_scale",
+                        )
+                    val scaleAlphaValue by
+                        animateFloatAsState(
+                            targetValue = if (isActive) 1.0f else 0.4f,
+                            animationSpec = tween(durationMillis = 350),
+                            label = "lyric_alpha",
+                        )
 
                     Text(
                         text = line.text,
@@ -470,71 +522,78 @@ fun LyricView(
                         fontSize = 16.sp,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(0.8f).graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            alpha = scaleAlphaValue
-                        }.clickable(
-                            interactionSource = remember { MutableInteractionSource() }, indication = null
-                        ) {
-                            clickedActiveIndex = index
-                            isClickSeeking = true
-                            isAutoFollowPaused = false
-                            onSeek(line.timeMs)
-                            seekJob?.cancel()
-                            seekJob = coroutineScope.launch {
-                                try {
-                                    lyricListState.animateScrollToItem(index)
-                                    delay(1000)
-                                    isClickSeeking = false
-                                    clickedActiveIndex = null
-                                } catch (e: kotlinx.coroutines.CancellationException) {
+                        modifier =
+                            Modifier.fillMaxWidth(0.8f)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    alpha = scaleAlphaValue
                                 }
-                            }
-                        }.padding(vertical = 4.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) {
+                                    clickedActiveIndex = index
+                                    isClickSeeking = true
+                                    isAutoFollowPaused = false
+                                    onSeek(line.timeMs)
+                                    seekJob?.cancel()
+                                    seekJob =
+                                        coroutineScope.launch {
+                                            try {
+                                                lyricListState.animateScrollToItem(index)
+                                                delay(1000)
+                                                isClickSeeking = false
+                                                clickedActiveIndex = null
+                                            } catch (e: kotlinx.coroutines.CancellationException) {}
+                                        }
+                                }
+                                .padding(vertical = 4.dp),
                     )
                 }
             }
 
-            val buttonAlpha by animateFloatAsState(
-                targetValue = if (isAutoFollowPaused) 1f else 0f,
-                animationSpec = tween(durationMillis = 300),
-                label = "follow_btn_alpha"
-            )
-            val buttonScale by animateFloatAsState(
-                targetValue = if (isAutoFollowPaused) 1f else 0.8f,
-                animationSpec = tween(durationMillis = 300),
-                label = "follow_btn_scale"
-            )
+            val buttonAlpha by
+                animateFloatAsState(
+                    targetValue = if (isAutoFollowPaused) 1f else 0f,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "follow_btn_alpha",
+                )
+            val buttonScale by
+                animateFloatAsState(
+                    targetValue = if (isAutoFollowPaused) 1f else 0.8f,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "follow_btn_scale",
+                )
 
             if (buttonAlpha > 0.01f) {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 16.dp, end = 4.dp)
-                        .graphicsLayer {
-                            alpha = buttonAlpha
-                            scaleX = buttonScale
-                            scaleY = buttonScale
-                        }
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(currentAccent.mainColor.copy(alpha = 0.9f))
-                        .clickable {
-                            isAutoFollowPaused = false
-                            coroutineScope.launch {
-                                if (lyrics.isNotEmpty()) {
-                                    lyricListState.animateScrollToItem(activeIndex)
-                                }
+                    modifier =
+                        Modifier.align(Alignment.BottomEnd)
+                            .padding(bottom = 16.dp, end = 4.dp)
+                            .graphicsLayer {
+                                alpha = buttonAlpha
+                                scaleX = buttonScale
+                                scaleY = buttonScale
                             }
-                        }
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(currentAccent.mainColor.copy(alpha = 0.9f))
+                            .clickable {
+                                isAutoFollowPaused = false
+                                coroutineScope.launch {
+                                    if (lyrics.isNotEmpty()) {
+                                        lyricListState.animateScrollToItem(activeIndex)
+                                    }
+                                }
+                            },
                 ) {
                     Icon(
                         imageVector = Icons.Default.MyLocation,
                         contentDescription = "重新跟随",
                         tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }

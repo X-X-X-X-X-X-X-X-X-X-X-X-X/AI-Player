@@ -31,10 +31,10 @@ val DialogButtonSpacing = 12.dp
 val DialogButtonHeight = 40.dp
 val DialogButtonShape = RoundedCornerShape(12.dp)
 val DialogMaxWidth = 400.dp
-val DialogModifier = Modifier
-    .widthIn(max = DialogMaxWidth)
-    .fillMaxWidth()
-    .padding(horizontal = DialogHorizontalPadding)
+val DialogModifier =
+    Modifier.widthIn(max = DialogMaxWidth)
+        .fillMaxWidth()
+        .padding(horizontal = DialogHorizontalPadding)
 
 @Composable
 fun AppDialog(
@@ -46,62 +46,64 @@ fun AppDialog(
     titleColor: Color = Color.Unspecified,
     appColors: AppColors,
     actionArea: @Composable (RowScope.() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest) {
         Card(
-            modifier = DialogModifier.border(
-                width = 0.5.dp,
-                color = if (appColors.surfaceColor == Color(0xFF161619)) Color.White.copy(alpha = 0.12f) else Color.Black.copy(
-                    alpha = 0.08f
+            modifier =
+                DialogModifier.border(
+                    width = 0.5.dp,
+                    color =
+                        if (appColors.surfaceColor == Color(0xFF161619))
+                            Color.White.copy(alpha = 0.12f)
+                        else Color.Black.copy(alpha = 0.08f),
+                    shape = DialogShape,
                 ),
-                shape = DialogShape
-            ),
             shape = DialogShape,
-            colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor)
+            colors = CardDefaults.cardColors(containerColor = appColors.surfaceColor),
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(DialogInnerPadding)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier.weight(1f, fill = false),
                     ) {
                         Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(iconBgColor),
-                            contentAlignment = Alignment.Center
+                            modifier =
+                                Modifier.size(30.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(iconBgColor),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
                                 tint = iconColor,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
                             )
                         }
 
                         Text(
                             text = title,
-                            color = if (titleColor != Color.Unspecified) titleColor else appColors.navBarItemActive,
+                            color =
+                                if (titleColor != Color.Unspecified) titleColor
+                                else appColors.navBarItemActive,
                             fontSize = DialogTitleFontSize,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
 
                     if (actionArea != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             actionArea()
                         }
@@ -120,9 +122,7 @@ fun AppDialog(
 fun DetailRow(label: String, value: String, appColors: AppColors, isPath: Boolean = false) {
     if (isPath) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = label, fontSize = 11.sp, color = appColors.textColorSecondary
-            )
+            Text(text = label, fontSize = 11.sp, color = appColors.textColorSecondary)
             Spacer(modifier = Modifier.height(1.dp))
             Text(
                 text = value,
@@ -130,15 +130,16 @@ fun DetailRow(label: String, value: String, appColors: AppColors, isPath: Boolea
                 color = appColors.textColorPrimary,
                 fontWeight = FontWeight.Bold,
                 maxLines = 3,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
     } else {
-        Row(
-            modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = label, fontSize = 12.sp, color = appColors.textColorSecondary, modifier = Modifier.width(48.dp)
+                text = label,
+                fontSize = 12.sp,
+                color = appColors.textColorSecondary,
+                modifier = Modifier.width(48.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
@@ -149,7 +150,7 @@ fun DetailRow(label: String, value: String, appColors: AppColors, isPath: Boolea
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.End,
-                modifier = Modifier.weight(1.0f)
+                modifier = Modifier.weight(1.0f),
             )
         }
     }
