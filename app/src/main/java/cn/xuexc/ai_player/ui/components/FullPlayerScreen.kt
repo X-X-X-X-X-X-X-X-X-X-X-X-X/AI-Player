@@ -68,7 +68,8 @@ fun FullPlayerScreen(
 ) {
     val context = LocalContext.current
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
-    val progressProvider = remember(viewModel) { { viewModel.playbackProgress.value } }
+    val currentProgressState = rememberUpdatedState(playbackProgress)
+    val progressProvider = remember { { currentProgressState.value } }
 
     // 动态炫光背景的无限循环动画（通过 graphicsLayer 更新，不触发 recomposition，极低功耗）
     val infiniteTransition = rememberInfiniteTransition(label = "ambientGlow")
