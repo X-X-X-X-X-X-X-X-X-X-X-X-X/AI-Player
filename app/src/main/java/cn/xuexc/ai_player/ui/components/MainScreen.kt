@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +62,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+
+enum class DragDirection {
+    VERTICAL,
+    HORIZONTAL,
+}
 
 @Composable
 fun MainScreen(viewModel: SongViewModel) {
@@ -235,6 +242,11 @@ fun MainScreen(viewModel: SongViewModel) {
     val playerOffsetY = remember { Animatable(screenHeight) }
     var hasOpenedPlayer by remember { mutableStateOf(false) }
 
+    val horizontalOffset = remember { Animatable(0f) }
+    var dragDirection by remember { mutableStateOf<DragDirection?>(null) }
+    val density = LocalDensity.current
+    val swipeThresholdPx = remember(density) { with(density) { 70.dp.toPx() } }
+
     LaunchedEffect(showFullPlayer) {
         if (showFullPlayer) {
             hasOpenedPlayer = true
@@ -273,27 +285,86 @@ fun MainScreen(viewModel: SongViewModel) {
 
     val miniPlayerDragModifier =
         Modifier.pointerInput(Unit) {
-            detectVerticalDragGestures(
-                onDragStart = {},
-                onVerticalDrag = { change, dragAmount ->
-                    change.consume()
-                    coroutineScope.launch {
-                        playerOffsetY.snapTo(
-                            (playerOffsetY.value + dragAmount).coerceIn(0f, screenHeight)
-                        )
+            detectDragGestures(
+                onDragStart = { dragDirection = null },
+                onDrag = { change, dragAmount ->
+                    if (dragDirection == null) {
+                        val dx = dragAmount.x
+                        val dy = dragAmount.y
+                        if (kotlin.math.abs(dx) > 10f || kotlin.math.abs(dy) > 10f) {
+                            dragDirection =
+                                if (kotlin.math.abs(dx) > kotlin.math.abs(dy)) {
+                                    DragDirection.HORIZONTAL
+                                } else {
+                                    DragDirection.VERTICAL
+                                }
+                        }
+                    }
+
+                    when (dragDirection) {
+                        DragDirection.VERTICAL -> {
+                            change.consume()
+                            coroutineScope.launch {
+                                playerOffsetY.snapTo(
+                                    (playerOffsetY.value + dragAmount.y).coerceIn(0f, screenHeight)
+                                )
+                            }
+                        }
+                        DragDirection.HORIZONTAL -> {
+                            change.consume()
+                            coroutineScope.launch {
+                                horizontalOffset.snapTo(horizontalOffset.value + dragAmount.x)
+                            }
+                        }
+                        null -> {
+                            change.consume()
+                        }
                     }
                 },
                 onDragEnd = {
-                    coroutineScope.launch {
-                        if (playerOffsetY.value < screenHeight * 0.85f) {
-                            showFullPlayer = true
-                        } else {
-                            playerOffsetY.animateTo(
-                                screenHeight,
-                                spring(dampingRatio = Spring.DampingRatioNoBouncy),
-                            )
+                    when (dragDirection) {
+                        DragDirection.VERTICAL -> {
+                            coroutineScope.launch {
+                                if (playerOffsetY.value < screenHeight * 0.85f) {
+                                    showFullPlayer = true
+                                } else {
+                                    playerOffsetY.animateTo(
+                                        screenHeight,
+                                        spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                                    )
+                                }
+                            }
                         }
+                        DragDirection.HORIZONTAL -> {
+                            coroutineScope.launch {
+                                val offsetVal = horizontalOffset.value
+                                val queue = viewModel.playbackQueue.value
+                                val hasMultipleSongs = queue.size > 1
+                                if (offsetVal > swipeThresholdPx && hasMultipleSongs) {
+                                    // 右滑上一首
+                                    viewModel.playPreviousSong(context)
+                                    horizontalOffset.animateTo(
+                                        0f,
+                                        spring(stiffness = Spring.StiffnessMedium),
+                                    )
+                                } else if (offsetVal < -swipeThresholdPx && hasMultipleSongs) {
+                                    // 左滑下一首
+                                    viewModel.playNextSong(context)
+                                    horizontalOffset.animateTo(
+                                        0f,
+                                        spring(stiffness = Spring.StiffnessMedium),
+                                    )
+                                } else {
+                                    horizontalOffset.animateTo(
+                                        0f,
+                                        spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                                    )
+                                }
+                            }
+                        }
+                        null -> {}
                     }
+                    dragDirection = null
                 },
                 onDragCancel = {
                     coroutineScope.launch {
@@ -301,7 +372,12 @@ fun MainScreen(viewModel: SongViewModel) {
                             screenHeight,
                             spring(dampingRatio = Spring.DampingRatioNoBouncy),
                         )
+                        horizontalOffset.animateTo(
+                            0f,
+                            spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        )
                     }
+                    dragDirection = null
                 },
             )
         }
@@ -2703,118 +2779,271 @@ fun MainScreen(viewModel: SongViewModel) {
                         modifier = Modifier.align(Alignment.BottomCenter),
                     ) {
                         currentSong?.let { song ->
-                            Card(
+                            val queue by viewModel.playbackQueue.collectAsState()
+                            val currentSongIndex = queue.indexOfFirst { it.id == song.id }
+                            val prevSong =
+                                if (currentSongIndex != -1 && queue.isNotEmpty()) {
+                                    queue[(currentSongIndex - 1 + queue.size) % queue.size]
+                                } else null
+                            val nextSong =
+                                if (currentSongIndex != -1 && queue.isNotEmpty()) {
+                                    queue[(currentSongIndex + 1) % queue.size]
+                                } else null
+
+                            val offsetVal = horizontalOffset.value
+                            val progress =
+                                (kotlin.math.abs(offsetVal) / swipeThresholdPx).coerceIn(0f, 1f)
+                            val isOverThreshold = kotlin.math.abs(offsetVal) >= swipeThresholdPx
+                            val hasMultipleSongs = queue.size > 1
+
+                            Box(
                                 modifier =
                                     Modifier.fillMaxWidth()
-                                        .clickable { showFullPlayer = true }
-                                        .then(miniPlayerDragModifier),
-                                shape = RoundedCornerShape(0.dp),
-                                colors =
-                                    CardDefaults.cardColors(
-                                        containerColor =
-                                            if (isDarkMode) Color(0xFF161619) else Color(0xFFFFFFFF)
-                                    ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                        .background(
+                                            if (isDarkMode) Color(0xFF131316) else Color(0xFFF0F0F2)
+                                        )
                             ) {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    Box(modifier = Modifier.fillMaxWidth().height(68.dp)) {
-                                        Box(
+                                // 背景层提示
+                                if (offsetVal > 0f) {
+                                    // 右滑上一首
+                                    Row(
+                                        modifier =
+                                            Modifier.align(Alignment.CenterStart)
+                                                .height(68.dp)
+                                                .padding(start = 20.dp)
+                                                .graphicsLayer {
+                                                    alpha = progress
+                                                    translationX = (progress - 1f) * 40f
+                                                },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.SkipPrevious,
+                                            contentDescription = null,
+                                            tint =
+                                                if (isOverThreshold && hasMultipleSongs)
+                                                    currentAccent.mainColor
+                                                else appColors.textColorSecondary,
                                             modifier =
-                                                Modifier.fillMaxWidth()
-                                                    .height(1.dp)
-                                                    .background(
-                                                        if (isDarkMode) Color(0x1AFFFFFF)
-                                                        else Color(0x0D000000)
-                                                    )
-                                                    .align(Alignment.TopCenter)
+                                                Modifier.size(24.dp).graphicsLayer {
+                                                    val scale =
+                                                        if (isOverThreshold && hasMultipleSongs)
+                                                            1.2f
+                                                        else 1.0f
+                                                    scaleX = scale
+                                                    scaleY = scale
+                                                },
                                         )
-
-                                        val progress =
-                                            if (song.duration > 0) {
-                                                playbackProgress.toFloat() / song.duration.toFloat()
-                                            } else {
-                                                0f
-                                            }
-                                        Box(
-                                            modifier =
-                                                Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
-                                                    .height(2.5.dp)
-                                                    .background(currentAccent.mainColor)
-                                                    .align(Alignment.TopStart)
-                                        )
-
-                                        Row(
-                                            modifier =
-                                                Modifier.fillMaxSize()
-                                                    .padding(start = 26.dp, end = 16.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            SongCover(
-                                                song = song,
-                                                isCurrent = false,
-                                                isPlaying = false,
-                                                modifier = Modifier.size(42.dp),
+                                        Column {
+                                            Text(
+                                                text =
+                                                    if (!hasMultipleSongs) "当前队列仅一首歌"
+                                                    else if (isOverThreshold) "释放播放上一首"
+                                                    else "右滑上一首",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color =
+                                                    if (isOverThreshold && hasMultipleSongs)
+                                                        currentAccent.mainColor
+                                                    else appColors.textColorPrimary,
                                             )
-
-                                            Spacer(modifier = Modifier.width(12.dp))
-
-                                            Column(modifier = Modifier.weight(1.0f)) {
-                                                Text(
-                                                    text = song.title,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = appColors.textColorPrimary,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                                val quality = song.getQualityType()
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement =
-                                                        Arrangement.spacedBy(4.dp),
-                                                ) {
-                                                    if (quality != QualityType.SQ) {
-                                                        QualityBadge(
-                                                            quality = quality,
-                                                            isDarkMode = isDarkMode,
-                                                        )
-                                                    }
+                                            prevSong?.let {
+                                                if (hasMultipleSongs) {
                                                     Text(
-                                                        text = song.artist,
-                                                        fontSize = 11.sp,
+                                                        text = it.title,
+                                                        fontSize = 10.sp,
                                                         color = appColors.textColorSecondary,
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.widthIn(max = 180.dp),
                                                     )
                                                 }
                                             }
-
-                                            Spacer(modifier = Modifier.width(8.dp))
-
-                                            IconButton(
-                                                onClick = {
-                                                    if (isPlaying) {
-                                                        viewModel.pauseSong()
-                                                    } else {
-                                                        viewModel.resumeSong()
-                                                    }
-                                                },
-                                                modifier =
-                                                    Modifier.size(40.dp)
-                                                        .clip(RoundedCornerShape(20.dp)),
-                                            ) {
-                                                Icon(
-                                                    imageVector =
-                                                        if (isPlaying) Icons.Default.Pause
-                                                        else Icons.Default.PlayArrow,
-                                                    contentDescription = "Play/Pause",
-                                                    tint = currentAccent.mainColor,
-                                                    modifier = Modifier.size(24.dp),
-                                                )
-                                            }
                                         }
                                     }
-                                    Spacer(modifier = Modifier.navigationBarsPadding())
+                                } else if (offsetVal < 0f) {
+                                    // 左滑下一首
+                                    Row(
+                                        modifier =
+                                            Modifier.align(Alignment.CenterEnd)
+                                                .height(68.dp)
+                                                .padding(end = 20.dp)
+                                                .graphicsLayer {
+                                                    alpha = progress
+                                                    translationX = (1f - progress) * 40f
+                                                },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                text =
+                                                    if (!hasMultipleSongs) "当前队列仅一首歌"
+                                                    else if (isOverThreshold) "释放播放下一首"
+                                                    else "左滑下一首",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color =
+                                                    if (isOverThreshold && hasMultipleSongs)
+                                                        currentAccent.mainColor
+                                                    else appColors.textColorPrimary,
+                                            )
+                                            nextSong?.let {
+                                                if (hasMultipleSongs) {
+                                                    Text(
+                                                        text = it.title,
+                                                        fontSize = 10.sp,
+                                                        color = appColors.textColorSecondary,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        modifier = Modifier.widthIn(max = 180.dp),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Default.SkipNext,
+                                            contentDescription = null,
+                                            tint =
+                                                if (isOverThreshold && hasMultipleSongs)
+                                                    currentAccent.mainColor
+                                                else appColors.textColorSecondary,
+                                            modifier =
+                                                Modifier.size(24.dp).graphicsLayer {
+                                                    val scale =
+                                                        if (isOverThreshold && hasMultipleSongs)
+                                                            1.2f
+                                                        else 1.0f
+                                                    scaleX = scale
+                                                    scaleY = scale
+                                                },
+                                        )
+                                    }
+                                }
+
+                                Card(
+                                    modifier =
+                                        Modifier.fillMaxWidth()
+                                            .graphicsLayer { translationX = offsetVal }
+                                            .clickable(
+                                                enabled =
+                                                    kotlin.math.abs(offsetVal) < 5f &&
+                                                        dragDirection == null,
+                                                onClick = { showFullPlayer = true },
+                                            )
+                                            .then(miniPlayerDragModifier),
+                                    shape = RoundedCornerShape(0.dp),
+                                    colors =
+                                        CardDefaults.cardColors(
+                                            containerColor =
+                                                if (isDarkMode) Color(0xFF161619)
+                                                else Color(0xFFFFFFFF)
+                                        ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Box(modifier = Modifier.fillMaxWidth().height(68.dp)) {
+                                            Box(
+                                                modifier =
+                                                    Modifier.fillMaxWidth()
+                                                        .height(1.dp)
+                                                        .background(
+                                                            if (isDarkMode) Color(0x1AFFFFFF)
+                                                            else Color(0x0D000000)
+                                                        )
+                                                        .align(Alignment.TopCenter)
+                                            )
+
+                                            val progress =
+                                                if (song.duration > 0) {
+                                                    playbackProgress.toFloat() /
+                                                        song.duration.toFloat()
+                                                } else {
+                                                    0f
+                                                }
+                                            Box(
+                                                modifier =
+                                                    Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
+                                                        .height(2.5.dp)
+                                                        .background(currentAccent.mainColor)
+                                                        .align(Alignment.TopStart)
+                                            )
+
+                                            Row(
+                                                modifier =
+                                                    Modifier.fillMaxSize()
+                                                        .padding(start = 26.dp, end = 16.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                SongCover(
+                                                    song = song,
+                                                    isCurrent = false,
+                                                    isPlaying = false,
+                                                    modifier = Modifier.size(42.dp),
+                                                )
+
+                                                Spacer(modifier = Modifier.width(12.dp))
+
+                                                Column(modifier = Modifier.weight(1.0f)) {
+                                                    Text(
+                                                        text = song.title,
+                                                        fontSize = 14.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = appColors.textColorPrimary,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
+                                                    val quality = song.getQualityType()
+                                                    Row(
+                                                        verticalAlignment =
+                                                            Alignment.CenterVertically,
+                                                        horizontalArrangement =
+                                                            Arrangement.spacedBy(4.dp),
+                                                    ) {
+                                                        if (quality != QualityType.SQ) {
+                                                            QualityBadge(
+                                                                quality = quality,
+                                                                isDarkMode = isDarkMode,
+                                                            )
+                                                        }
+                                                        Text(
+                                                            text = song.artist,
+                                                            fontSize = 11.sp,
+                                                            color = appColors.textColorSecondary,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                        )
+                                                    }
+                                                }
+
+                                                Spacer(modifier = Modifier.width(8.dp))
+
+                                                IconButton(
+                                                    onClick = {
+                                                        if (isPlaying) {
+                                                            viewModel.pauseSong()
+                                                        } else {
+                                                            viewModel.resumeSong()
+                                                        }
+                                                    },
+                                                    modifier =
+                                                        Modifier.size(40.dp)
+                                                            .clip(RoundedCornerShape(20.dp)),
+                                                ) {
+                                                    Icon(
+                                                        imageVector =
+                                                            if (isPlaying) Icons.Default.Pause
+                                                            else Icons.Default.PlayArrow,
+                                                        contentDescription = "Play/Pause",
+                                                        tint = currentAccent.mainColor,
+                                                        modifier = Modifier.size(24.dp),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.navigationBarsPadding())
+                                    }
                                 }
                             }
                         }
