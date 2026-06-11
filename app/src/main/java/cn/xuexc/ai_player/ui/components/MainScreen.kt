@@ -3362,151 +3362,151 @@ fun MainScreen(viewModel: SongViewModel) {
                 }
             },
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
                 verticalArrangement = Arrangement.spacedBy(DialogItemSpacing),
             ) {
                 // Section 1: 已屏蔽的文件夹
-                Text(
-                    text = "已屏蔽的文件夹 (${blockedFolders.size})",
-                    color = appColors.textColorSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                item {
+                    Text(
+                        text = "已屏蔽的文件夹 (${blockedFolders.size})",
+                        color = appColors.textColorSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
 
                 if (blockedFolders.isEmpty()) {
-                    Box(
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .height(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(itemBg),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "暂无已屏蔽文件夹",
-                            color = appColors.textColorSecondary.copy(alpha = 0.8f),
-                            fontSize = 11.sp,
-                        )
+                    item {
+                        Box(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(itemBg),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "暂无已屏蔽文件夹",
+                                color = appColors.textColorSecondary.copy(alpha = 0.8f),
+                                fontSize = 11.sp,
+                            )
+                        }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 100.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        items(blockedFolders.toList()) { folderPath ->
-                            val folderName =
-                                remember(folderPath) {
-                                    val file = java.io.File(folderPath)
-                                    file.name.ifEmpty { folderPath }
-                                }
-                            Row(
-                                modifier =
-                                    Modifier.fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(itemBg)
-                                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                    items(items = blockedFolders.toList(), key = { "blocked_$it" }) { folderPath ->
+                        val folderName =
+                            remember(folderPath) {
+                                val file = java.io.File(folderPath)
+                                file.name.ifEmpty { folderPath }
+                            }
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .animateItem()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(itemBg)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(modifier = Modifier.weight(1.0f)) {
+                                Text(
+                                    text = folderName,
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = folderPath,
+                                    color = appColors.textColorSecondary,
+                                    fontSize = 10.sp,
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.removeBlockedFolder(folderPath) },
+                                modifier = Modifier.size(28.dp),
                             ) {
-                                Column(modifier = Modifier.weight(1.0f)) {
-                                    Text(
-                                        text = folderName,
-                                        color = appColors.textColorPrimary,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    Text(
-                                        text = folderPath,
-                                        color = appColors.textColorSecondary,
-                                        fontSize = 10.sp,
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { viewModel.removeBlockedFolder(folderPath) },
-                                    modifier = Modifier.size(28.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Clear,
-                                        contentDescription = "取消屏蔽",
-                                        tint = Color(0xFFE06C75),
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "取消屏蔽",
+                                    tint = Color(0xFFE06C75),
+                                    modifier = Modifier.size(16.dp),
+                                )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                item { Spacer(modifier = Modifier.height(4.dp)) }
 
                 // Section 2: 扫描到的文件夹
-                Text(
-                    text = "检测到的音频文件夹 (${detectedFolders.size})",
-                    color = appColors.textColorSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                item {
+                    Text(
+                        text = "检测到的音频文件夹 (${detectedFolders.size})",
+                        color = appColors.textColorSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
 
                 if (detectedFolders.isEmpty()) {
-                    Box(
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .height(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(itemBg),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "暂无检测到的文件夹",
-                            color = appColors.textColorSecondary.copy(alpha = 0.8f),
-                            fontSize = 11.sp,
-                        )
+                    item {
+                        Box(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(itemBg),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "暂无检测到的文件夹",
+                                color = appColors.textColorSecondary.copy(alpha = 0.8f),
+                                fontSize = 11.sp,
+                            )
+                        }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 140.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        items(detectedFolders) { folderPath ->
-                            val folderName =
-                                remember(folderPath) {
-                                    val file = java.io.File(folderPath)
-                                    file.name.ifEmpty { folderPath }
-                                }
-                            Row(
-                                modifier =
-                                    Modifier.fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(itemBg)
-                                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                    items(items = detectedFolders, key = { "detected_$it" }) { folderPath ->
+                        val folderName =
+                            remember(folderPath) {
+                                val file = java.io.File(folderPath)
+                                file.name.ifEmpty { folderPath }
+                            }
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                                    .animateItem()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(itemBg)
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(modifier = Modifier.weight(1.0f)) {
+                                Text(
+                                    text = folderName,
+                                    color = appColors.textColorPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    text = folderPath,
+                                    color = appColors.textColorSecondary,
+                                    fontSize = 10.sp,
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.addBlockedFolder(folderPath) },
+                                modifier = Modifier.size(28.dp),
                             ) {
-                                Column(modifier = Modifier.weight(1.0f)) {
-                                    Text(
-                                        text = folderName,
-                                        color = appColors.textColorPrimary,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    Text(
-                                        text = folderPath,
-                                        color = appColors.textColorSecondary,
-                                        fontSize = 10.sp,
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { viewModel.addBlockedFolder(folderPath) },
-                                    modifier = Modifier.size(28.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Add,
-                                        contentDescription = "屏蔽该文件夹",
-                                        tint = currentAccent.mainColor,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "屏蔽该文件夹",
+                                    tint = currentAccent.mainColor,
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
                     }

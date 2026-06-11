@@ -667,7 +667,8 @@ fun PlayerTopBar(
                 ) {
                     Box(
                         modifier =
-                            Modifier.width(140.dp)
+                            Modifier.width(IntrinsicSize.Max)
+                                .widthIn(max = 180.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(appColors.surfaceColor)
                                 .border(
