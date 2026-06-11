@@ -1,6 +1,9 @@
 package cn.xuexc.ai_player.ui.components
 
+import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import cn.xuexc.ai_player.data.*
 import cn.xuexc.ai_player.playback.PlayMode
 import cn.xuexc.ai_player.ui.SongViewModel
+import java.io.File
 import java.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -749,6 +753,29 @@ fun PlayerTopBar(
                                 modifier = Modifier.requiredHeight(32.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                             )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "音乐标签编辑",
+                                        color = appColors.textColorPrimary,
+                                        fontSize = 14.sp,
+                                    )
+                                },
+                                onClick = {
+                                    showMoreMenu = false
+                                    openInMusicTagEditor(context, song.path)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = null,
+                                        tint = appColors.textColorPrimary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                modifier = Modifier.requiredHeight(32.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            )
                             if (song.artist.isNotBlank()) {
                                 DropdownMenuItem(
                                     text = {
@@ -1250,5 +1277,72 @@ fun PlaybackControllers(
                 modifier = Modifier.size(20.dp),
             )
         }
+    }
+}
+
+/** 跳转至「音乐标签」编辑该音频文件 */
+internal fun openInMusicTagEditor(context: Context, audioFilePath: String) {
+    val file = File(audioFilePath)
+    if (!file.exists()) {
+        Toast.makeText(context, "音乐文件不存在", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    // 1. 判断是否安装「音乐标签」应用
+    val isAppInstalled =
+        try {
+            context.packageManager.getPackageInfo("com.xjcheng.musictageditor", 0)
+            true
+        } catch (e: Exception) {
+            false
+        }
+
+    if (!isAppInstalled) {
+        Toast.makeText(context, "未检测到已安装「音乐标签」应用，正在前往下载页面...", Toast.LENGTH_SHORT).show()
+        try {
+            val downloadIntent =
+                Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://www.cnblogs.com/vinlxc/p/11932130.html"),
+                    )
+                    .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+            context.startActivity(downloadIntent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "无法打开下载页面", Toast.LENGTH_SHORT).show()
+        }
+        return
+    }
+
+    // 2. 如果已安装，生成 file:// 类型的 Uri 并尝试用 ACTION_EDIT 唤起
+    // 提示：音乐标签必须直接修改物理文件以完成保存，使用 file:// 可以避免其因 content:// 转化为临时文件 tempFile 导致无法保存和文件名丢失的问题。
+    try {
+        // 绕过 StrictMode FileUriExposedException 限制
+        val builder = android.os.StrictMode.VmPolicy.Builder()
+        android.os.StrictMode.setVmPolicy(builder.build())
+
+        val fileUri: Uri = Uri.fromFile(file)
+
+        val editIntent =
+            Intent(Intent.ACTION_EDIT).apply {
+                setDataAndType(fileUri, "audio/*")
+                setPackage("com.xjcheng.musictageditor")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+        try {
+            context.startActivity(editIntent)
+        } catch (e: android.content.ActivityNotFoundException) {
+            // 3. 如果 ACTION_EDIT 报错，尝试用 ACTION_VIEW 唤起
+            val viewIntent =
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(fileUri, "audio/*")
+                    setPackage("com.xjcheng.musictageditor")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            context.startActivity(viewIntent)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        Toast.makeText(context, "打开失败: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
     }
 }

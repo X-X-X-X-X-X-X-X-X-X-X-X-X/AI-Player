@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 外部存储根目录，绝大多数本地音频文件存放于此 -->
+    <external-path name="external_files" path="." />
+    <!-- 内部私有存储目录，用于兼容一些缓存或私有音乐文件 -->
+    <external-files-path name="external_inner_files" path="." />
+</paths>
