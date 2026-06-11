@@ -175,6 +175,41 @@ object PlaybackManager {
         saveState()
     }
 
+    fun insertToQueueAsNext(song: Song) {
+        val currentQueue = _playbackQueue.value.toMutableList()
+        val currentOriginal = originalQueue.toMutableList()
+
+        // 1. 先从队列中移出，以避免队列中存在同一首歌的重复记录
+        currentQueue.removeAll { it.id == song.id }
+        currentOriginal.removeAll { it.id == song.id }
+
+        val current = _currentSong.value
+        if (current == null) {
+            // 如果当前没有正在播放的歌曲，直接把新歌放到队列开头
+            currentQueue.add(0, song)
+            currentOriginal.add(0, song)
+        } else {
+            // 2. 插入到当前播放歌曲的下一首
+            val indexInQueue = currentQueue.indexOfFirst { it.id == current.id }
+            if (indexInQueue != -1) {
+                currentQueue.add(indexInQueue + 1, song)
+            } else {
+                currentQueue.add(0, song)
+            }
+
+            val indexInOriginal = currentOriginal.indexOfFirst { it.id == current.id }
+            if (indexInOriginal != -1) {
+                currentOriginal.add(indexInOriginal + 1, song)
+            } else {
+                currentOriginal.add(0, song)
+            }
+        }
+
+        _playbackQueue.value = currentQueue
+        originalQueue = currentOriginal
+        saveState()
+    }
+
     fun removeFromQueue(songId: Long): Song? {
         val current = _currentSong.value
         var nextSongToPlay: Song? = null

@@ -521,6 +521,11 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
         PlaybackManager.playNext(context, isUserInitiated)
     }
 
+    fun insertToQueueAsNext(song: Song) {
+        PlaybackManager.insertToQueueAsNext(song)
+        Toast.makeText(getApplication(), "已加到下一首播放", Toast.LENGTH_SHORT).show()
+    }
+
     fun playPreviousSong(context: Context) {
         PlaybackManager.playPrevious(context)
     }

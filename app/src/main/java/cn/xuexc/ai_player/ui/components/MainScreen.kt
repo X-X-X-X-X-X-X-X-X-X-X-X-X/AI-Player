@@ -1003,6 +1003,9 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 isPlaying = isCurrent && isPlaying,
                                                 onDelete = { songToDelete = song },
                                                 appColors = appColors,
+                                                onPlayNextClick = {
+                                                    viewModel.insertToQueueAsNext(song)
+                                                },
                                                 onNavigateToArtist = { artist ->
                                                     previousScreen = currentScreen
                                                     previousPlaylistId = currentPlaylistId
@@ -1270,6 +1273,9 @@ fun MainScreen(viewModel: SongViewModel) {
                                                 isPlaying = isCurrent && isPlaying,
                                                 onDelete = { songToDelete = song },
                                                 appColors = appColors,
+                                                onPlayNextClick = {
+                                                    viewModel.insertToQueueAsNext(song)
+                                                },
                                                 onNavigateToArtist = { artist ->
                                                     previousScreen = currentScreen
                                                     previousPlaylistId = activePlaylistId
@@ -1869,6 +1875,12 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                                 },
                                                                                 appColors =
                                                                                     appColors,
+                                                                                onPlayNextClick = {
+                                                                                    viewModel
+                                                                                        .insertToQueueAsNext(
+                                                                                            song
+                                                                                        )
+                                                                                },
                                                                                 onNavigateToArtist = {
                                                                                     artist ->
                                                                                     previousScreen =
@@ -1996,6 +2008,12 @@ fun MainScreen(viewModel: SongViewModel) {
                                                                             songToDelete = song
                                                                         },
                                                                         appColors = appColors,
+                                                                        onPlayNextClick = {
+                                                                            viewModel
+                                                                                .insertToQueueAsNext(
+                                                                                    song
+                                                                                )
+                                                                        },
                                                                         onNavigateToArtist = {
                                                                             artist ->
                                                                             previousScreen =

@@ -80,6 +80,7 @@ fun SongItemCard(
     isSelected: Boolean = false,
     onSelectionChange: ((Boolean) -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    onPlayNextClick: (() -> Unit)? = null,
 ) {
     val favoriteColor by
         animateColorAsState(
@@ -200,115 +201,238 @@ fun SongItemCard(
             containerColor = cardBg,
             actionArea = {
                 if (!inSelectionMode) {
-                    Box {
-                        Box(
-                            modifier =
-                                Modifier.clip(CircleShape)
-                                    .clickable { showMenu = true }
-                                    .padding(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "操作菜单",
-                                tint = appColors.textColorSecondary,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-
-                        if (showMenu) {
-                            androidx.compose.ui.window.Popup(
-                                onDismissRequest = { showMenu = false },
-                                alignment = Alignment.TopEnd,
-                                offset =
-                                    androidx.compose.ui.unit.IntOffset(
-                                        0,
-                                        with(androidx.compose.ui.platform.LocalDensity.current) {
-                                            32.dp.roundToPx()
-                                        },
-                                    ),
-                                properties =
-                                    androidx.compose.ui.window.PopupProperties(focusable = true),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        if (onPlayNextClick != null) {
+                            Box(
+                                modifier =
+                                    Modifier.clip(CircleShape)
+                                        .clickable { onPlayNextClick() }
+                                        .padding(6.dp)
                             ) {
-                                Box(
-                                    modifier =
-                                        Modifier.width(180.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(appColors.surfaceColor)
-                                            .border(
-                                                0.5.dp,
-                                                if (appColors.surfaceColor == Color(0xFF161619))
-                                                    Color.White.copy(alpha = 0.12f)
-                                                else Color.Black.copy(alpha = 0.08f),
-                                                RoundedCornerShape(4.dp),
-                                            )
-                                            .padding(vertical = 4.dp)
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "下一首播放",
+                                    tint = appColors.textColorSecondary,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+                        Box {
+                            Box(
+                                modifier =
+                                    Modifier.clip(CircleShape)
+                                        .clickable { showMenu = true }
+                                        .padding(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "操作菜单",
+                                    tint = appColors.textColorSecondary,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+
+                            if (showMenu) {
+                                androidx.compose.ui.window.Popup(
+                                    onDismissRequest = { showMenu = false },
+                                    alignment = Alignment.TopEnd,
+                                    offset =
+                                        androidx.compose.ui.unit.IntOffset(
+                                            0,
+                                            with(
+                                                androidx.compose.ui.platform.LocalDensity.current
+                                            ) {
+                                                32.dp.roundToPx()
+                                            },
+                                        ),
+                                    properties =
+                                        androidx.compose.ui.window.PopupProperties(focusable = true),
                                 ) {
-                                    Column {
-                                        // 1. Favorite
-                                        if (onFavoriteToggle != null) {
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        text =
-                                                            if (song.isFavorite) "取消喜欢" else "设为喜欢",
-                                                        color = appColors.textColorPrimary,
-                                                        fontSize = 14.sp,
-                                                    )
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        imageVector =
-                                                            if (song.isFavorite)
-                                                                Icons.Default.Favorite
-                                                            else Icons.Default.FavoriteBorder,
-                                                        contentDescription = null,
-                                                        tint =
-                                                            if (song.isFavorite) Color(0xFFE06C75)
-                                                            else appColors.textColorSecondary,
-                                                        modifier = Modifier.size(18.dp),
-                                                    )
-                                                },
-                                                onClick = {
-                                                    onFavoriteToggle()
-                                                    showMenu = false
-                                                },
-                                                modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding =
-                                                    PaddingValues(
-                                                        horizontal = 12.dp,
-                                                        vertical = 0.dp,
-                                                    ),
-                                            )
-                                        }
+                                    Box(
+                                        modifier =
+                                            Modifier.width(180.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(appColors.surfaceColor)
+                                                .border(
+                                                    0.5.dp,
+                                                    if (appColors.surfaceColor == Color(0xFF161619))
+                                                        Color.White.copy(alpha = 0.12f)
+                                                    else Color.Black.copy(alpha = 0.08f),
+                                                    RoundedCornerShape(4.dp),
+                                                )
+                                                .padding(vertical = 4.dp)
+                                    ) {
+                                        Column {
+                                            // 1. Favorite
+                                            if (onFavoriteToggle != null) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text =
+                                                                if (song.isFavorite) "取消喜欢"
+                                                                else "设为喜欢",
+                                                            color = appColors.textColorPrimary,
+                                                            fontSize = 14.sp,
+                                                        )
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector =
+                                                                if (song.isFavorite)
+                                                                    Icons.Default.Favorite
+                                                                else Icons.Default.FavoriteBorder,
+                                                            contentDescription = null,
+                                                            tint =
+                                                                if (song.isFavorite)
+                                                                    Color(0xFFE06C75)
+                                                                else appColors.textColorSecondary,
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        onFavoriteToggle()
+                                                        showMenu = false
+                                                    },
+                                                    modifier = Modifier.requiredHeight(32.dp),
+                                                    contentPadding =
+                                                        PaddingValues(
+                                                            horizontal = 12.dp,
+                                                            vertical = 0.dp,
+                                                        ),
+                                                )
+                                            }
 
-                                        // 2. Custom action (e.g. Add to Playlist, remove from
-                                        // playlist, restore)
-                                        if (customActionIcon != null && onCustomAction != null) {
-                                            val label =
-                                                when (customActionIcon) {
-                                                    Icons.Default.Add -> "加入到歌单"
-                                                    Icons.Default.Clear -> "从歌单移除"
-                                                    Icons.Default.Refresh -> "从遗忘的沙漏恢复"
-                                                    else -> "其他操作"
-                                                }
+                                            // 2. Custom action (e.g. Add to Playlist, remove from
+                                            // playlist, restore)
+                                            if (
+                                                customActionIcon != null && onCustomAction != null
+                                            ) {
+                                                val label =
+                                                    when (customActionIcon) {
+                                                        Icons.Default.Add -> "加入到歌单"
+                                                        Icons.Default.Clear -> "从歌单移除"
+                                                        Icons.Default.Refresh -> "从遗忘的沙漏恢复"
+                                                        else -> "其他操作"
+                                                    }
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = label,
+                                                            color = appColors.textColorPrimary,
+                                                            fontSize = 14.sp,
+                                                        )
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector = customActionIcon,
+                                                            contentDescription = null,
+                                                            tint = appColors.textColorSecondary,
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        onCustomAction()
+                                                        showMenu = false
+                                                    },
+                                                    modifier = Modifier.requiredHeight(32.dp),
+                                                    contentPadding =
+                                                        PaddingValues(
+                                                            horizontal = 12.dp,
+                                                            vertical = 0.dp,
+                                                        ),
+                                                )
+                                            }
+
+                                            // 3. Forgotten Hourglass
+                                            if (onBlacklistToggle != null) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = "移至遗忘的沙漏",
+                                                            color = Color(0xFFE5C07B),
+                                                            fontSize = 14.sp,
+                                                        )
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector =
+                                                                Icons.Default.HourglassEmpty,
+                                                            contentDescription = null,
+                                                            tint = Color(0xFFE5C07B),
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        onBlacklistToggle()
+                                                        showMenu = false
+                                                    },
+                                                    modifier = Modifier.requiredHeight(32.dp),
+                                                    contentPadding =
+                                                        PaddingValues(
+                                                            horizontal = 12.dp,
+                                                            vertical = 0.dp,
+                                                        ),
+                                                )
+                                            }
+
+                                            // 3.5. Navigate to Artist
+                                            if (
+                                                onNavigateToArtist != null &&
+                                                    song.artist.isNotBlank()
+                                            ) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = "歌手：${song.artist}",
+                                                            color = appColors.textColorPrimary,
+                                                            fontSize = 14.sp,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                        )
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Person,
+                                                            contentDescription = null,
+                                                            tint = appColors.textColorSecondary,
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        onNavigateToArtist(song.artist)
+                                                        showMenu = false
+                                                    },
+                                                    modifier = Modifier.requiredHeight(32.dp),
+                                                    contentPadding =
+                                                        PaddingValues(
+                                                            horizontal = 12.dp,
+                                                            vertical = 0.dp,
+                                                        ),
+                                                )
+                                            }
+
+                                            // 4. Song Details
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
-                                                        text = label,
+                                                        text = "歌曲详情",
                                                         color = appColors.textColorPrimary,
                                                         fontSize = 14.sp,
                                                     )
                                                 },
                                                 leadingIcon = {
                                                     Icon(
-                                                        imageVector = customActionIcon,
+                                                        imageVector = Icons.Default.MusicNote,
                                                         contentDescription = null,
                                                         tint = appColors.textColorSecondary,
                                                         modifier = Modifier.size(18.dp),
                                                     )
                                                 },
                                                 onClick = {
-                                                    onCustomAction()
+                                                    showDetailsDialog = true
                                                     showMenu = false
                                                 },
                                                 modifier = Modifier.requiredHeight(32.dp),
@@ -318,129 +442,37 @@ fun SongItemCard(
                                                         vertical = 0.dp,
                                                     ),
                                             )
-                                        }
 
-                                        // 3. Forgotten Hourglass
-                                        if (onBlacklistToggle != null) {
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        text = "移至遗忘的沙漏",
-                                                        color = Color(0xFFE5C07B),
-                                                        fontSize = 14.sp,
-                                                    )
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        imageVector = Icons.Default.HourglassEmpty,
-                                                        contentDescription = null,
-                                                        tint = Color(0xFFE5C07B),
-                                                        modifier = Modifier.size(18.dp),
-                                                    )
-                                                },
-                                                onClick = {
-                                                    onBlacklistToggle()
-                                                    showMenu = false
-                                                },
-                                                modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding =
-                                                    PaddingValues(
-                                                        horizontal = 12.dp,
-                                                        vertical = 0.dp,
-                                                    ),
-                                            )
-                                        }
-
-                                        // 3.5. Navigate to Artist
-                                        if (
-                                            onNavigateToArtist != null && song.artist.isNotBlank()
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        text = "歌手：${song.artist}",
-                                                        color = appColors.textColorPrimary,
-                                                        fontSize = 14.sp,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                    )
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Person,
-                                                        contentDescription = null,
-                                                        tint = appColors.textColorSecondary,
-                                                        modifier = Modifier.size(18.dp),
-                                                    )
-                                                },
-                                                onClick = {
-                                                    onNavigateToArtist(song.artist)
-                                                    showMenu = false
-                                                },
-                                                modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding =
-                                                    PaddingValues(
-                                                        horizontal = 12.dp,
-                                                        vertical = 0.dp,
-                                                    ),
-                                            )
-                                        }
-
-                                        // 4. Song Details
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = "歌曲详情",
-                                                    color = appColors.textColorPrimary,
-                                                    fontSize = 14.sp,
+                                            // 5. Delete Song (from local database only)
+                                            if (onDelete != null) {
+                                                DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = "删除歌曲",
+                                                            color = Color(0xFFE06C75),
+                                                            fontSize = 14.sp,
+                                                        )
+                                                    },
+                                                    leadingIcon = {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Delete,
+                                                            contentDescription = null,
+                                                            tint = Color(0xFFE06C75),
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        onDelete()
+                                                        showMenu = false
+                                                    },
+                                                    modifier = Modifier.requiredHeight(32.dp),
+                                                    contentPadding =
+                                                        PaddingValues(
+                                                            horizontal = 12.dp,
+                                                            vertical = 0.dp,
+                                                        ),
                                                 )
-                                            },
-                                            leadingIcon = {
-                                                Icon(
-                                                    imageVector = Icons.Default.MusicNote,
-                                                    contentDescription = null,
-                                                    tint = appColors.textColorSecondary,
-                                                    modifier = Modifier.size(18.dp),
-                                                )
-                                            },
-                                            onClick = {
-                                                showDetailsDialog = true
-                                                showMenu = false
-                                            },
-                                            modifier = Modifier.requiredHeight(32.dp),
-                                            contentPadding =
-                                                PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                        )
-
-                                        // 5. Delete Song (from local database only)
-                                        if (onDelete != null) {
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        text = "删除歌曲",
-                                                        color = Color(0xFFE06C75),
-                                                        fontSize = 14.sp,
-                                                    )
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Delete,
-                                                        contentDescription = null,
-                                                        tint = Color(0xFFE06C75),
-                                                        modifier = Modifier.size(18.dp),
-                                                    )
-                                                },
-                                                onClick = {
-                                                    onDelete()
-                                                    showMenu = false
-                                                },
-                                                modifier = Modifier.requiredHeight(32.dp),
-                                                contentPadding =
-                                                    PaddingValues(
-                                                        horizontal = 12.dp,
-                                                        vertical = 0.dp,
-                                                    ),
-                                            )
+                                            }
                                         }
                                     }
                                 }
