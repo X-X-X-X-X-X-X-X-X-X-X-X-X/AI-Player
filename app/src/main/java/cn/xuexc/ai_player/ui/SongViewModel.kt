@@ -690,6 +690,12 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun removeFromBlacklist(song: Song) {
+        // 同步乐观修改内存中的屏蔽状态以实现 UI 的即时反应
+        if (PlaybackManager.currentSong.value?.id == song.id) {
+            PlaybackManager.updateCurrentSongBlacklisted(false)
+        }
+        PlaybackManager.updateSongBlacklistedInQueue(song.id, false)
+
         viewModelScope.launch(Dispatchers.IO) {
             dbHelper.setBlacklisted(song.id, false)
             loadSongs()

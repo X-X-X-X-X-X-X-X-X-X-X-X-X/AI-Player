@@ -948,26 +948,25 @@ fun SongMetadata(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        if (song.isBlacklisted) {
-            Spacer(modifier = Modifier.size(40.dp))
-        } else {
-            IconButton(
-                onClick = onAddToBlacklist,
-                modifier =
-                    Modifier.size(40.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isDarkMode) Color.White.copy(alpha = 0.06f)
-                            else Color.Black.copy(alpha = 0.04f)
-                        ),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.HourglassEmpty,
-                    contentDescription = "遗忘的沙漏",
-                    tint = Color(0xFFE5C07B),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
+        IconButton(
+            onClick = onAddToBlacklist,
+            modifier =
+                Modifier.size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isDarkMode) Color.White.copy(alpha = 0.06f)
+                        else Color.Black.copy(alpha = 0.04f)
+                    ),
+        ) {
+            Icon(
+                imageVector =
+                    if (song.isBlacklisted) Icons.Default.Refresh else Icons.Default.HourglassEmpty,
+                contentDescription = if (song.isBlacklisted) "从遗忘的沙漏恢复" else "遗忘的沙漏",
+                tint =
+                    if (song.isBlacklisted) appColors.textColorSecondary.copy(alpha = 0.6f)
+                    else Color(0xFFE5C07B),
+                modifier = Modifier.size(18.dp),
+            )
         }
 
         Spacer(modifier = Modifier.width(16.dp))

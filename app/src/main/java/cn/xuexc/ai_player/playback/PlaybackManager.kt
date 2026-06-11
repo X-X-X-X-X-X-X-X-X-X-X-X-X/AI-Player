@@ -248,6 +248,23 @@ object PlaybackManager {
         saveState()
     }
 
+    fun updateCurrentSongBlacklisted(isBlacklisted: Boolean) {
+        _currentSong.value = _currentSong.value?.copy(isBlacklisted = isBlacklisted)
+        saveState()
+    }
+
+    fun updateSongBlacklistedInQueue(songId: Long, isBlacklisted: Boolean) {
+        originalQueue =
+            originalQueue.map {
+                if (it.id == songId) it.copy(isBlacklisted = isBlacklisted) else it
+            }
+        _playbackQueue.value =
+            _playbackQueue.value.map {
+                if (it.id == songId) it.copy(isBlacklisted = isBlacklisted) else it
+            }
+        saveState()
+    }
+
     fun togglePlayMode() {
         _playMode.value =
             when (_playMode.value) {
