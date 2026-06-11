@@ -281,18 +281,6 @@ class PlaybackService : Service() {
             }
         val favoriteLabel = if (song.isFavorite) "取消喜欢" else "设为喜欢"
 
-        val favoriteAction =
-            PlaybackStateCompat.CustomAction.Builder("ACTION_FAVORITE", favoriteLabel, favoriteIcon)
-                .build()
-
-        val blacklistAction =
-            PlaybackStateCompat.CustomAction.Builder(
-                    "ACTION_BLACKLIST",
-                    "加入遗忘沙漏",
-                    cn.xuexc.ai_player.R.drawable.ic_hourglass,
-                )
-                .build()
-
         val stateBuilder =
             PlaybackStateCompat.Builder()
                 .setActions(
@@ -303,14 +291,40 @@ class PlaybackService : Service() {
                         PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
                         PlaybackStateCompat.ACTION_SEEK_TO
                 )
-                .addCustomAction(favoriteAction)
-                .addCustomAction(blacklistAction)
-                .setState(
-                    if (isPlaying) PlaybackStateCompat.STATE_PLAYING
-                    else PlaybackStateCompat.STATE_PAUSED,
-                    PlaybackManager.playbackProgress.value,
-                    1.0f,
-                )
+
+        if (song.isBlacklisted) {
+            val restoreAction =
+                PlaybackStateCompat.CustomAction.Builder(
+                        "ACTION_BLACKLIST",
+                        "从沙漏恢复",
+                        cn.xuexc.ai_player.R.drawable.ic_refresh,
+                    )
+                    .build()
+            stateBuilder.addCustomAction(restoreAction)
+        } else {
+            val favoriteAction =
+                PlaybackStateCompat.CustomAction.Builder(
+                        "ACTION_FAVORITE",
+                        favoriteLabel,
+                        favoriteIcon,
+                    )
+                    .build()
+            val blacklistAction =
+                PlaybackStateCompat.CustomAction.Builder(
+                        "ACTION_BLACKLIST",
+                        "加入遗忘沙漏",
+                        cn.xuexc.ai_player.R.drawable.ic_hourglass,
+                    )
+                    .build()
+            stateBuilder.addCustomAction(favoriteAction)
+            stateBuilder.addCustomAction(blacklistAction)
+        }
+
+        stateBuilder.setState(
+            if (isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED,
+            PlaybackManager.playbackProgress.value,
+            1.0f,
+        )
         mediaSession?.setPlaybackState(stateBuilder.build())
 
         val metadataBuilder =
@@ -338,34 +352,46 @@ class PlaybackService : Service() {
         contentPI: PendingIntent,
         playPauseIcon: Int,
     ): Notification {
-        val favoriteIcon =
-            if (song.isFavorite) {
-                cn.xuexc.ai_player.R.drawable.ic_favorite
-            } else {
-                cn.xuexc.ai_player.R.drawable.ic_favorite_border
-            }
-        val blacklistIcon = cn.xuexc.ai_player.R.drawable.ic_hourglass
+        val builder =
+            NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle(song.title)
+                .setContentText(song.artist)
+                .setSubText(song.album)
+                .setLargeIcon(albumArt)
+                .setContentIntent(contentPI)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOngoing(isPlaying)
+                .setStyle(
+                    MediaStyle()
+                        .setMediaSession(mediaSession?.sessionToken)
+                        .setShowActionsInCompactView(1, 2, 3) // index matches prev, playPause, next
+                )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle(song.title)
-            .setContentText(song.artist)
-            .setSubText(song.album)
-            .setLargeIcon(albumArt)
-            .setContentIntent(contentPI)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setOngoing(isPlaying)
-            .setStyle(
-                MediaStyle()
-                    .setMediaSession(mediaSession?.sessionToken)
-                    .setShowActionsInCompactView(1, 2, 3) // index matches prev, playPause, next
-            )
-            .addAction(favoriteIcon, "喜欢", favoritePI)
-            .addAction(android.R.drawable.ic_media_previous, "上一首", prevPI)
-            .addAction(playPauseIcon, "播放/暂停", playPausePI)
-            .addAction(android.R.drawable.ic_media_next, "下一首", nextPI)
-            .addAction(blacklistIcon, "加入遗忘沙漏", blacklistPI)
-            .build()
+        if (song.isBlacklisted) {
+            builder
+                .addAction(cn.xuexc.ai_player.R.drawable.ic_refresh, "从沙漏恢复", blacklistPI)
+                .addAction(android.R.drawable.ic_media_previous, "上一首", prevPI)
+                .addAction(playPauseIcon, "播放/暂停", playPausePI)
+                .addAction(android.R.drawable.ic_media_next, "下一首", nextPI)
+        } else {
+            val favoriteIcon =
+                if (song.isFavorite) {
+                    cn.xuexc.ai_player.R.drawable.ic_favorite
+                } else {
+                    cn.xuexc.ai_player.R.drawable.ic_favorite_border
+                }
+            val blacklistIcon = cn.xuexc.ai_player.R.drawable.ic_hourglass
+
+            builder
+                .addAction(favoriteIcon, "喜欢", favoritePI)
+                .addAction(android.R.drawable.ic_media_previous, "上一首", prevPI)
+                .addAction(playPauseIcon, "播放/暂停", playPausePI)
+                .addAction(android.R.drawable.ic_media_next, "下一首", nextPI)
+                .addAction(blacklistIcon, "加入遗忘沙漏", blacklistPI)
+        }
+
+        return builder.build()
     }
 
     override fun onDestroy() {

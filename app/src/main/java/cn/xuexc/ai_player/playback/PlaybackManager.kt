@@ -251,6 +251,7 @@ object PlaybackManager {
     fun updateCurrentSongBlacklisted(isBlacklisted: Boolean) {
         _currentSong.value = _currentSong.value?.copy(isBlacklisted = isBlacklisted)
         saveState()
+        triggerServiceUpdate()
     }
 
     fun updateSongBlacklistedInQueue(songId: Long, isBlacklisted: Boolean) {
@@ -493,7 +494,7 @@ object PlaybackManager {
         saveState()
     }
 
-    private fun triggerServiceUpdate() {
+    fun triggerServiceUpdate() {
         appContext?.let { ctx ->
             val intent =
                 Intent(ctx, PlaybackService::class.java).apply {
@@ -539,16 +540,39 @@ object PlaybackManager {
     fun blacklistCurrent(context: Context) {
         val song = _currentSong.value ?: return
 
-        // 乐观更新：立刻将其从当前队列移除，并切换到下一首，达到即时切歌效果
-        val nextSong = removeFromQueue(song.id)
-        if (nextSong != null) {
-            playSong(context, nextSong, forceRestart = true)
-        }
+        if (song.isBlacklisted) {
+            // 恢复逻辑
+            // 1. 乐观更新内存中的状态
+            updateCurrentSongBlacklisted(false)
+            updateSongBlacklistedInQueue(song.id, false)
+            triggerServiceUpdate()
 
-        coroutineScope.launch(Dispatchers.IO) {
-            val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
-            dbHelper.setBlacklisted(song.id, true)
-            launch(Dispatchers.Main) { databaseUpdateEvent.tryEmit(Unit) }
+            coroutineScope.launch(Dispatchers.IO) {
+                val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
+                dbHelper.setBlacklisted(song.id, false)
+                launch(Dispatchers.Main) {
+                    databaseUpdateEvent.tryEmit(Unit)
+                    android.widget.Toast.makeText(
+                            context,
+                            "已从遗忘的沙漏恢复",
+                            android.widget.Toast.LENGTH_SHORT,
+                        )
+                        .show()
+                }
+            }
+        } else {
+            // 屏蔽逻辑
+            // 乐观更新：立刻将其从当前队列移除，并切换到下一首，达到即时切歌效果
+            val nextSong = removeFromQueue(song.id)
+            if (nextSong != null) {
+                playSong(context, nextSong, forceRestart = true)
+            }
+
+            coroutineScope.launch(Dispatchers.IO) {
+                val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
+                dbHelper.setBlacklisted(song.id, true)
+                launch(Dispatchers.Main) { databaseUpdateEvent.tryEmit(Unit) }
+            }
         }
     }
 
