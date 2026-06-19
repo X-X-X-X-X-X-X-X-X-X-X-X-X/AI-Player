@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -113,6 +114,7 @@ fun SongItemCard(
 
     var showMenu by remember { mutableStateOf(false) }
     var showDetailsDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         AnimatedVisibility(
@@ -253,7 +255,8 @@ fun SongItemCard(
                                 ) {
                                     Box(
                                         modifier =
-                                            Modifier.width(180.dp)
+                                            Modifier.width(IntrinsicSize.Max)
+                                                .widthIn(max = 180.dp)
                                                 .clip(RoundedCornerShape(4.dp))
                                                 .background(appColors.surfaceColor)
                                                 .border(
@@ -413,6 +416,35 @@ fun SongItemCard(
                                                         ),
                                                 )
                                             }
+
+                                            // 3.8. Music Tag Editor
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(
+                                                        text = "音乐标签编辑",
+                                                        color = appColors.textColorPrimary,
+                                                        fontSize = 14.sp,
+                                                    )
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Edit,
+                                                        contentDescription = null,
+                                                        tint = appColors.textColorSecondary,
+                                                        modifier = Modifier.size(18.dp),
+                                                    )
+                                                },
+                                                onClick = {
+                                                    openInMusicTagEditor(context, song.path)
+                                                    showMenu = false
+                                                },
+                                                modifier = Modifier.requiredHeight(32.dp),
+                                                contentPadding =
+                                                    PaddingValues(
+                                                        horizontal = 12.dp,
+                                                        vertical = 0.dp,
+                                                    ),
+                                            )
 
                                             // 4. Song Details
                                             DropdownMenuItem(
