@@ -1382,169 +1382,24 @@ fun MainScreen(viewModel: SongViewModel) {
 
                                     Box(modifier = Modifier.fillMaxSize()) {
                                         Column(modifier = Modifier.fillMaxSize()) {
-                                            // Scan Status Card
-                                            var lastNonIdleStatus by remember {
-                                                mutableStateOf<ScanStatus>(ScanStatus.Idle)
-                                            }
                                             LaunchedEffect(scanState) {
-                                                if (scanState !is ScanStatus.Idle) {
-                                                    lastNonIdleStatus = scanState
-                                                }
-                                            }
-
-                                            AnimatedVisibility(
-                                                visible = scanState !is ScanStatus.Idle,
-                                                exit =
-                                                    slideOutVertically(
-                                                        targetOffsetY = { -it },
-                                                        animationSpec =
-                                                            tween(
-                                                                durationMillis = 350,
-                                                                easing = FastOutSlowInEasing,
-                                                            ),
-                                                    ) +
-                                                        shrinkVertically(
-                                                            animationSpec =
-                                                                tween(
-                                                                    durationMillis = 350,
-                                                                    easing = FastOutSlowInEasing,
-                                                                )
-                                                        ) +
-                                                        fadeOut(
-                                                            animationSpec =
-                                                                tween(durationMillis = 200)
-                                                        ),
-                                            ) {
-                                                Card(
-                                                    modifier =
-                                                        Modifier.fillMaxWidth()
-                                                            .padding(
-                                                                horizontal = 16.dp,
-                                                                vertical = 8.dp,
-                                                            ),
-                                                    shape = RoundedCornerShape(20.dp),
-                                                    colors =
-                                                        CardDefaults.cardColors(
-                                                            containerColor =
-                                                                appColors.cardBackground
-                                                        ),
-                                                ) {
-                                                    Row(
-                                                        modifier =
-                                                            Modifier.fillMaxWidth().padding(16.dp),
-                                                        verticalAlignment =
-                                                            Alignment.CenterVertically,
-                                                    ) {
-                                                        when (val status = lastNonIdleStatus) {
-                                                            is ScanStatus.Scanning -> {
-                                                                CircularProgressIndicator(
-                                                                    modifier = Modifier.size(24.dp),
-                                                                    color = currentAccent.mainColor,
-                                                                    strokeWidth = 2.dp,
-                                                                )
-                                                                Spacer(
-                                                                    modifier = Modifier.width(16.dp)
-                                                                )
-                                                                Text(
-                                                                    "正在扫描本地音频文件...",
-                                                                    color =
-                                                                        appColors.textColorPrimary,
-                                                                    fontSize = 14.sp,
-                                                                )
-                                                            }
-
-                                                            is ScanStatus.Success -> {
-                                                                Icon(
-                                                                    imageVector =
-                                                                        Icons.Default.Check,
-                                                                    contentDescription = "Success",
-                                                                    tint = currentAccent.mainColor,
-                                                                    modifier = Modifier.size(24.dp),
-                                                                )
-                                                                Spacer(
-                                                                    modifier = Modifier.width(16.dp)
-                                                                )
-                                                                Column(
-                                                                    modifier = Modifier.weight(1.0f)
-                                                                ) {
-                                                                    Text(
-                                                                        "扫描完成！",
-                                                                        color =
-                                                                            appColors
-                                                                                .textColorPrimary,
-                                                                        fontSize = 14.sp,
-                                                                        fontWeight = FontWeight.Bold,
-                                                                    )
-                                                                    Text(
-                                                                        "共发现 ${status.count} 首歌曲",
-                                                                        color =
-                                                                            appColors
-                                                                                .textColorSecondary,
-                                                                        fontSize = 12.sp,
-                                                                    )
-                                                                }
-                                                                TextButton(
-                                                                    onClick = {
-                                                                        viewModel.resetScanState()
-                                                                    }
-                                                                ) {
-                                                                    Text(
-                                                                        "确定",
-                                                                        color =
-                                                                            currentAccent.mainColor,
-                                                                    )
-                                                                }
-                                                            }
-
-                                                            is ScanStatus.Error -> {
-                                                                Icon(
-                                                                    imageVector =
-                                                                        Icons.Default.Warning,
-                                                                    contentDescription = "Error",
-                                                                    tint = Color.Red,
-                                                                    modifier = Modifier.size(24.dp),
-                                                                )
-                                                                Spacer(
-                                                                    modifier = Modifier.width(16.dp)
-                                                                )
-                                                                Column(
-                                                                    modifier = Modifier.weight(1.0f)
-                                                                ) {
-                                                                    Text(
-                                                                        "扫描出错",
-                                                                        color =
-                                                                            appColors
-                                                                                .textColorPrimary,
-                                                                        fontSize = 14.sp,
-                                                                        fontWeight = FontWeight.Bold,
-                                                                    )
-                                                                    Text(
-                                                                        status.message,
-                                                                        color =
-                                                                            appColors
-                                                                                .textColorSecondary,
-                                                                        fontSize = 12.sp,
-                                                                        maxLines = 1,
-                                                                        overflow =
-                                                                            TextOverflow.Ellipsis,
-                                                                    )
-                                                                }
-                                                                TextButton(
-                                                                    onClick = {
-                                                                        viewModel.resetScanState()
-                                                                    }
-                                                                ) {
-                                                                    Text(
-                                                                        "重试",
-                                                                        color =
-                                                                            currentAccent.mainColor,
-                                                                    )
-                                                                }
-                                                            }
-
-                                                            else -> {}
-                                                        }
-                                                    }
+                                                val currentState = scanState
+                                                if (currentState is ScanStatus.Success) {
+                                                    Toast.makeText(
+                                                            context,
+                                                            "扫描完成，共发现 ${currentState.count} 首歌曲",
+                                                            Toast.LENGTH_SHORT,
+                                                        )
+                                                        .show()
+                                                    viewModel.resetScanState()
+                                                } else if (currentState is ScanStatus.Error) {
+                                                    Toast.makeText(
+                                                            context,
+                                                            "扫描出错: ${currentState.message}",
+                                                            Toast.LENGTH_SHORT,
+                                                        )
+                                                        .show()
+                                                    viewModel.resetScanState()
                                                 }
                                             }
 
