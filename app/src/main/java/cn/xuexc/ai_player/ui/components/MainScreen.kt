@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -103,7 +104,7 @@ fun MainScreen(viewModel: SongViewModel) {
         return false
     }
 
-    var currentScreen by remember { mutableStateOf(Screen.Library) }
+    var currentScreen by rememberSaveable { mutableStateOf(Screen.Library) }
     val pagerState =
         rememberPagerState(
             initialPage =
@@ -148,20 +149,20 @@ fun MainScreen(viewModel: SongViewModel) {
             }
         }
     }
-    var activePlaylistId by remember {
+    var activePlaylistId by rememberSaveable {
         mutableStateOf<Long?>(null)
     } // -1 for Favorites, -2 for Blacklist, positive for custom, null for none
 
     LaunchedEffect(activePlaylistId) { viewModel.activePlaylistIdForRefresh = activePlaylistId }
-    var activePlaylistName by remember { mutableStateOf("") }
-    var activeArtistName by remember { mutableStateOf<String?>(null) }
-    var previousScreen by remember { mutableStateOf<Screen?>(null) }
-    var previousPlaylistId by remember { mutableStateOf<Long?>(null) }
-    var lastActivePlaylistId by remember { mutableStateOf<Long?>(null) }
+    var activePlaylistName by rememberSaveable { mutableStateOf("") }
+    var activeArtistName by rememberSaveable { mutableStateOf<String?>(null) }
+    var previousScreen by rememberSaveable { mutableStateOf<Screen?>(null) }
+    var previousPlaylistId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var lastActivePlaylistId by rememberSaveable { mutableStateOf<Long?>(null) }
     if (activePlaylistId != null) {
         lastActivePlaylistId = activePlaylistId
     }
-    var lastActiveArtistName by remember { mutableStateOf<String?>(null) }
+    var lastActiveArtistName by rememberSaveable { mutableStateOf<String?>(null) }
     if (activeArtistName != null) {
         lastActiveArtistName = activeArtistName
     }
@@ -239,7 +240,7 @@ fun MainScreen(viewModel: SongViewModel) {
         }
     }
 
-    var showFullPlayer by remember { mutableStateOf(false) }
+    var showFullPlayer by rememberSaveable { mutableStateOf(false) }
 
     val screenHeight = context.resources.displayMetrics.heightPixels.toFloat()
     val playerOffsetY = remember { Animatable(screenHeight) }
