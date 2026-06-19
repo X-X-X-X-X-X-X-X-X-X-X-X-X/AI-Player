@@ -79,32 +79,39 @@ fun FullPlayerScreen(
 
     // 1. 极光背景主色状态与平滑颜色插值
     val initialColors =
-        remember(song.id, song.lastModified) {
+        remember(song.id, song.lastModified, isDarkMode) {
             val cached = song.getCachedBlurredCover()
-            if (cached != null && cached.width > 0 && cached.height > 0) {
-                try {
-                    val w = cached.width
-                    val h = cached.height
-                    Pair(
-                        Color(cached.getPixel(w / 4, h / 4)),
-                        Color(cached.getPixel(w * 3 / 4, h * 3 / 4)),
-                    )
-                } catch (e: Exception) {
+            val rawPair =
+                if (cached != null && cached.width > 0 && cached.height > 0) {
+                    try {
+                        val w = cached.width
+                        val h = cached.height
+                        Pair(
+                            Color(cached.getPixel(w / 4, h / 4)),
+                            Color(cached.getPixel(w * 3 / 4, h * 3 / 4)),
+                        )
+                    } catch (e: Exception) {
+                        Pair(
+                            currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
+                            currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
+                        )
+                    }
+                } else {
                     Pair(
                         currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
                         currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
                     )
                 }
-            } else {
-                Pair(
-                    currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
-                    currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
-                )
-            }
+            Pair(
+                adjustColorForAmbientGlow(rawPair.first, isDarkMode),
+                adjustColorForAmbientGlow(rawPair.second, isDarkMode),
+            )
         }
 
-    var glowColor1 by remember(song.id, song.lastModified) { mutableStateOf(initialColors.first) }
-    var glowColor2 by remember(song.id, song.lastModified) { mutableStateOf(initialColors.second) }
+    var glowColor1 by
+        remember(song.id, song.lastModified, isDarkMode) { mutableStateOf(initialColors.first) }
+    var glowColor2 by
+        remember(song.id, song.lastModified, isDarkMode) { mutableStateOf(initialColors.second) }
 
     val animatedGlowColor1 by
         animateColorAsState(
@@ -124,86 +131,55 @@ fun FullPlayerScreen(
             try {
                 val w = bitmap.width
                 val h = bitmap.height
-                glowColor1 = Color(bitmap.getPixel(w / 4, h / 4))
-                glowColor2 = Color(bitmap.getPixel(w * 3 / 4, h * 3 / 4))
+                val c1 = Color(bitmap.getPixel(w / 4, h / 4))
+                val c2 = Color(bitmap.getPixel(w * 3 / 4, h * 3 / 4))
+                glowColor1 = adjustColorForAmbientGlow(c1, isDarkMode)
+                glowColor2 = adjustColorForAmbientGlow(c2, isDarkMode)
             } catch (e: Exception) {
-                glowColor1 = currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor
-                glowColor2 = currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor
+                glowColor1 =
+                    adjustColorForAmbientGlow(
+                        currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
+                        isDarkMode,
+                    )
+                glowColor2 =
+                    adjustColorForAmbientGlow(
+                        currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
+                        isDarkMode,
+                    )
             }
         } else {
-            glowColor1 = currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor
-            glowColor2 = currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor
+            glowColor1 =
+                adjustColorForAmbientGlow(
+                    currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
+                    isDarkMode,
+                )
+            glowColor2 =
+                adjustColorForAmbientGlow(
+                    currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
+                    isDarkMode,
+                )
         }
     }
 
-    // 2. 动态极光斑的低频呼吸与漂移无限循环动画
+    // 2. 一个随时间匀速增加的全局弧度，用于驱动全屏线性水流渐变，实现无缝平滑的水流循环
     val infiniteTransition = rememberInfiniteTransition(label = "ambientGlow")
-    val glow1X by
+    val animTime by
         infiniteTransition.animateFloat(
-            initialValue = -0.45f,
-            targetValue = 0.45f,
+            initialValue = 0f,
+            targetValue = 6.2831853f, // 2 * PI，120秒内扫过1个完整正弦周期，消除 Restart 突变
             animationSpec =
                 infiniteRepeatable(
-                    animation = tween(25000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
+                    animation = tween(120000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
                 ),
-            label = "glow1X",
+            label = "animTime",
         )
-    val glow1Y by
-        infiniteTransition.animateFloat(
-            initialValue = -0.35f,
-            targetValue = 0.35f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(18000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "glow1Y",
-        )
-    val glow1RadiusScale by
-        infiniteTransition.animateFloat(
-            initialValue = 0.75f,
-            targetValue = 1.05f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(12000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "glow1RadiusScale",
-        )
-    val glow2X by
-        infiniteTransition.animateFloat(
-            initialValue = 0.45f,
-            targetValue = -0.45f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(22000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "glow2X",
-        )
-    val glow2Y by
-        infiniteTransition.animateFloat(
-            initialValue = 0.35f,
-            targetValue = -0.35f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(20000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "glow2Y",
-        )
-    val glow2RadiusScale by
-        infiniteTransition.animateFloat(
-            initialValue = 0.7f,
-            targetValue = 1.0f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(15000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "glow2RadiusScale",
-        )
+    val glowPaint = remember {
+        Paint().apply {
+            isAntiAlias = true
+            asFrameworkPaint().isDither = true // 强开底层硬件级抖动混色，彻底抹平色彩断层 (Banding)
+        }
+    }
     var bgBitmap by
         remember(song.id, song.lastModified) {
             mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover())
@@ -327,136 +303,119 @@ fun FullPlayerScreen(
                     if (!isFullyHidden()) {
                         val w = size.width
                         val h = size.height
-                        val baseRadius = maxOf(w, h) * 0.45f // 缩减基准半径以使边缘掠过时有更强的边界光感流动
+                        val time = animTime
+                        val minDim = minOf(w, h)
+                        val isLandscape = w > h
 
                         drawIntoCanvas { canvas ->
-                            // 绘制极光 1 (偏左上漂移，限制在左上象限活动，避免越界和被遮盖)
-                            val center1 =
-                                Offset(
-                                    x = w * 0.25f + w * (glow1X * 0.35f),
-                                    y = h * 0.25f + h * (glow1Y * 0.35f),
+                            // 封装底层带 Dither 的线性渐变绘制，规避 Compose 默认绘制无抖动导致的色彩断层
+                            fun drawDitheredLinearGradient(
+                                colorStart: Color,
+                                colorEnd: Color,
+                                start: Offset,
+                                end: Offset,
+                            ) {
+                                val brush =
+                                    Brush.linearGradient(
+                                        colors = listOf(colorStart, colorEnd),
+                                        start = start,
+                                        end = end,
+                                    ) as ShaderBrush
+                                glowPaint.shader = brush.createShader(size)
+                                canvas.drawRect(
+                                    androidx.compose.ui.geometry.Rect(0f, 0f, w, h),
+                                    glowPaint,
                                 )
-                            val radius1 = baseRadius * glow1RadiusScale
+                            }
 
-                            val paint1 =
-                                Paint().apply {
-                                    isAntiAlias = true
-                                    asFrameworkPaint().isDither = true // 开启硬件级混色抖动
+                            // 1. 绘制水流 A (偏左上斜向，平滑延伸覆盖大部分屏幕以与右下水流融合)
+                            val alphaA = if (isDarkMode) 0.32f else 0.28f
+                            val colorA = animatedGlowColor1.copy(alpha = alphaA * coverAlpha.value)
+                            val dA = kotlin.math.cos(time) * (minDim * 0.15f)
+                            val startA = Offset(-w * 0.2f + dA, -h * 0.2f + dA)
+                            val endA = Offset(w * 0.8f + dA, h * 0.8f + dA)
+                            drawDitheredLinearGradient(colorA, Color.Transparent, startA, endA)
+
+                            // 2. 绘制水流 B (偏右下斜向，平滑延伸覆盖大部分屏幕以与左上水流融合，横屏下增强色彩)
+                            val alphaB = if (isDarkMode) 0.28f else 0.24f
+                            val finalAlphaB =
+                                if (isLandscape && !isDarkMode) alphaB * 1.3f else alphaB
+                            val colorB =
+                                animatedGlowColor2.copy(alpha = finalAlphaB * coverAlpha.value)
+                            val dB = kotlin.math.sin(time + 1.0f) * (minDim * 0.12f)
+                            val startB = Offset(w * 1.2f - dB, h * 1.2f - dB)
+                            val endB = Offset(w * 0.2f - dB, h * 0.2f - dB)
+                            drawDitheredLinearGradient(colorB, Color.Transparent, startB, endB)
+
+                            // 3. 绘制水流 C (偏左侧横向，平滑延伸越过中线以融合右侧)
+                            val alphaC = if (isDarkMode) 0.22f else 0.20f
+                            val colorC = animatedGlowColor2.copy(alpha = alphaC * coverAlpha.value)
+                            val dC = kotlin.math.cos(time * 1.5f) * (w * 0.12f)
+                            val startC = Offset(-w * 0.2f + dC, h * 0.45f)
+                            val endC = Offset(w * 0.7f + dC, h * 0.45f)
+                            drawDitheredLinearGradient(colorC, Color.Transparent, startC, endC)
+
+                            // 4. 绘制水流 D (偏右侧横向，平滑延伸越过中线以融合左侧，横屏下增强色彩)
+                            val alphaD = if (isDarkMode) 0.22f else 0.20f
+                            val finalAlphaD =
+                                if (isLandscape && !isDarkMode) alphaD * 1.3f else alphaD
+                            val colorD =
+                                animatedGlowColor1.copy(alpha = finalAlphaD * coverAlpha.value)
+                            val dD = kotlin.math.sin(time * 1.2f) * (w * 0.10f)
+                            val startD = Offset(w * 1.2f + dD, h * 0.55f)
+                            val endD = Offset(w * 0.3f + dD, h * 0.55f)
+                            drawDitheredLinearGradient(colorD, Color.Transparent, startD, endD)
+
+                            // 5. 绘制垂直渐变遮罩 (强制使用 Dither)，消除遮罩本身的灰阶断层
+                            val overlayGradient =
+                                if (isDarkMode) {
+                                    Brush.verticalGradient(
+                                        colors =
+                                            listOf(
+                                                Color(0xCC0C0C0E),
+                                                Color(0x550C0C0E),
+                                                Color(0xEE0C0C0E),
+                                            )
+                                    )
+                                } else {
+                                    Brush.verticalGradient(
+                                        0.0f to Color(0x90F5F5F7), // 顶部边缘遮蔽以看清状态栏 (56%)
+                                        0.12f to Color(0x22F5F5F7), // 快速收敛为清透的磨砂白 (13.7%)
+                                        0.85f to
+                                            Color(0x22F5F5F7), // 中部 73% 的广大显示区域保持极其通透、浓度恒定一致的磨砂白
+                                        1.0f to Color(0xADF5F5F7), // 底部过渡到 68% 遮蔽，保证按键对比度
+                                    )
                                 }
+                                    as ShaderBrush
+                            glowPaint.shader = overlayGradient.createShader(size)
+                            canvas.drawRect(
+                                androidx.compose.ui.geometry.Rect(0f, 0f, w, h),
+                                glowPaint,
+                            )
 
-                            val alpha1 = 0.38f * coverAlpha.value
-                            val colors1 =
-                                listOf(
-                                    animatedGlowColor1.copy(alpha = alpha1),
-                                    animatedGlowColor1.copy(alpha = alpha1 * 0.8f),
-                                    animatedGlowColor1.copy(alpha = alpha1 * 0.55f),
-                                    animatedGlowColor1.copy(alpha = alpha1 * 0.32f),
-                                    animatedGlowColor1.copy(alpha = alpha1 * 0.15f),
-                                    animatedGlowColor1.copy(alpha = alpha1 * 0.05f),
-                                    Color.Transparent,
-                                )
-
-                            val shaderBrush1 =
+                            // 6. 绘制径向渐变遮罩 (强制使用 Dither)
+                            val radialGradient =
                                 Brush.radialGradient(
-                                    0.0f to colors1[0],
-                                    0.15f to colors1[1],
-                                    0.35f to colors1[2],
-                                    0.55f to colors1[3],
-                                    0.75f to colors1[4],
-                                    0.90f to colors1[5],
-                                    1.0f to colors1[6],
-                                    center = center1,
-                                    radius = radius1,
+                                    colors =
+                                        listOf(
+                                            Color.Transparent,
+                                            if (isDarkMode) Color(0x660C0C0E)
+                                            else Color(0x06F5F5F7), // 仅保留极淡的边缘过度以释放四周流光
+                                        )
                                 ) as ShaderBrush
-
-                            paint1.shader = shaderBrush1.createShader(size)
-                            canvas.drawCircle(center1, radius1, paint1)
-
-                            // 绘制极光 2 (偏右下漂移，限制在右下象限活动，避免越界和被遮盖)
-                            val center2 =
-                                Offset(
-                                    x = w * 0.75f + w * (glow2X * 0.35f),
-                                    y = h * 0.75f + h * (glow2Y * 0.35f),
-                                )
-                            val radius2 = baseRadius * glow2RadiusScale
-
-                            val paint2 =
-                                Paint().apply {
-                                    isAntiAlias = true
-                                    asFrameworkPaint().isDither = true // 开启硬件级混色抖动
-                                }
-
-                            val alpha2 = 0.35f * coverAlpha.value
-                            val colors2 =
-                                listOf(
-                                    animatedGlowColor2.copy(alpha = alpha2),
-                                    animatedGlowColor2.copy(alpha = alpha2 * 0.8f),
-                                    animatedGlowColor2.copy(alpha = alpha2 * 0.55f),
-                                    animatedGlowColor2.copy(alpha = alpha2 * 0.32f),
-                                    animatedGlowColor2.copy(alpha = alpha2 * 0.15f),
-                                    animatedGlowColor2.copy(alpha = alpha2 * 0.05f),
-                                    Color.Transparent,
-                                )
-
-                            val shaderBrush2 =
-                                Brush.radialGradient(
-                                    0.0f to colors2[0],
-                                    0.15f to colors2[1],
-                                    0.35f to colors2[2],
-                                    0.55f to colors2[3],
-                                    0.75f to colors2[4],
-                                    0.90f to colors2[5],
-                                    1.0f to colors2[6],
-                                    center = center2,
-                                    radius = radius2,
-                                ) as ShaderBrush
-
-                            paint2.shader = shaderBrush2.createShader(size)
-                            canvas.drawCircle(center2, radius2, paint2)
+                            glowPaint.shader = radialGradient.createShader(size)
+                            canvas.drawRect(
+                                androidx.compose.ui.geometry.Rect(0f, 0f, w, h),
+                                glowPaint,
+                            )
                         }
 
-                        // 绘制背景极光之后，再绘制 Box 内部的主体前景内容
+                        // 绘制背景极光与遮罩之后，再绘制 Box 内部的主体前景内容
                         drawContent()
                     }
                 }
                 .then(dragModifier)
     ) {
-
-        // 精心调配的多重渐变遮罩，使封面色彩流淌的同时保证文字的可读性
-        val overlayBrush =
-            if (isDarkMode) {
-                Brush.verticalGradient(
-                    colors =
-                        listOf(
-                            Color(0xCC0C0C0E), // 顶部暗色，适合状态栏 and 操作按钮
-                            Color(0x550C0C0E), // 中间极透明，展现封面中心色彩
-                            Color(0xEE0C0C0E), // 底部暗色，适合播放器控制盘 and 歌词底色
-                        )
-                )
-            } else {
-                Brush.verticalGradient(
-                    colors =
-                        listOf(
-                            Color(0xCCF5F5F7), // 顶部
-                            Color(0x55F5F5F7), // 中间
-                            Color(0xEEF5F5F7), // 底部
-                        )
-                )
-            }
-
-        val radialOverlayBrush =
-            Brush.radialGradient(
-                colors =
-                    listOf(
-                        Color.Transparent,
-                        if (isDarkMode) Color(0x660C0C0E) else Color(0x66F5F5F7),
-                    )
-            )
-
-        Box(modifier = Modifier.fillMaxSize().background(overlayBrush))
-        Box(modifier = Modifier.fillMaxSize().background(radialOverlayBrush))
-
-        // Main content
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -1537,4 +1496,14 @@ internal fun openInMusicTagEditor(context: Context, audioFilePath: String) {
         e.printStackTrace()
         Toast.makeText(context, "打开失败: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
     }
+}
+
+private fun adjustColorForAmbientGlow(color: Color, isDarkMode: Boolean): Color {
+    if (isDarkMode) return color
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+    // 浅色模式清透色彩调配：更低饱和度，更高亮度，确保流光极致干净，杜绝脏色
+    hsv[1] = hsv[1].coerceIn(0.20f, 0.45f)
+    hsv[2] = hsv[2].coerceIn(0.82f, 0.94f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
 }
