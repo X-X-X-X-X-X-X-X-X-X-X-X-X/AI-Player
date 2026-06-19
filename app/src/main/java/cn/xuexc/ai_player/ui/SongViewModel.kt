@@ -38,6 +38,15 @@ data class ImportResult(
     val failedSongs: List<String>,
 )
 
+data class FolderNode(
+    val name: String,
+    val absolutePath: String,
+    val isBlocked: Boolean,
+    val isInheritedBlocked: Boolean,
+    val hasAudioDirectly: Boolean,
+    val children: List<FolderNode>,
+)
+
 class SongViewModel(application: Application) : AndroidViewModel(application) {
     private val dbHelper = MusicDatabaseHelper(application)
     var activePlaylistIdForRefresh: Long? = null
@@ -146,40 +155,157 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val detectedFolders: StateFlow<List<String>> =
+    val folderTree: StateFlow<List<FolderNode>> =
         combine(_allScannedSongs, _blockedFolders) { allSongs, blocked ->
-                val standardBlocked =
-                    blocked.map {
-                        try {
-                            java.io.File(it).absolutePath
-                        } catch (e: Exception) {
-                            it
-                        }
-                    }
-                allSongs
-                    .mapNotNull { song ->
-                        if (!song.path.startsWith("http://") && !song.path.startsWith("https://")) {
-                            val lastSlash =
-                                maxOf(song.path.lastIndexOf('/'), song.path.lastIndexOf('\\'))
-                            val parent =
-                                if (lastSlash > 0) song.path.substring(0, lastSlash) else null
-                            if (
-                                parent != null &&
-                                    !SongScanner.isPathBlocked(song.path, standardBlocked)
-                            ) {
-                                parent
-                            } else {
-                                null
-                            }
-                        } else {
-                            null
-                        }
-                    }
-                    .distinct()
-                    .sorted()
+                buildFolderTree(allSongs, blocked)
             }
             .flowOn(Dispatchers.Default)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private fun buildFolderTree(allSongs: List<Song>, blocked: Set<String>): List<FolderNode> {
+        val standardBlocked =
+            blocked
+                .map {
+                    try {
+                        java.io.File(it).absolutePath
+                    } catch (e: Exception) {
+                        it
+                    }
+                }
+                .toSet()
+
+        val allPaths = mutableSetOf<String>()
+        allSongs.forEach { song ->
+            if (!song.path.startsWith("http://") && !song.path.startsWith("https://")) {
+                val lastSlash = maxOf(song.path.lastIndexOf('/'), song.path.lastIndexOf('\\'))
+                val parent = if (lastSlash > 0) song.path.substring(0, lastSlash) else null
+                if (parent != null) {
+                    allPaths.add(parent)
+                }
+            }
+        }
+        standardBlocked.forEach { allPaths.add(it) }
+
+        val nodesMap = mutableMapOf<String, FolderNodeBuilder>()
+        allPaths.forEach { path ->
+            try {
+                var currentFile: java.io.File? = java.io.File(path)
+                while (currentFile != null) {
+                    val absPath = currentFile.absolutePath
+                    nodesMap.getOrPut(absPath) {
+                        FolderNodeBuilder(
+                            name = currentFile!!.name.ifEmpty { absPath },
+                            absolutePath = absPath,
+                        )
+                    }
+                    currentFile = currentFile.parentFile
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+
+        val directAudioPaths =
+            allSongs
+                .mapNotNull { song ->
+                    if (!song.path.startsWith("http://") && !song.path.startsWith("https://")) {
+                        val lastSlash =
+                            maxOf(song.path.lastIndexOf('/'), song.path.lastIndexOf('\\'))
+                        if (lastSlash > 0) {
+                            try {
+                                java.io.File(song.path.substring(0, lastSlash)).absolutePath
+                            } catch (e: Exception) {
+                                null
+                            }
+                        } else null
+                    } else null
+                }
+                .toSet()
+
+        directAudioPaths.forEach { path -> nodesMap[path]?.hasAudioDirectly = true }
+
+        val roots = mutableListOf<FolderNodeBuilder>()
+        nodesMap.values.forEach { node ->
+            try {
+                val file = java.io.File(node.absolutePath)
+                val parentFile = file.parentFile
+                if (parentFile != null && nodesMap.containsKey(parentFile.absolutePath)) {
+                    val parentNode = nodesMap[parentFile.absolutePath]!!
+                    if (!parentNode.children.contains(node)) {
+                        parentNode.children.add(node)
+                    }
+                } else {
+                    roots.add(node)
+                }
+            } catch (e: Exception) {
+                roots.add(node)
+            }
+        }
+
+        fun buildFinalNode(builder: FolderNodeBuilder, parentBlocked: Boolean): FolderNode {
+            val isExplicitBlocked = standardBlocked.contains(builder.absolutePath)
+            val isInherited = parentBlocked
+            val currentBlocked = isExplicitBlocked || isInherited
+
+            val finalChildren =
+                builder.children
+                    .map { buildFinalNode(it, currentBlocked) }
+                    .sortedBy { it.name.lowercase() }
+
+            return FolderNode(
+                name = builder.name,
+                absolutePath = builder.absolutePath,
+                isBlocked = isExplicitBlocked,
+                isInheritedBlocked = isInherited,
+                hasAudioDirectly = builder.hasAudioDirectly,
+                children = finalChildren,
+            )
+        }
+
+        val rawRoots = roots.map { buildFinalNode(it, false) }
+        return compressSingleChildNodes(rawRoots).sortedBy { it.name.lowercase() }
+    }
+
+    private fun compressSingleChildNodes(roots: List<FolderNode>): List<FolderNode> {
+        return roots.map { compressNode(it) }
+    }
+
+    private fun compressNode(node: FolderNode): FolderNode {
+        val compressedChildren = node.children.map { compressNode(it) }
+
+        if (compressedChildren.size == 1 && !node.isBlocked && !node.hasAudioDirectly) {
+            val child = compressedChildren[0]
+            val separator = if (node.absolutePath.contains("\\")) "\\" else "/"
+            val newName =
+                if (
+                    node.name == "/" ||
+                        node.name == "\\" ||
+                        node.name.endsWith(":") ||
+                        node.name.endsWith(":\\")
+                ) {
+                    node.name + child.name
+                } else {
+                    node.name + separator + child.name
+                }
+            return FolderNode(
+                name = newName,
+                absolutePath = child.absolutePath,
+                isBlocked = child.isBlocked,
+                isInheritedBlocked = child.isInheritedBlocked,
+                hasAudioDirectly = child.hasAudioDirectly,
+                children = child.children,
+            )
+        }
+
+        return node.copy(children = compressedChildren)
+    }
+
+    private class FolderNodeBuilder(
+        val name: String,
+        val absolutePath: String,
+        var hasAudioDirectly: Boolean = false,
+        val children: MutableList<FolderNodeBuilder> = mutableListOf(),
+    )
 
     val libraryDisplayData: StateFlow<LibraryDisplayData> =
         combine(songs, _sortOrder, _isSortAscending) { filteredSongs, sortOrder, isSortAscending ->
