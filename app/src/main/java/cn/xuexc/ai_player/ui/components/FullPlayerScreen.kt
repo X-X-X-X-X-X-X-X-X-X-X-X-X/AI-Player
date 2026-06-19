@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -75,51 +76,132 @@ fun FullPlayerScreen(
     val currentProgressState = rememberUpdatedState(playbackProgress)
     val progressProvider = remember { { currentProgressState.value } }
 
-    // 动态炫光背景的无限循环动画（通过 graphicsLayer 更新，不触发 recomposition，极低功耗）
+    // 1. 极光背景主色状态与平滑颜色插值
+    val initialColors =
+        remember(song.id, song.lastModified) {
+            val cached = song.getCachedBlurredCover()
+            if (cached != null && cached.width > 0 && cached.height > 0) {
+                try {
+                    val w = cached.width
+                    val h = cached.height
+                    Pair(
+                        Color(cached.getPixel(w / 4, h / 4)),
+                        Color(cached.getPixel(w * 3 / 4, h * 3 / 4)),
+                    )
+                } catch (e: Exception) {
+                    Pair(
+                        currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
+                        currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
+                    )
+                }
+            } else {
+                Pair(
+                    currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
+                    currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
+                )
+            }
+        }
+
+    var glowColor1 by remember(song.id, song.lastModified) { mutableStateOf(initialColors.first) }
+    var glowColor2 by remember(song.id, song.lastModified) { mutableStateOf(initialColors.second) }
+
+    val animatedGlowColor1 by
+        animateColorAsState(
+            targetValue = glowColor1,
+            animationSpec = tween(1200),
+            label = "animatedColor1",
+        )
+    val animatedGlowColor2 by
+        animateColorAsState(
+            targetValue = glowColor2,
+            animationSpec = tween(1200),
+            label = "animatedColor2",
+        )
+
+    fun updateGlowColors(bitmap: android.graphics.Bitmap?) {
+        if (bitmap != null && bitmap.width > 0 && bitmap.height > 0) {
+            try {
+                val w = bitmap.width
+                val h = bitmap.height
+                glowColor1 = Color(bitmap.getPixel(w / 4, h / 4))
+                glowColor2 = Color(bitmap.getPixel(w * 3 / 4, h * 3 / 4))
+            } catch (e: Exception) {
+                glowColor1 = currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor
+                glowColor2 = currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor
+            }
+        } else {
+            glowColor1 = currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor
+            glowColor2 = currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor
+        }
+    }
+
+    // 2. 动态极光斑的低频呼吸与漂移无限循环动画
     val infiniteTransition = rememberInfiniteTransition(label = "ambientGlow")
-    val glowRotation by
+    val glow1X by
         infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(80000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart,
-                ),
-            label = "rotation",
-        )
-    val glowScale by
-        infiniteTransition.animateFloat(
-            initialValue = 2.4f,
-            targetValue = 2.8f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(30000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "scale",
-        )
-    val glowTranslationX by
-        infiniteTransition.animateFloat(
-            initialValue = -80f,
-            targetValue = 80f,
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(20000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Reverse,
-                ),
-            label = "translationX",
-        )
-    val glowTranslationY by
-        infiniteTransition.animateFloat(
-            initialValue = -60f,
-            targetValue = 60f,
+            initialValue = -0.45f,
+            targetValue = 0.45f,
             animationSpec =
                 infiniteRepeatable(
                     animation = tween(25000, easing = LinearEasing),
                     repeatMode = RepeatMode.Reverse,
                 ),
-            label = "translationY",
+            label = "glow1X",
+        )
+    val glow1Y by
+        infiniteTransition.animateFloat(
+            initialValue = -0.35f,
+            targetValue = 0.35f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(18000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+            label = "glow1Y",
+        )
+    val glow1RadiusScale by
+        infiniteTransition.animateFloat(
+            initialValue = 0.75f,
+            targetValue = 1.05f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(12000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+            label = "glow1RadiusScale",
+        )
+    val glow2X by
+        infiniteTransition.animateFloat(
+            initialValue = 0.45f,
+            targetValue = -0.45f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(22000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+            label = "glow2X",
+        )
+    val glow2Y by
+        infiniteTransition.animateFloat(
+            initialValue = 0.35f,
+            targetValue = -0.35f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(20000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+            label = "glow2Y",
+        )
+    val glow2RadiusScale by
+        infiniteTransition.animateFloat(
+            initialValue = 0.7f,
+            targetValue = 1.0f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(15000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+            label = "glow2RadiusScale",
         )
     var bgBitmap by
         remember(song.id, song.lastModified) {
@@ -153,6 +235,7 @@ fun FullPlayerScreen(
                 withContext(Dispatchers.Main) {
                     bgBitmap = loaded
                     bgBitmapBlur = blurred
+                    updateGlowColors(blurred)
                     withFrameMillis {}
                     withFrameMillis {}
                     isCoverLoaded = true
@@ -171,6 +254,7 @@ fun FullPlayerScreen(
             val blurred = loaded?.let { song.loadBlurredCover(context, it) }
             bgBitmap = loaded
             bgBitmapBlur = blurred
+            updateGlowColors(blurred)
             withFrameMillis {}
             withFrameMillis {}
             isCoverLoaded = true
@@ -178,13 +262,14 @@ fun FullPlayerScreen(
             coverAlpha.animateTo(targetValue = 1f, animationSpec = tween(300))
         } else {
             // 同一首歌但 lastModified 改变（标签/封面热更新）
-            // 1. 直接开始淡出封面（200ms），但不重置旋转角度和 isCoverLoaded
+            // 1. 直接开始淡出封面（200ms），但不重置旋转角度 and isCoverLoaded
             coverAlpha.animateTo(targetValue = 0f, animationSpec = tween(200))
             // 2. 加载新封面
             val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
             val blurred = loaded?.let { song.loadBlurredCover(context, it) }
             bgBitmap = loaded
             bgBitmapBlur = blurred
+            updateGlowColors(blurred)
             withFrameMillis {}
             withFrameMillis {}
             // 3. 淡入新封面（300ms）
@@ -224,31 +309,105 @@ fun FullPlayerScreen(
         modifier =
             Modifier.fillMaxSize()
                 .clipToBounds()
+                .background(appColors.mainBackground)
                 .drawWithContent {
                     if (!isFullyHidden()) {
+                        val w = size.width
+                        val h = size.height
+                        val baseRadius = maxOf(w, h) * 0.45f // 缩减基准半径以使边缘掠过时有更强的边界光感流动
+
+                        drawIntoCanvas { canvas ->
+                            // 绘制极光 1 (偏左上漂移，限制在左上象限活动，避免越界和被遮盖)
+                            val center1 =
+                                Offset(
+                                    x = w * 0.25f + w * (glow1X * 0.35f),
+                                    y = h * 0.25f + h * (glow1Y * 0.35f),
+                                )
+                            val radius1 = baseRadius * glow1RadiusScale
+
+                            val paint1 =
+                                Paint().apply {
+                                    isAntiAlias = true
+                                    asFrameworkPaint().isDither = true // 开启硬件级混色抖动
+                                }
+
+                            val alpha1 = 0.38f * coverAlpha.value
+                            val colors1 =
+                                listOf(
+                                    animatedGlowColor1.copy(alpha = alpha1),
+                                    animatedGlowColor1.copy(alpha = alpha1 * 0.8f),
+                                    animatedGlowColor1.copy(alpha = alpha1 * 0.55f),
+                                    animatedGlowColor1.copy(alpha = alpha1 * 0.32f),
+                                    animatedGlowColor1.copy(alpha = alpha1 * 0.15f),
+                                    animatedGlowColor1.copy(alpha = alpha1 * 0.05f),
+                                    Color.Transparent,
+                                )
+
+                            val shaderBrush1 =
+                                Brush.radialGradient(
+                                    0.0f to colors1[0],
+                                    0.15f to colors1[1],
+                                    0.35f to colors1[2],
+                                    0.55f to colors1[3],
+                                    0.75f to colors1[4],
+                                    0.90f to colors1[5],
+                                    1.0f to colors1[6],
+                                    center = center1,
+                                    radius = radius1,
+                                ) as ShaderBrush
+
+                            paint1.shader = shaderBrush1.createShader(size)
+                            canvas.drawCircle(center1, radius1, paint1)
+
+                            // 绘制极光 2 (偏右下漂移，限制在右下象限活动，避免越界和被遮盖)
+                            val center2 =
+                                Offset(
+                                    x = w * 0.75f + w * (glow2X * 0.35f),
+                                    y = h * 0.75f + h * (glow2Y * 0.35f),
+                                )
+                            val radius2 = baseRadius * glow2RadiusScale
+
+                            val paint2 =
+                                Paint().apply {
+                                    isAntiAlias = true
+                                    asFrameworkPaint().isDither = true // 开启硬件级混色抖动
+                                }
+
+                            val alpha2 = 0.35f * coverAlpha.value
+                            val colors2 =
+                                listOf(
+                                    animatedGlowColor2.copy(alpha = alpha2),
+                                    animatedGlowColor2.copy(alpha = alpha2 * 0.8f),
+                                    animatedGlowColor2.copy(alpha = alpha2 * 0.55f),
+                                    animatedGlowColor2.copy(alpha = alpha2 * 0.32f),
+                                    animatedGlowColor2.copy(alpha = alpha2 * 0.15f),
+                                    animatedGlowColor2.copy(alpha = alpha2 * 0.05f),
+                                    Color.Transparent,
+                                )
+
+                            val shaderBrush2 =
+                                Brush.radialGradient(
+                                    0.0f to colors2[0],
+                                    0.15f to colors2[1],
+                                    0.35f to colors2[2],
+                                    0.55f to colors2[3],
+                                    0.75f to colors2[4],
+                                    0.90f to colors2[5],
+                                    1.0f to colors2[6],
+                                    center = center2,
+                                    radius = radius2,
+                                ) as ShaderBrush
+
+                            paint2.shader = shaderBrush2.createShader(size)
+                            canvas.drawCircle(center2, radius2, paint2)
+                        }
+
+                        // 绘制背景极光之后，再绘制 Box 内部的主体前景内容
                         drawContent()
                     }
                 }
-                .background(appColors.mainBackground)
                 .then(dragModifier)
     ) {
-        // 1. Ambient blur cover image（使用预模糊的低分辨率图片，免除 Modifier.blur 开销）
-        if (bgBitmapBlur != null) {
-            Image(
-                bitmap = bgBitmapBlur!!.asImageBitmap(),
-                contentDescription = null,
-                modifier =
-                    Modifier.fillMaxSize().graphicsLayer {
-                        scaleX = glowScale
-                        scaleY = glowScale
-                        rotationZ = glowRotation
-                        translationX = glowTranslationX
-                        translationY = glowTranslationY
-                        alpha = 0.55f * coverAlpha.value
-                    },
-                contentScale = ContentScale.Crop,
-            )
-        }
 
         // 精心调配的多重渐变遮罩，使封面色彩流淌的同时保证文字的可读性
         val overlayBrush =
@@ -277,7 +436,7 @@ fun FullPlayerScreen(
                 colors =
                     listOf(
                         Color.Transparent,
-                        if (isDarkMode) Color(0xAA0C0C0E) else Color(0xAAF5F5F7),
+                        if (isDarkMode) Color(0x660C0C0E) else Color(0x66F5F5F7),
                     )
             )
 
