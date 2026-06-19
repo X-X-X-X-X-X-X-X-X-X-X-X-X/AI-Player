@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cn.xuexc.ai_player.data.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -36,15 +35,10 @@ fun SongCover(
     fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.MusicNote,
 ) {
     val context = LocalContext.current
-    var bitmap by remember(song.id, song.lastModified) { mutableStateOf(song.getCachedCover()) }
+    var bitmap by remember(song.id) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
-    LaunchedEffect(song.id, song.lastModified) {
-        if (bitmap == null) {
-            if (!song.hasDiskCover(context, 150)) {
-                delay(80)
-            }
-            withContext(Dispatchers.IO) { bitmap = song.loadCover(context, 150) }
-        }
+    LaunchedEffect(song.id) {
+        withContext(Dispatchers.IO) { bitmap = song.loadCover(context, 150) }
     }
 
     Box(
@@ -93,17 +87,11 @@ fun PlaylistCover(
     iconSize: androidx.compose.ui.unit.Dp = 24.dp,
 ) {
     val context = LocalContext.current
-    var bitmap by
-        remember(firstSongId) { mutableStateOf(firstSongId?.let { getCachedCoverById(it) }) }
+    var bitmap by remember(firstSongId) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     LaunchedEffect(firstSongId) {
         if (firstSongId != null) {
-            if (bitmap == null) {
-                if (!hasDiskCoverById(context, firstSongId, 150)) {
-                    delay(100)
-                }
-                withContext(Dispatchers.IO) { bitmap = loadCoverById(context, firstSongId, 150) }
-            }
+            withContext(Dispatchers.IO) { bitmap = loadCoverById(context, firstSongId, 150) }
         } else {
             bitmap = null
         }
@@ -141,11 +129,10 @@ fun MiniPlayerCover(
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
 ) {
     val context = LocalContext.current
-    var bitmap by remember { mutableStateOf(song.getCachedCover()) }
+    var bitmap by remember(song.id) { mutableStateOf<android.graphics.Bitmap?>(null) }
 
-    LaunchedEffect(song.id, song.lastModified) {
-        val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 150) }
-        bitmap = loaded
+    LaunchedEffect(song.id) {
+        withContext(Dispatchers.IO) { bitmap = song.loadCover(context, 150) }
     }
 
     Box(
