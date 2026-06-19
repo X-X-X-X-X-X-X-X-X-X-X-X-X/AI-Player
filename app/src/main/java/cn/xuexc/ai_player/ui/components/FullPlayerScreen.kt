@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -31,11 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.palette.graphics.Palette
 import cn.xuexc.ai_player.data.*
 import cn.xuexc.ai_player.playback.PlayMode
 import cn.xuexc.ai_player.ui.SongViewModel
@@ -77,114 +78,10 @@ fun FullPlayerScreen(
     val currentProgressState = rememberUpdatedState(playbackProgress)
     val progressProvider = remember { { currentProgressState.value } }
 
-    // 1. 极光背景主色状态与平滑颜色插值
-    val initialColors =
-        remember(song.id, song.lastModified, isDarkMode) {
-            val cached = song.getCachedBlurredCover()
-            val rawPair =
-                if (cached != null && cached.width > 0 && cached.height > 0) {
-                    try {
-                        val w = cached.width
-                        val h = cached.height
-                        Pair(
-                            Color(cached.getPixel(w / 4, h / 4)),
-                            Color(cached.getPixel(w * 3 / 4, h * 3 / 4)),
-                        )
-                    } catch (e: Exception) {
-                        Pair(
-                            currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
-                            currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
-                        )
-                    }
-                } else {
-                    Pair(
-                        currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
-                        currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
-                    )
-                }
-            Pair(
-                adjustColorForAmbientGlow(rawPair.first, isDarkMode),
-                adjustColorForAmbientGlow(rawPair.second, isDarkMode),
-            )
-        }
-
-    var glowColor1 by remember(isDarkMode) { mutableStateOf(initialColors.first) }
-    var glowColor2 by remember(isDarkMode) { mutableStateOf(initialColors.second) }
-
-    val animatedGlowColor1 by
-        animateColorAsState(
-            targetValue = glowColor1,
-            animationSpec = tween(1200),
-            label = "animatedColor1",
-        )
-    val animatedGlowColor2 by
-        animateColorAsState(
-            targetValue = glowColor2,
-            animationSpec = tween(1200),
-            label = "animatedColor2",
-        )
-
-    fun updateGlowColors(bitmap: android.graphics.Bitmap?) {
-        if (bitmap != null && bitmap.width > 0 && bitmap.height > 0) {
-            try {
-                val w = bitmap.width
-                val h = bitmap.height
-                val c1 = Color(bitmap.getPixel(w / 4, h / 4))
-                val c2 = Color(bitmap.getPixel(w * 3 / 4, h * 3 / 4))
-                glowColor1 = adjustColorForAmbientGlow(c1, isDarkMode)
-                glowColor2 = adjustColorForAmbientGlow(c2, isDarkMode)
-            } catch (e: Exception) {
-                glowColor1 =
-                    adjustColorForAmbientGlow(
-                        currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
-                        isDarkMode,
-                    )
-                glowColor2 =
-                    adjustColorForAmbientGlow(
-                        currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
-                        isDarkMode,
-                    )
-            }
-        } else {
-            glowColor1 =
-                adjustColorForAmbientGlow(
-                    currentAccent.gradientColors.firstOrNull() ?: currentAccent.mainColor,
-                    isDarkMode,
-                )
-            glowColor2 =
-                adjustColorForAmbientGlow(
-                    currentAccent.gradientColors.lastOrNull() ?: currentAccent.mainColor,
-                    isDarkMode,
-                )
-        }
-    }
-
-    // 2. 一个随时间匀速增加的全局弧度，用于驱动全屏线性水流渐变，实现无缝平滑的水流循环
-    val infiniteTransition = rememberInfiniteTransition(label = "ambientGlow")
-    val animTime by
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 6.2831853f, // 2 * PI，120秒内扫过1个完整正弦周期，消除 Restart 突变
-            animationSpec =
-                infiniteRepeatable(
-                    animation = tween(120000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart,
-                ),
-            label = "animTime",
-        )
-    val glowPaint = remember {
-        Paint().apply {
-            isAntiAlias = true
-            asFrameworkPaint().isDither = true // 强开底层硬件级抖动混色，彻底抹平色彩断层 (Banding)
-        }
-    }
     var bgBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover()) }
-    var bgBitmapBlur by remember {
-        mutableStateOf<android.graphics.Bitmap?>(song.getCachedBlurredCover())
-    }
     var isCoverLoaded by remember { mutableStateOf(false) }
     var rotationAngle by remember { mutableStateOf(0f) }
-    // 封面透明度 Animatable：控制唱片中心封面与背景模糊图的淡出/淡入效果
+    // 封面透明度 Animatable：控制唱片中心封面的淡出/淡入效果
     val coverAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
     // 标记是否是首次加载，避免进入播放界面时触发淡出动画
     var isFirstLoad by remember { mutableStateOf(true) }
@@ -202,11 +99,8 @@ fun FullPlayerScreen(
             rotationAngle = 0f
             withContext(Dispatchers.IO) {
                 val loaded = song.loadCover(context, 400)
-                val blurred = loaded?.let { song.loadBlurredCover(context, it) }
                 withContext(Dispatchers.Main) {
                     bgBitmap = loaded
-                    bgBitmapBlur = blurred
-                    updateGlowColors(blurred)
                     withFrameMillis {}
                     withFrameMillis {}
                     isCoverLoaded = true
@@ -224,7 +118,6 @@ fun FullPlayerScreen(
 
             // 与淡出动画并行执行封面加载
             val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
-            val blurred = loaded?.let { song.loadBlurredCover(context, it) }
 
             // 等待淡出动画播放完毕
             fadeOutJob.join()
@@ -235,8 +128,6 @@ fun FullPlayerScreen(
 
             // 3. 替换新封面
             bgBitmap = loaded
-            bgBitmapBlur = blurred
-            updateGlowColors(blurred)
             withFrameMillis {}
             withFrameMillis {}
             isCoverLoaded = true
@@ -249,10 +140,7 @@ fun FullPlayerScreen(
             coverAlpha.animateTo(targetValue = 0f, animationSpec = tween(200))
             // 2. 加载新封面
             val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
-            val blurred = loaded?.let { song.loadBlurredCover(context, it) }
             bgBitmap = loaded
-            bgBitmapBlur = blurred
-            updateGlowColors(blurred)
             withFrameMillis {}
             withFrameMillis {}
             // 3. 淡入新封面（300ms）
@@ -272,13 +160,6 @@ fun FullPlayerScreen(
             label = "cardScale",
         )
 
-    val glowAlpha by
-        animateFloatAsState(
-            targetValue = if (isPlaying) 0.5f else 0.15f,
-            animationSpec = tween(800),
-            label = "glowAlpha",
-        )
-
     val playMode by viewModel.playMode.collectAsState()
     val favoriteColor by
         animateColorAsState(
@@ -288,128 +169,13 @@ fun FullPlayerScreen(
             label = "fav_btn",
         )
 
-    Box(
-        modifier =
-            Modifier.fillMaxSize()
-                .clipToBounds()
-                .background(appColors.mainBackground)
-                .drawWithContent {
-                    if (!isFullyHidden()) {
-                        val w = size.width
-                        val h = size.height
-                        val time = animTime
-                        val minDim = minOf(w, h)
-                        val isLandscape = w > h
-
-                        drawIntoCanvas { canvas ->
-                            // 封装底层带 Dither 的线性渐变绘制，规避 Compose 默认绘制无抖动导致的色彩断层
-                            fun drawDitheredLinearGradient(
-                                colorStart: Color,
-                                colorEnd: Color,
-                                start: Offset,
-                                end: Offset,
-                            ) {
-                                val brush =
-                                    Brush.linearGradient(
-                                        colors = listOf(colorStart, colorEnd),
-                                        start = start,
-                                        end = end,
-                                    ) as ShaderBrush
-                                glowPaint.shader = brush.createShader(size)
-                                canvas.drawRect(
-                                    androidx.compose.ui.geometry.Rect(0f, 0f, w, h),
-                                    glowPaint,
-                                )
-                            }
-
-                            // 1. 绘制水流 A (偏左上斜向，平滑延伸覆盖大部分屏幕以与右下水流融合)
-                            val alphaA = if (isDarkMode) 0.32f else 0.28f
-                            val colorA = animatedGlowColor1.copy(alpha = alphaA * coverAlpha.value)
-                            val dA = kotlin.math.cos(time) * (minDim * 0.15f)
-                            val startA = Offset(-w * 0.2f + dA, -h * 0.2f + dA)
-                            val endA = Offset(w * 0.8f + dA, h * 0.8f + dA)
-                            drawDitheredLinearGradient(colorA, Color.Transparent, startA, endA)
-
-                            // 2. 绘制水流 B (偏右下斜向，平滑延伸覆盖大部分屏幕以与左上水流融合，横屏下增强色彩)
-                            val alphaB = if (isDarkMode) 0.28f else 0.24f
-                            val finalAlphaB =
-                                if (isLandscape && !isDarkMode) alphaB * 1.3f else alphaB
-                            val colorB =
-                                animatedGlowColor2.copy(alpha = finalAlphaB * coverAlpha.value)
-                            val dB = kotlin.math.sin(time + 1.0f) * (minDim * 0.12f)
-                            val startB = Offset(w * 1.2f - dB, h * 1.2f - dB)
-                            val endB = Offset(w * 0.2f - dB, h * 0.2f - dB)
-                            drawDitheredLinearGradient(colorB, Color.Transparent, startB, endB)
-
-                            // 3. 绘制水流 C (偏左侧横向，平滑延伸越过中线以融合右侧)
-                            val alphaC = if (isDarkMode) 0.22f else 0.20f
-                            val colorC = animatedGlowColor2.copy(alpha = alphaC * coverAlpha.value)
-                            val dC = kotlin.math.cos(time * 1.5f) * (w * 0.12f)
-                            val startC = Offset(-w * 0.2f + dC, h * 0.45f)
-                            val endC = Offset(w * 0.7f + dC, h * 0.45f)
-                            drawDitheredLinearGradient(colorC, Color.Transparent, startC, endC)
-
-                            // 4. 绘制水流 D (偏右侧横向，平滑延伸越过中线以融合左侧，横屏下增强色彩)
-                            val alphaD = if (isDarkMode) 0.22f else 0.20f
-                            val finalAlphaD =
-                                if (isLandscape && !isDarkMode) alphaD * 1.3f else alphaD
-                            val colorD =
-                                animatedGlowColor1.copy(alpha = finalAlphaD * coverAlpha.value)
-                            val dD = kotlin.math.sin(time * 1.2f) * (w * 0.10f)
-                            val startD = Offset(w * 1.2f + dD, h * 0.55f)
-                            val endD = Offset(w * 0.3f + dD, h * 0.55f)
-                            drawDitheredLinearGradient(colorD, Color.Transparent, startD, endD)
-
-                            // 5. 绘制垂直渐变遮罩 (强制使用 Dither)，消除遮罩本身的灰阶断层
-                            val overlayGradient =
-                                if (isDarkMode) {
-                                    Brush.verticalGradient(
-                                        colors =
-                                            listOf(
-                                                Color(0xCC0C0C0E),
-                                                Color(0x550C0C0E),
-                                                Color(0xEE0C0C0E),
-                                            )
-                                    )
-                                } else {
-                                    Brush.verticalGradient(
-                                        0.0f to Color(0x90F5F5F7), // 顶部边缘遮蔽以看清状态栏 (56%)
-                                        0.12f to Color(0x22F5F5F7), // 快速收敛为清透的磨砂白 (13.7%)
-                                        0.85f to
-                                            Color(0x22F5F5F7), // 中部 73% 的广大显示区域保持极其通透、浓度恒定一致的磨砂白
-                                        1.0f to Color(0xADF5F5F7), // 底部过渡到 68% 遮蔽，保证按键对比度
-                                    )
-                                }
-                                    as ShaderBrush
-                            glowPaint.shader = overlayGradient.createShader(size)
-                            canvas.drawRect(
-                                androidx.compose.ui.geometry.Rect(0f, 0f, w, h),
-                                glowPaint,
-                            )
-
-                            // 6. 绘制径向渐变遮罩 (强制使用 Dither)
-                            val radialGradient =
-                                Brush.radialGradient(
-                                    colors =
-                                        listOf(
-                                            Color.Transparent,
-                                            if (isDarkMode) Color(0x660C0C0E)
-                                            else Color(0x06F5F5F7), // 仅保留极淡的边缘过度以释放四周流光
-                                        )
-                                ) as ShaderBrush
-                            glowPaint.shader = radialGradient.createShader(size)
-                            canvas.drawRect(
-                                androidx.compose.ui.geometry.Rect(0f, 0f, w, h),
-                                glowPaint,
-                            )
-                        }
-
-                        // 绘制背景极光与遮罩之后，再绘制 Box 内部的主体前景内容
-                        drawContent()
-                    }
-                }
-                .then(dragModifier)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().clipToBounds().then(dragModifier)) {
+        CoolPlayerBackground(
+            song = song,
+            isDarkMode = isDarkMode,
+            currentAccent = currentAccent,
+            appColors = appColors,
+        )
         val configuration = LocalConfiguration.current
         val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -1492,12 +1258,284 @@ internal fun openInMusicTagEditor(context: Context, audioFilePath: String) {
     }
 }
 
-private fun adjustColorForAmbientGlow(color: Color, isDarkMode: Boolean): Color {
-    if (isDarkMode) return color
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
-    // 浅色模式清透色彩调配：更低饱和度，更高亮度，确保流光极致干净，杜绝脏色
-    hsv[1] = hsv[1].coerceIn(0.20f, 0.45f)
-    hsv[2] = hsv[2].coerceIn(0.82f, 0.94f)
-    return Color(android.graphics.Color.HSVToColor(hsv))
+@Composable
+fun CoolPlayerBackground(
+    song: Song,
+    isDarkMode: Boolean,
+    currentAccent: AccentColor,
+    appColors: AppColors,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var blurredBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+
+    var paletteColors by remember {
+        mutableStateOf(
+            PaletteColors(
+                primary = currentAccent.mainColor.copy(alpha = 0.5f),
+                secondary = currentAccent.mainColor.copy(alpha = 0.3f),
+                tertiary = currentAccent.mainColor.copy(alpha = 0.2f),
+            )
+        )
+    }
+
+    LaunchedEffect(song.id) {
+        // 在后台 IO 协程中独立加载封面图，完全解耦于外部淡出淡入动画，保证响应切歌极为迅速
+        val loadedCover = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
+
+        if (loadedCover != null) {
+            // 1. 异步加载小图的模糊底图，极大降低模糊运算负担，并利用双线性拉伸取得极佳的柔和模糊背景
+            launch {
+                val blurred = song.loadBlurredCover(context, loadedCover)
+                blurredBitmap = blurred
+            }
+
+            // 2. 异步提取 Palette 优势色，不阻塞 UI 线程
+            withContext(Dispatchers.Default) {
+                try {
+                    val palette = Palette.from(loadedCover).generate()
+                    // 按照像素分布大小降序排列所有颜色样本，确保拿到的必定是封面中实际存在且面积最大的优势主色，彻底杜绝杂色
+                    val sortedSwatches = palette.swatches.sortedByDescending { it.population }
+
+                    var primaryColor =
+                        sortedSwatches.getOrNull(0)?.rgb ?: currentAccent.mainColor.toArgb()
+                    var secondaryColor = sortedSwatches.getOrNull(1)?.rgb ?: primaryColor
+                    var tertiaryColor = sortedSwatches.getOrNull(2)?.rgb ?: secondaryColor
+
+                    // 智能黑白/灰度封面检测：检测优势主色的饱和度。
+                    // 许多看似黑白的封面在 RGB 空间存在微小噪声，通过 HSL 饱和度阈值过滤，低于 8% 判定为黑白无彩色，强制转换背景色为纯净灰度
+                    val r = (primaryColor shr 16) and 0xff
+                    val g = (primaryColor shr 8) and 0xff
+                    val b = primaryColor and 0xff
+                    val max = maxOf(r, maxOf(g, b))
+                    val min = minOf(r, minOf(g, b))
+                    val saturation = if (max == 0) 0f else (max - min).toFloat() / max.toFloat()
+
+                    if (saturation < 0.08f) {
+                        fun toGrayscale(c: Int): Int {
+                            val cr = (c shr 16) and 0xff
+                            val cg = (c shr 8) and 0xff
+                            val cb = c and 0xff
+                            val gray =
+                                (0.299f * cr + 0.587f * cg + 0.114f * cb).toInt().coerceIn(0, 255)
+                            return (0xff shl 24) or (gray shl 16) or (gray shl 8) or gray
+                        }
+                        primaryColor = toGrayscale(primaryColor)
+                        secondaryColor = toGrayscale(secondaryColor)
+                        tertiaryColor = toGrayscale(tertiaryColor)
+                    }
+
+                    // 3. 浅色模式（日间模式）下的亮度提亮与饱和度压制，避免深色封面在浅色模式下导致黑色文字因背景过深而不可见
+                    fun adjustForLightMode(c: Int): Int {
+                        val hsl = FloatArray(3)
+                        androidx.core.graphics.ColorUtils.colorToHSL(c, hsl)
+                        if (!isDarkMode) {
+                            if (hsl[2] < 0.82f) {
+                                hsl[2] = 0.85f // 强行提亮到 85%，确保与深色文字对比度极高
+                            }
+                            if (hsl[1] > 0.3f) {
+                                hsl[1] = 0.28f // 饱和度降至 28% 以下，呈现优雅淡雅的马卡龙粉彩调性
+                            }
+                        }
+                        return androidx.core.graphics.ColorUtils.HSLToColor(hsl)
+                    }
+
+                    primaryColor = adjustForLightMode(primaryColor)
+                    secondaryColor = adjustForLightMode(secondaryColor)
+                    tertiaryColor = adjustForLightMode(tertiaryColor)
+
+                    paletteColors =
+                        PaletteColors(
+                            primary = Color(primaryColor),
+                            secondary = Color(secondaryColor),
+                            tertiary = Color(tertiaryColor),
+                        )
+                } catch (e: Exception) {
+                    // 异常兜底
+                }
+            }
+        } else {
+            blurredBitmap = null
+            paletteColors =
+                PaletteColors(
+                    primary = currentAccent.mainColor.copy(alpha = 0.5f),
+                    secondary = currentAccent.mainColor.copy(alpha = 0.3f),
+                    tertiary = currentAccent.mainColor.copy(alpha = 0.2f),
+                )
+        }
+    }
+
+    // 颜色变化平滑渐变（1000ms 补间动画，在切歌时极度丝滑）
+    val animatedPrimary by
+        animateColorAsState(
+            targetValue = paletteColors.primary,
+            animationSpec = tween(1000),
+            label = "bg_primary",
+        )
+    val animatedSecondary by
+        animateColorAsState(
+            targetValue = paletteColors.secondary,
+            animationSpec = tween(1000),
+            label = "bg_secondary",
+        )
+    val animatedTertiary by
+        animateColorAsState(
+            targetValue = paletteColors.tertiary,
+            animationSpec = tween(1000),
+            label = "bg_tertiary",
+        )
+
+    val baseBgColor = if (isDarkMode) appColors.mainBackground else SolidColor(Color(0xFFFAFAFC))
+
+    Box(
+        modifier = modifier.fillMaxSize().background(baseBgColor) // 确保播放界面底色绝对不透明，浅色模式下使用亮洁白底
+    ) {
+        // 第一层：模糊底色图。日间模式大幅度降低底色图不透明度（0.75f -> 0.22f），仅保留一层极淡的封面映射基调，防止背景发暗发脏
+        val baseImageAlpha = if (isDarkMode) 0.75f else 0.22f
+        Crossfade(
+            targetState = blurredBitmap,
+            animationSpec = tween(1000),
+            label = "blur_bg_fade",
+        ) { bitmap ->
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = baseImageAlpha,
+                )
+            }
+        }
+
+        // 第二层：流光溢彩（Canvas 绘制的漂浮极光渐变球，带大小呼吸与大幅度平移动效）
+        val infiniteTransition = rememberInfiniteTransition(label = "fluid_bg")
+
+        // 浮动球 1 的平移角度（加快移动速度 22s -> 11s）
+        val angle1 by
+            infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 2f * Math.PI.toFloat(),
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween(11000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart,
+                    ),
+                label = "ball1_angle",
+            )
+
+        // 浮动球 2 的平移角度（加快移动速度 28s -> 14s）
+        val angle2 by
+            infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 2f * Math.PI.toFloat(),
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween(14000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart,
+                    ),
+                label = "ball2_angle",
+            )
+
+        // 浮动球 1 的半径呼吸收缩动画，使之产生扩散、收缩的流光质感
+        val scaleRadius1 by
+            infiniteTransition.animateFloat(
+                initialValue = 0.65f,
+                targetValue = 0.95f,
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween(6500, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse,
+                    ),
+                label = "ball1_scale",
+            )
+
+        // 浮动球 2 的半径呼吸收缩动画
+        val scaleRadius2 by
+            infiniteTransition.animateFloat(
+                initialValue = 0.6f,
+                targetValue = 0.85f,
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween(8500, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse,
+                    ),
+                label = "ball2_scale",
+            )
+
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+
+            // 球 1 以椭圆轨迹在更大的摆动幅度下平移
+            val centerX1 = width * 0.35f + (width * 0.25f) * kotlin.math.cos(angle1)
+            val centerY1 = height * 0.45f + (height * 0.18f) * kotlin.math.sin(angle1)
+
+            // 球 2
+            val centerX2 = width * 0.65f + (width * 0.28f) * kotlin.math.sin(angle2)
+            val centerY2 = height * 0.55f + (height * 0.2f) * kotlin.math.cos(angle2)
+
+            val r1 = width * scaleRadius1
+            val r2 = width * scaleRadius2
+
+            // 针对深浅色模式自适应气泡透明度，日间模式下使用极高明度的马卡龙色，适当提高 alpha 以展现水彩般通透晕染
+            val alpha1 = if (isDarkMode) 0.35f else 0.30f
+            val alpha2 = if (isDarkMode) 0.25f else 0.22f
+            val alpha3 = if (isDarkMode) 0.20f else 0.15f
+
+            // 绘制巨大的径向模糊渐变
+            drawCircle(
+                brush =
+                    Brush.radialGradient(
+                        colors = listOf(animatedPrimary.copy(alpha = alpha1), Color.Transparent),
+                        center = Offset(centerX1, centerY1),
+                        radius = r1,
+                    ),
+                radius = r1,
+                center = Offset(centerX1, centerY1),
+            )
+
+            drawCircle(
+                brush =
+                    Brush.radialGradient(
+                        colors = listOf(animatedSecondary.copy(alpha = alpha2), Color.Transparent),
+                        center = Offset(centerX2, centerY2),
+                        radius = r2,
+                    ),
+                radius = r2,
+                center = Offset(centerX2, centerY2),
+            )
+
+            // 底部点缀第三种色调
+            drawCircle(
+                brush =
+                    Brush.radialGradient(
+                        colors = listOf(animatedTertiary.copy(alpha = alpha3), Color.Transparent),
+                        center = Offset(width * 0.5f, height * 0.9f),
+                        radius = width * 0.7f,
+                    ),
+                radius = width * 0.7f,
+                center = Offset(width * 0.5f, height * 0.9f),
+            )
+        }
+
+        // 第三层：通透的渐变防干扰蒙层。由于背景本身在日间模式下已被极度淡化和亮白处理，蒙层只需极轻薄白色（10%~30%），消除灰暗发脏感，保留绝佳通透性
+        val scrimColors =
+            if (isDarkMode) {
+                listOf(
+                    Color(0xFF121212).copy(alpha = 0.4f),
+                    Color(0xFF121212).copy(alpha = 0.15f),
+                    Color(0xFF121212).copy(alpha = 0.45f),
+                )
+            } else {
+                listOf(
+                    Color(0xFFFAFAFC).copy(alpha = 0.25f),
+                    Color(0xFFFAFAFC).copy(alpha = 0.1f),
+                    Color(0xFFFAFAFC).copy(alpha = 0.3f),
+                )
+            }
+        Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(scrimColors)))
+    }
 }
+
+data class PaletteColors(val primary: Color, val secondary: Color, val tertiary: Color)
