@@ -40,7 +40,9 @@ fun SongCover(
 
     LaunchedEffect(song.id, song.lastModified) {
         if (bitmap == null) {
-            delay(100)
+            if (!song.hasDiskCover(context, 150)) {
+                delay(80)
+            }
             withContext(Dispatchers.IO) { bitmap = song.loadCover(context, 150) }
         }
     }

@@ -366,8 +366,10 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                         it
                     }
                 }
-            _allSongs.value = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            val filteredSongs = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            _allSongs.value = filteredSongs
             _isSongsLoaded.value = true
+            preloadCovers(filteredSongs, limit = 40)
 
             activePlaylistIdForRefresh?.let { playlistId ->
                 val listInPlaylist =
@@ -376,10 +378,19 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                         -2L -> dbHelper.getBlacklistedSongs()
                         else -> dbHelper.getSongsInPlaylist(playlistId)
                     }
-                _currentPlaylistSongs.value =
+                val filteredPlaylistSongs =
                     listInPlaylist.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+                _currentPlaylistSongs.value = filteredPlaylistSongs
+                preloadCovers(filteredPlaylistSongs, limit = 40)
             }
         }
+
+    /** 预加载指定歌曲列表的前 N 首封面到内存 LruCache 与磁盘 */
+    private fun preloadCovers(songs: List<Song>, limit: Int = 40) {
+        viewModelScope.launch(Dispatchers.IO) {
+            songs.take(limit).forEach { song -> song.loadCover(getApplication(), 150) }
+        }
+    }
 
     fun startScan(context: Context, isSilent: Boolean = false) {
         viewModelScope.launch {
@@ -738,8 +749,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                         it
                     }
                 }
-            _currentPlaylistSongs.value =
-                list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            val filtered = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            _currentPlaylistSongs.value = filtered
+            preloadCovers(filtered, limit = 40)
         }
     }
 
@@ -755,8 +767,9 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                         it
                     }
                 }
-            _currentPlaylistSongs.value =
-                list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            val filtered = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            _currentPlaylistSongs.value = filtered
+            preloadCovers(filtered, limit = 40)
         }
     }
 
