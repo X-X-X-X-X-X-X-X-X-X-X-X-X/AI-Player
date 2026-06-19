@@ -99,7 +99,9 @@ fun PlaylistCover(
     LaunchedEffect(firstSongId) {
         if (firstSongId != null) {
             if (bitmap == null) {
-                delay(100)
+                if (!hasDiskCoverById(context, firstSongId, 150)) {
+                    delay(100)
+                }
                 withContext(Dispatchers.IO) { bitmap = loadCoverById(context, firstSongId, 150) }
             }
         } else {

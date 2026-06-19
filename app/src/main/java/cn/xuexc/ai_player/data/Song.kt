@@ -155,10 +155,14 @@ private fun getCoverCacheFile(
 }
 
 /** 辅助方法：快速判断本地磁盘缓存是否存在 */
-fun Song.hasDiskCover(context: android.content.Context, size: Int = 150): Boolean {
+fun hasDiskCoverById(context: android.content.Context, songId: Long, size: Int = 150): Boolean {
     val cacheDir = java.io.File(context.cacheDir, "covers")
-    val file = java.io.File(cacheDir, "${this.id}_$size.jpg")
+    val file = java.io.File(cacheDir, "${songId}_$size.jpg")
     return file.exists() && file.length() > 0
+}
+
+fun Song.hasDiskCover(context: android.content.Context, size: Int = 150): Boolean {
+    return hasDiskCoverById(context, this.id, size)
 }
 
 fun getCachedCoverById(songId: Long): android.graphics.Bitmap? {

@@ -52,6 +52,7 @@ import cn.xuexc.ai_player.ui.SongViewModel
 import java.io.File
 import java.util.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -245,19 +246,31 @@ fun FullPlayerScreen(
             // 切歌：先淡出当前封面（旋转继续）-> 停转重置 -> 加载新封面 -> 淡入
             // 1. 直接开始淡出（200ms），旋转随封面一起淡出，不提前停顿
             lastSongId = song.id
-            coverAlpha.animateTo(targetValue = 0f, animationSpec = tween(200))
+
+            // 启动并行的淡出动画
+            val fadeOutJob = launch {
+                coverAlpha.animateTo(targetValue = 0f, animationSpec = tween(200))
+            }
+
+            // 与淡出动画并行执行封面加载
+            val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
+            val blurred = loaded?.let { song.loadBlurredCover(context, it) }
+
+            // 等待淡出动画播放完毕
+            fadeOutJob.join()
+
             // 2. 淡出完成后停止旋转并重置角度
             isCoverLoaded = false
             rotationAngle = 0f
-            // 3. 加载下一首封面
-            val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
-            val blurred = loaded?.let { song.loadBlurredCover(context, it) }
+
+            // 3. 替换新封面
             bgBitmap = loaded
             bgBitmapBlur = blurred
             updateGlowColors(blurred)
             withFrameMillis {}
             withFrameMillis {}
             isCoverLoaded = true
+
             // 4. 淡入新封面（300ms）
             coverAlpha.animateTo(targetValue = 1f, animationSpec = tween(300))
         } else {

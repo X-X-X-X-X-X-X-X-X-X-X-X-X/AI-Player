@@ -511,10 +511,16 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-    /** 预加载指定歌曲列表的前 N 首封面到内存 LruCache 与磁盘 */
+    /** 预加载指定歌曲列表的前 N 首封面到内存 LruCache 与磁盘（仅当磁盘上有缓存时才进行加载，避免后台解析阻塞前台） */
     private fun preloadCovers(songs: List<Song>, limit: Int = 40) {
         viewModelScope.launch(Dispatchers.IO) {
-            songs.take(limit).forEach { song -> song.loadCover(getApplication(), 150) }
+            val context = getApplication<Application>()
+            songs.take(limit).forEach { song ->
+                val cached = getCachedCoverById(song.id)
+                if (cached == null && song.hasDiskCover(context, 150)) {
+                    song.loadCover(context, 150)
+                }
+            }
         }
     }
 
