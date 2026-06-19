@@ -108,10 +108,8 @@ fun FullPlayerScreen(
             )
         }
 
-    var glowColor1 by
-        remember(song.id, song.lastModified, isDarkMode) { mutableStateOf(initialColors.first) }
-    var glowColor2 by
-        remember(song.id, song.lastModified, isDarkMode) { mutableStateOf(initialColors.second) }
+    var glowColor1 by remember(isDarkMode) { mutableStateOf(initialColors.first) }
+    var glowColor2 by remember(isDarkMode) { mutableStateOf(initialColors.second) }
 
     val animatedGlowColor1 by
         animateColorAsState(
@@ -180,14 +178,10 @@ fun FullPlayerScreen(
             asFrameworkPaint().isDither = true // 强开底层硬件级抖动混色，彻底抹平色彩断层 (Banding)
         }
     }
-    var bgBitmap by
-        remember(song.id, song.lastModified) {
-            mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover())
-        }
-    var bgBitmapBlur by
-        remember(song.id, song.lastModified) {
-            mutableStateOf<android.graphics.Bitmap?>(song.getCachedBlurredCover())
-        }
+    var bgBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover()) }
+    var bgBitmapBlur by remember {
+        mutableStateOf<android.graphics.Bitmap?>(song.getCachedBlurredCover())
+    }
     var isCoverLoaded by remember { mutableStateOf(false) }
     var rotationAngle by remember { mutableStateOf(0f) }
     // 封面透明度 Animatable：控制唱片中心封面与背景模糊图的淡出/淡入效果

@@ -2856,11 +2856,10 @@ fun MainScreen(viewModel: SongViewModel) {
                                                         .padding(start = 26.dp, end = 16.dp),
                                                 verticalAlignment = Alignment.CenterVertically,
                                             ) {
-                                                SongCover(
+                                                MiniPlayerCover(
                                                     song = song,
-                                                    isCurrent = false,
-                                                    isPlaying = false,
                                                     modifier = Modifier.size(42.dp),
+                                                    shape = RoundedCornerShape(8.dp),
                                                 )
 
                                                 Spacer(modifier = Modifier.width(12.dp))

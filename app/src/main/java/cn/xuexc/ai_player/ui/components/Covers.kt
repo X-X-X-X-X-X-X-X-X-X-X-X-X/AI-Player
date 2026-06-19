@@ -133,3 +133,39 @@ fun PlaylistCover(
         }
     }
 }
+
+@Composable
+fun MiniPlayerCover(
+    modifier: Modifier = Modifier,
+    song: Song,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
+) {
+    val context = LocalContext.current
+    var bitmap by remember { mutableStateOf(song.getCachedCover()) }
+
+    LaunchedEffect(song.id, song.lastModified) {
+        val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 150) }
+        bitmap = loaded
+    }
+
+    Box(
+        modifier = modifier.clip(shape).background(Color(0xFF2C2C2E)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = "Mini Album Art",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.MusicNote,
+                contentDescription = "Cover Placeholder",
+                tint = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
