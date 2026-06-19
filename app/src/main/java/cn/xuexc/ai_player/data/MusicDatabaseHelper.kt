@@ -5,11 +5,11 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class MusicDatabaseHelper(context: Context) :
+class MusicDatabaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
     companion object {
         private const val DATABASE_NAME = "music_player.db"
-        private const val DATABASE_VERSION = 4
+        private const val DATABASE_VERSION = 5
 
         const val TABLE_SONGS = "songs"
         const val COLUMN_ID = "id"
@@ -25,6 +25,7 @@ class MusicDatabaseHelper(context: Context) :
         const val COLUMN_DATE_ADDED = "date_added"
         const val COLUMN_FAVORITED_AT = "favorited_at"
         const val COLUMN_BLACKLISTED_AT = "blacklisted_at"
+        const val COLUMN_LAST_MODIFIED = "last_modified"
 
         // Playlists table
         const val TABLE_PLAYLISTS = "playlists"
@@ -54,7 +55,8 @@ class MusicDatabaseHelper(context: Context) :
                 $COLUMN_IS_BLACKLISTED INTEGER DEFAULT 0,
                 $COLUMN_DATE_ADDED INTEGER DEFAULT 0,
                 $COLUMN_FAVORITED_AT INTEGER DEFAULT 0,
-                $COLUMN_BLACKLISTED_AT INTEGER DEFAULT 0
+                $COLUMN_BLACKLISTED_AT INTEGER DEFAULT 0,
+                $COLUMN_LAST_MODIFIED INTEGER DEFAULT 0
             )
             """
                 .trimIndent()
@@ -123,6 +125,11 @@ class MusicDatabaseHelper(context: Context) :
                 "ALTER TABLE $TABLE_PLAYLIST_SONGS ADD COLUMN $COLUMN_PS_ADDED_AT INTEGER DEFAULT 0"
             )
         }
+        if (oldVersion < 5) {
+            db.execSQL(
+                "ALTER TABLE $TABLE_SONGS ADD COLUMN $COLUMN_LAST_MODIFIED INTEGER DEFAULT 0"
+            )
+        }
     }
 
     fun syncSongs(scannedSongs: List<Song>) {
@@ -146,9 +153,26 @@ class MusicDatabaseHelper(context: Context) :
                         put(COLUMN_SIZE, song.size)
                         put(COLUMN_ALBUM_ID, song.albumId)
                         put(COLUMN_DATE_ADDED, song.dateAdded)
+                        val file = java.io.File(song.path)
+                        val lastMod = if (file.exists()) file.lastModified() else 0L
+                        put(COLUMN_LAST_MODIFIED, lastMod)
                     }
 
                 if (existingMap.containsKey(song.id)) {
+                    val existing = existingMap[song.id]
+                    val file = java.io.File(song.path)
+                    val currentLastModified = if (file.exists()) file.lastModified() else 0L
+                    if (
+                        existing != null &&
+                            (existing.title != song.title ||
+                                existing.artist != song.artist ||
+                                existing.album != song.album ||
+                                existing.duration != song.duration ||
+                                existing.size != song.size ||
+                                existing.lastModified != currentLastModified)
+                    ) {
+                        clearCoverCacheForSong(context, song.id)
+                    }
                     // Update but preserve flags (which are not in ContentValues)
                     db.update(TABLE_SONGS, cv, "$COLUMN_ID = ?", arrayOf(song.id.toString()))
                 } else {
@@ -200,6 +224,7 @@ class MusicDatabaseHelper(context: Context) :
             val favCol = cursor.getColumnIndexOrThrow(COLUMN_IS_FAVORITE)
             val blackCol = cursor.getColumnIndexOrThrow(COLUMN_IS_BLACKLISTED)
             val dateAddedCol = cursor.getColumnIndexOrThrow(COLUMN_DATE_ADDED)
+            val lastModCol = cursor.getColumnIndex(COLUMN_LAST_MODIFIED)
 
             while (cursor.moveToNext()) {
                 songsList.add(
@@ -215,6 +240,7 @@ class MusicDatabaseHelper(context: Context) :
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
                         dateAdded = cursor.getLong(dateAddedCol),
+                        lastModified = if (lastModCol != -1) cursor.getLong(lastModCol) else 0L,
                     )
                 )
             }
@@ -248,6 +274,7 @@ class MusicDatabaseHelper(context: Context) :
             val favCol = cursor.getColumnIndexOrThrow(COLUMN_IS_FAVORITE)
             val blackCol = cursor.getColumnIndexOrThrow(COLUMN_IS_BLACKLISTED)
             val dateAddedCol = cursor.getColumnIndexOrThrow(COLUMN_DATE_ADDED)
+            val lastModCol = cursor.getColumnIndex(COLUMN_LAST_MODIFIED)
 
             while (cursor.moveToNext()) {
                 songsList.add(
@@ -263,6 +290,7 @@ class MusicDatabaseHelper(context: Context) :
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
                         dateAdded = cursor.getLong(dateAddedCol),
+                        lastModified = if (lastModCol != -1) cursor.getLong(lastModCol) else 0L,
                     )
                 )
             }
@@ -311,6 +339,7 @@ class MusicDatabaseHelper(context: Context) :
             val favCol = cursor.getColumnIndexOrThrow(COLUMN_IS_FAVORITE)
             val blackCol = cursor.getColumnIndexOrThrow(COLUMN_IS_BLACKLISTED)
             val dateAddedCol = cursor.getColumnIndexOrThrow(COLUMN_DATE_ADDED)
+            val lastModCol = cursor.getColumnIndex(COLUMN_LAST_MODIFIED)
 
             while (cursor.moveToNext()) {
                 songsList.add(
@@ -326,6 +355,7 @@ class MusicDatabaseHelper(context: Context) :
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
                         dateAdded = cursor.getLong(dateAddedCol),
+                        lastModified = if (lastModCol != -1) cursor.getLong(lastModCol) else 0L,
                     )
                 )
             }
@@ -512,6 +542,7 @@ class MusicDatabaseHelper(context: Context) :
             val favCol = cursor.getColumnIndexOrThrow(COLUMN_IS_FAVORITE)
             val blackCol = cursor.getColumnIndexOrThrow(COLUMN_IS_BLACKLISTED)
             val dateAddedCol = cursor.getColumnIndexOrThrow(COLUMN_DATE_ADDED)
+            val lastModCol = cursor.getColumnIndex(COLUMN_LAST_MODIFIED)
 
             while (cursor.moveToNext()) {
                 songsList.add(
@@ -527,6 +558,7 @@ class MusicDatabaseHelper(context: Context) :
                         isFavorite = cursor.getInt(favCol) == 1,
                         isBlacklisted = cursor.getInt(blackCol) == 1,
                         dateAdded = cursor.getLong(dateAddedCol),
+                        lastModified = if (lastModCol != -1) cursor.getLong(lastModCol) else 0L,
                     )
                 )
             }

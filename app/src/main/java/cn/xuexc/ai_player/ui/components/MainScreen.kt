@@ -150,6 +150,8 @@ fun MainScreen(viewModel: SongViewModel) {
     var activePlaylistId by remember {
         mutableStateOf<Long?>(null)
     } // -1 for Favorites, -2 for Blacklist, positive for custom, null for none
+
+    LaunchedEffect(activePlaylistId) { viewModel.activePlaylistIdForRefresh = activePlaylistId }
     var activePlaylistName by remember { mutableStateOf("") }
     var activeArtistName by remember { mutableStateOf<String?>(null) }
     var previousScreen by remember { mutableStateOf<Screen?>(null) }
@@ -557,8 +559,8 @@ fun MainScreen(viewModel: SongViewModel) {
     DisposableEffect(lifecycleOwner, activePlaylistId) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadSongs()
-                viewModel.loadPlaylists()
+                viewModel.checkSongsPhysicalModified(context)
+                viewModel.startScan(context, isSilent = true)
                 if (activePlaylistId == -1L) {
                     viewModel.loadFavoriteSongs()
                 } else if (activePlaylistId == -2L) {
@@ -566,6 +568,9 @@ fun MainScreen(viewModel: SongViewModel) {
                 } else if (activePlaylistId != null) {
                     viewModel.loadSongsInPlaylist(activePlaylistId!!)
                 }
+                cn.xuexc.ai_player.playback.PlaybackManager.checkAndUpdateCurrentSongMetadata(
+                    context
+                )
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

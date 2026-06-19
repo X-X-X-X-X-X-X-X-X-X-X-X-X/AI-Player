@@ -40,6 +40,7 @@ data class ImportResult(
 
 class SongViewModel(application: Application) : AndroidViewModel(application) {
     private val dbHelper = MusicDatabaseHelper(application)
+    var activePlaylistIdForRefresh: Long? = null
 
     // Theme accent color persistence
     private val sharedPrefs =
@@ -337,7 +338,10 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadSongs() {
-        viewModelScope.launch { loadSongsInternal() }
+        viewModelScope.launch {
+            loadSongsInternal()
+            PlaybackManager.refreshMetadata(getApplication())
+        }
     }
 
     private suspend fun loadSongsInternal() =
@@ -364,6 +368,17 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                 }
             _allSongs.value = list.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
             _isSongsLoaded.value = true
+
+            activePlaylistIdForRefresh?.let { playlistId ->
+                val listInPlaylist =
+                    when (playlistId) {
+                        -1L -> dbHelper.getFavoriteSongs()
+                        -2L -> dbHelper.getBlacklistedSongs()
+                        else -> dbHelper.getSongsInPlaylist(playlistId)
+                    }
+                _currentPlaylistSongs.value =
+                    listInPlaylist.filter { !SongScanner.isPathBlocked(it.path, standardBlocked) }
+            }
         }
 
     fun startScan(context: Context, isSilent: Boolean = false) {
@@ -421,6 +436,7 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 loadSongsInternal()
                 loadPlaylistsInternal()
+                PlaybackManager.refreshMetadata(context)
                 if (!isSilent) {
                     _scanState.value = ScanStatus.Success(_allSongs.value.size)
                 }
@@ -429,6 +445,78 @@ class SongViewModel(application: Application) : AndroidViewModel(application) {
                     _scanState.value =
                         ScanStatus.Error(e.localizedMessage ?: "Unknown scanning error")
                 }
+            }
+        }
+    }
+
+    fun checkSongsPhysicalModified(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val allSongs = dbHelper.getAllSongs(includeBlacklisted = true)
+            var hasChanges = false
+
+            for (song in allSongs) {
+                if (song.path.startsWith("http://") || song.path.startsWith("https://")) continue
+                val file = java.io.File(song.path)
+                if (!file.exists()) continue
+
+                val currentLastModified = file.lastModified()
+                if (song.lastModified != currentLastModified) {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    try {
+                        retriever.setDataSource(song.path)
+                        val title =
+                            retriever.extractMetadata(
+                                android.media.MediaMetadataRetriever.METADATA_KEY_TITLE
+                            ) ?: file.nameWithoutExtension
+                        val artist =
+                            retriever.extractMetadata(
+                                android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST
+                            ) ?: "Unknown Artist"
+                        val album =
+                            retriever.extractMetadata(
+                                android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM
+                            ) ?: "Unknown Album"
+                        val durationStr =
+                            retriever.extractMetadata(
+                                android.media.MediaMetadataRetriever.METADATA_KEY_DURATION
+                            )
+                        val duration = durationStr?.toLongOrNull() ?: song.duration
+                        val size = file.length()
+
+                        clearCoverCacheForSong(context, song.id)
+
+                        val db = dbHelper.writableDatabase
+                        val cv =
+                            android.content.ContentValues().apply {
+                                put(MusicDatabaseHelper.COLUMN_TITLE, title)
+                                put(MusicDatabaseHelper.COLUMN_ARTIST, artist)
+                                put(MusicDatabaseHelper.COLUMN_ALBUM, album)
+                                put(MusicDatabaseHelper.COLUMN_DURATION, duration)
+                                put(MusicDatabaseHelper.COLUMN_SIZE, size)
+                                put(MusicDatabaseHelper.COLUMN_LAST_MODIFIED, currentLastModified)
+                            }
+                        db.update(
+                            MusicDatabaseHelper.TABLE_SONGS,
+                            cv,
+                            "${MusicDatabaseHelper.COLUMN_ID} = ?",
+                            arrayOf(song.id.toString()),
+                        )
+                        hasChanges = true
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        try {
+                            retriever.release()
+                        } catch (ex: Exception) {}
+                    }
+                }
+            }
+
+            if (hasChanges) {
+                loadSongsInternal()
+                loadPlaylistsInternal()
+                PlaybackManager.refreshMetadata(context)
+                PlaybackManager.databaseUpdateEvent.tryEmit(Unit)
             }
         }
     }

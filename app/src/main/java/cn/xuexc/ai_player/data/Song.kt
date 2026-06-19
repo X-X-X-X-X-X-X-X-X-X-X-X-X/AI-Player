@@ -17,6 +17,7 @@ data class Song(
     val isFavorite: Boolean = false,
     val isBlacklisted: Boolean = false,
     val dateAdded: Long = 0L,
+    val lastModified: Long = 0L,
 )
 
 // 全局内存缓存，使用最大可用内存的 1/8 作为上限（最少 16MB），按照 Bitmap 实际字节大小计重淘汰，根治 OOM 隐患
@@ -472,4 +473,21 @@ fun Song.getQualityType(): QualityType {
         }
     }
     return QualityType.SQ
+}
+
+fun clearCoverCacheForSong(context: android.content.Context, songId: Long) {
+    coverCache.remove(CacheKey(songId, 150))
+    coverCache.remove(CacheKey(songId, 400))
+    coverCache.remove(CacheKey(songId, -1))
+
+    val cacheDir = java.io.File(context.cacheDir, "covers")
+    if (cacheDir.exists()) {
+        try {
+            java.io.File(cacheDir, "${songId}_150.jpg").delete()
+            java.io.File(cacheDir, "${songId}_400.jpg").delete()
+            java.io.File(cacheDir, "${songId}_blurred.jpg").delete()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

@@ -642,4 +642,153 @@ object PlaybackManager {
         _sleepTimerRemaining.value = 0L
         _sleepTimerPlayComplete.value = false
     }
+
+    fun refreshMetadata(context: Context) {
+        coroutineScope.launch(Dispatchers.IO) {
+            val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
+            val allSongs = dbHelper.getAllSongs(includeBlacklisted = true)
+            val songMap = allSongs.associateBy { it.id }
+
+            launch(Dispatchers.Main) {
+                var changed = false
+
+                _currentSong.value?.let { current ->
+                    songMap[current.id]?.let { latest ->
+                        if (current != latest) {
+                            _currentSong.value = latest
+                            changed = true
+                        }
+                    }
+                }
+
+                val currentQueue = _playbackQueue.value
+                val newQueue = currentQueue.map { song -> songMap[song.id] ?: song }
+                if (currentQueue != newQueue) {
+                    _playbackQueue.value = newQueue
+                    changed = true
+                }
+
+                val currentOriginal = originalQueue
+                val newOriginal = currentOriginal.map { song -> songMap[song.id] ?: song }
+                if (currentOriginal != newOriginal) {
+                    originalQueue = newOriginal
+                    changed = true
+                }
+
+                if (changed) {
+                    saveState()
+                    triggerServiceUpdate()
+                }
+            }
+        }
+    }
+
+    fun checkAndUpdateCurrentSongMetadata(context: Context) {
+        val current = _currentSong.value ?: return
+        if (current.path.startsWith("http://") || current.path.startsWith("https://")) return
+
+        coroutineScope.launch(Dispatchers.IO) {
+            val file = java.io.File(current.path)
+            if (!file.exists()) return@launch
+            val currentLastModified = file.lastModified()
+
+            val retriever = android.media.MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(current.path)
+                val title =
+                    retriever.extractMetadata(
+                        android.media.MediaMetadataRetriever.METADATA_KEY_TITLE
+                    ) ?: file.nameWithoutExtension
+                val artist =
+                    retriever.extractMetadata(
+                        android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST
+                    ) ?: "Unknown Artist"
+                val album =
+                    retriever.extractMetadata(
+                        android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM
+                    ) ?: "Unknown Album"
+                val durationStr =
+                    retriever.extractMetadata(
+                        android.media.MediaMetadataRetriever.METADATA_KEY_DURATION
+                    )
+                val duration = durationStr?.toLongOrNull() ?: current.duration
+                val size = file.length()
+
+                val updated =
+                    current.copy(
+                        title = title,
+                        artist = artist,
+                        album = album,
+                        duration = duration,
+                        size = size,
+                        lastModified = currentLastModified,
+                    )
+
+                if (
+                    current.title != updated.title ||
+                        current.artist != updated.artist ||
+                        current.album != updated.album ||
+                        current.duration != updated.duration ||
+                        current.size != updated.size ||
+                        current.lastModified != currentLastModified
+                ) {
+
+                    cn.xuexc.ai_player.data.clearCoverCacheForSong(context, updated.id)
+                    val dbHelper = cn.xuexc.ai_player.data.MusicDatabaseHelper(context)
+                    val db = dbHelper.writableDatabase
+                    val cv =
+                        android.content.ContentValues().apply {
+                            put(
+                                cn.xuexc.ai_player.data.MusicDatabaseHelper.COLUMN_TITLE,
+                                updated.title,
+                            )
+                            put(
+                                cn.xuexc.ai_player.data.MusicDatabaseHelper.COLUMN_ARTIST,
+                                updated.artist,
+                            )
+                            put(
+                                cn.xuexc.ai_player.data.MusicDatabaseHelper.COLUMN_ALBUM,
+                                updated.album,
+                            )
+                            put(
+                                cn.xuexc.ai_player.data.MusicDatabaseHelper.COLUMN_DURATION,
+                                updated.duration,
+                            )
+                            put(
+                                cn.xuexc.ai_player.data.MusicDatabaseHelper.COLUMN_SIZE,
+                                updated.size,
+                            )
+                            put(
+                                cn.xuexc.ai_player.data.MusicDatabaseHelper.COLUMN_LAST_MODIFIED,
+                                currentLastModified,
+                            )
+                        }
+                    db.update(
+                        cn.xuexc.ai_player.data.MusicDatabaseHelper.TABLE_SONGS,
+                        cv,
+                        "${cn.xuexc.ai_player.data.MusicDatabaseHelper.COLUMN_ID} = ?",
+                        arrayOf(updated.id.toString()),
+                    )
+
+                    launch(Dispatchers.Main) {
+                        _currentSong.value = updated
+                        _playbackQueue.value =
+                            _playbackQueue.value.map { if (it.id == updated.id) updated else it }
+                        originalQueue =
+                            originalQueue.map { if (it.id == updated.id) updated else it }
+
+                        saveState()
+                        triggerServiceUpdate()
+                        databaseUpdateEvent.tryEmit(Unit)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                try {
+                    retriever.release()
+                } catch (e: Exception) {}
+            }
+        }
+    }
 }

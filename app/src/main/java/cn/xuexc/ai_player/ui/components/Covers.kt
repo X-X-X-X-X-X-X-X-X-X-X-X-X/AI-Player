@@ -36,9 +36,9 @@ fun SongCover(
     fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Default.MusicNote,
 ) {
     val context = LocalContext.current
-    var bitmap by remember(song.id) { mutableStateOf(song.getCachedCover()) }
+    var bitmap by remember(song.id, song.lastModified) { mutableStateOf(song.getCachedCover()) }
 
-    LaunchedEffect(song.id) {
+    LaunchedEffect(song.id, song.lastModified) {
         if (bitmap == null) {
             delay(100)
             withContext(Dispatchers.IO) { bitmap = song.loadCover(context, 150) }

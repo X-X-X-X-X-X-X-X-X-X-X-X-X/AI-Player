@@ -121,24 +121,30 @@ fun FullPlayerScreen(
                 ),
             label = "translationY",
         )
-    var bgBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover()) }
-    var bgBitmapBlur by remember {
-        mutableStateOf<android.graphics.Bitmap?>(song.getCachedBlurredCover())
-    }
+    var bgBitmap by
+        remember(song.id, song.lastModified) {
+            mutableStateOf<android.graphics.Bitmap?>(song.getCachedCover())
+        }
+    var bgBitmapBlur by
+        remember(song.id, song.lastModified) {
+            mutableStateOf<android.graphics.Bitmap?>(song.getCachedBlurredCover())
+        }
     var isCoverLoaded by remember { mutableStateOf(false) }
     var rotationAngle by remember { mutableStateOf(0f) }
     // 封面透明度 Animatable：控制唱片中心封面与背景模糊图的淡出/淡入效果
     val coverAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
     // 标记是否是首次加载，避免进入播放界面时触发淡出动画
     var isFirstLoad by remember { mutableStateOf(true) }
+    var lastSongId by remember { mutableStateOf<Long?>(null) }
 
     var showPlaybackQueueDialog by remember { mutableStateOf(false) }
     val playbackQueue by viewModel.playbackQueue.collectAsState()
 
-    LaunchedEffect(song.id) {
+    LaunchedEffect(song.id, song.lastModified) {
         if (isFirstLoad) {
             // 首次加载：直接加载封面，不做淡出动画
             isFirstLoad = false
+            lastSongId = song.id
             isCoverLoaded = false
             rotationAngle = 0f
             withContext(Dispatchers.IO) {
@@ -152,9 +158,10 @@ fun FullPlayerScreen(
                     isCoverLoaded = true
                 }
             }
-        } else {
+        } else if (lastSongId != song.id) {
             // 切歌：先淡出当前封面（旋转继续）-> 停转重置 -> 加载新封面 -> 淡入
             // 1. 直接开始淡出（200ms），旋转随封面一起淡出，不提前停顿
+            lastSongId = song.id
             coverAlpha.animateTo(targetValue = 0f, animationSpec = tween(200))
             // 2. 淡出完成后停止旋转并重置角度
             isCoverLoaded = false
@@ -168,6 +175,19 @@ fun FullPlayerScreen(
             withFrameMillis {}
             isCoverLoaded = true
             // 4. 淡入新封面（300ms）
+            coverAlpha.animateTo(targetValue = 1f, animationSpec = tween(300))
+        } else {
+            // 同一首歌但 lastModified 改变（标签/封面热更新）
+            // 1. 直接开始淡出封面（200ms），但不重置旋转角度和 isCoverLoaded
+            coverAlpha.animateTo(targetValue = 0f, animationSpec = tween(200))
+            // 2. 加载新封面
+            val loaded = withContext(Dispatchers.IO) { song.loadCover(context, 400) }
+            val blurred = loaded?.let { song.loadBlurredCover(context, it) }
+            bgBitmap = loaded
+            bgBitmapBlur = blurred
+            withFrameMillis {}
+            withFrameMillis {}
+            // 3. 淡入新封面（300ms）
             coverAlpha.animateTo(targetValue = 1f, animationSpec = tween(300))
         }
     }

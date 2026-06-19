@@ -415,14 +415,16 @@ fun LyricView(
     onSeek: (Long) -> Unit,
     isPageActive: Boolean = true,
 ) {
-    var lyrics by remember(song.id) { mutableStateOf<List<LyricLine>>(emptyList()) }
-    var hasLoaded by remember(song.id) { mutableStateOf(false) }
-    var isClickSeeking by remember(song.id) { mutableStateOf(false) }
-    var clickedActiveIndex by remember(song.id) { mutableStateOf<Int?>(null) }
-    var seekJob by remember(song.id) { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    var lyrics by
+        remember(song.id, song.lastModified) { mutableStateOf<List<LyricLine>>(emptyList()) }
+    var hasLoaded by remember(song.id, song.lastModified) { mutableStateOf(false) }
+    var isClickSeeking by remember(song.id, song.lastModified) { mutableStateOf(false) }
+    var clickedActiveIndex by remember(song.id, song.lastModified) { mutableStateOf<Int?>(null) }
+    var seekJob by
+        remember(song.id, song.lastModified) { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(song.id, song.path) {
+    LaunchedEffect(song.id, song.path, song.lastModified) {
         withContext(Dispatchers.IO) {
             lyrics = loadLyricsForSong(song.path)
             hasLoaded = true
@@ -475,7 +477,7 @@ fun LyricView(
 
         val lyricListState = rememberLazyListState()
         val isUserScrolling by lyricListState.interactionSource.collectIsDraggedAsState()
-        var isAutoFollowPaused by remember(song.id) { mutableStateOf(false) }
+        var isAutoFollowPaused by remember(song.id, song.lastModified) { mutableStateOf(false) }
 
         LaunchedEffect(isUserScrolling) {
             if (isUserScrolling) {
@@ -493,7 +495,7 @@ fun LyricView(
 
         // 统一缓存 Item 点击事件的回调，确保在歌曲播放期间其 lambda 引用唯一不变，彻底解锁 LazyColumn 滚动时的 100% Item 跳过机制
         val onItemClick =
-            remember(lyrics, song.id) {
+            remember(lyrics, song.id, song.lastModified) {
                 { index: Int ->
                     clickedActiveIndex = index
                     isClickSeeking = true
