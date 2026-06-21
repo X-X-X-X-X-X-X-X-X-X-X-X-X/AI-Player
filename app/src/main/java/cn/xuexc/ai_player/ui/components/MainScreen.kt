@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -243,8 +244,15 @@ fun MainScreen(viewModel: SongViewModel) {
     var showFullPlayer by rememberSaveable { mutableStateOf(false) }
 
     val screenHeight = context.resources.displayMetrics.heightPixels.toFloat()
+    var containerHeight by remember { mutableStateOf(screenHeight) }
     val playerOffsetY = remember { Animatable(screenHeight) }
     var hasOpenedPlayer by remember { mutableStateOf(false) }
+
+    LaunchedEffect(containerHeight) {
+        if (!showFullPlayer) {
+            playerOffsetY.snapTo(containerHeight)
+        }
+    }
 
     val horizontalOffset = remember { Animatable(0f) }
     var dragDirection by remember { mutableStateOf<DragDirection?>(null) }
@@ -265,7 +273,7 @@ fun MainScreen(viewModel: SongViewModel) {
         } else {
             launch {
                 playerOffsetY.animateTo(
-                    targetValue = screenHeight,
+                    targetValue = containerHeight,
                     animationSpec =
                         spring(
                             dampingRatio = Spring.DampingRatioNoBouncy,
@@ -310,7 +318,10 @@ fun MainScreen(viewModel: SongViewModel) {
                             change.consume()
                             coroutineScope.launch {
                                 playerOffsetY.snapTo(
-                                    (playerOffsetY.value + dragAmount.y).coerceIn(0f, screenHeight)
+                                    (playerOffsetY.value + dragAmount.y).coerceIn(
+                                        0f,
+                                        containerHeight,
+                                    )
                                 )
                             }
                         }
@@ -329,11 +340,11 @@ fun MainScreen(viewModel: SongViewModel) {
                     when (dragDirection) {
                         DragDirection.VERTICAL -> {
                             coroutineScope.launch {
-                                if (playerOffsetY.value < screenHeight * 0.85f) {
+                                if (playerOffsetY.value < containerHeight * 0.85f) {
                                     showFullPlayer = true
                                 } else {
                                     playerOffsetY.animateTo(
-                                        screenHeight,
+                                        containerHeight,
                                         spring(dampingRatio = Spring.DampingRatioNoBouncy),
                                     )
                                 }
@@ -373,7 +384,7 @@ fun MainScreen(viewModel: SongViewModel) {
                 onDragCancel = {
                     coroutineScope.launch {
                         playerOffsetY.animateTo(
-                            screenHeight,
+                            containerHeight,
                             spring(dampingRatio = Spring.DampingRatioNoBouncy),
                         )
                         horizontalOffset.animateTo(
@@ -393,19 +404,30 @@ fun MainScreen(viewModel: SongViewModel) {
                     change.consume()
                     coroutineScope.launch {
                         playerOffsetY.snapTo(
-                            (playerOffsetY.value + dragAmount).coerceIn(0f, screenHeight)
+                            (playerOffsetY.value + dragAmount).coerceIn(0f, containerHeight)
                         )
                     }
                 },
                 onDragEnd = {
                     coroutineScope.launch {
-                        if (playerOffsetY.value > screenHeight * 0.15f) {
-                            showFullPlayer = false
+                        if (playerOffsetY.value > containerHeight * 0.15f) {
+                            if (showFullPlayer) {
+                                showFullPlayer = false
+                            } else {
+                                playerOffsetY.animateTo(
+                                    containerHeight,
+                                    spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                                )
+                            }
                         } else {
-                            playerOffsetY.animateTo(
-                                0f,
-                                spring(dampingRatio = Spring.DampingRatioNoBouncy),
-                            )
+                            if (!showFullPlayer) {
+                                showFullPlayer = true
+                            } else {
+                                playerOffsetY.animateTo(
+                                    0f,
+                                    spring(dampingRatio = Spring.DampingRatioNoBouncy),
+                                )
+                            }
                         }
                     }
                 },
@@ -418,7 +440,7 @@ fun MainScreen(viewModel: SongViewModel) {
                             )
                         } else {
                             playerOffsetY.animateTo(
-                                screenHeight,
+                                containerHeight,
                                 spring(dampingRatio = Spring.DampingRatioNoBouncy),
                             )
                         }
@@ -789,7 +811,12 @@ fun MainScreen(viewModel: SongViewModel) {
 
     var isSearching by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier =
+            Modifier.fillMaxSize().onGloballyPositioned { coordinates ->
+                containerHeight = coordinates.size.height.toFloat()
+            }
+    ) {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Column(
                 modifier =
@@ -4312,7 +4339,7 @@ fun MainScreen(viewModel: SongViewModel) {
                     },
                     dragModifier = playerDragModifier,
                     onSleepTimerClick = { showSleepTimerDialog = true },
-                    isFullyHidden = { playerOffsetY.value >= screenHeight },
+                    isFullyHidden = { playerOffsetY.value >= containerHeight },
                 )
             }
         }
